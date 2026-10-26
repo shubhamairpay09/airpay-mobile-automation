@@ -4,12 +4,17 @@ Feature: airpay vyaapaar auth screens
   Each screen was captured once during the deep scan.
 
   @AUTH_001
-  Scenario: Login with OTP
+  Scenario: Login detail — M101319
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "auth-login-with-otp" in module "auth" has stored xpaths
+    Then airpay vyaapaar screen "auth-m101319-detail" in module "auth" has stored xpaths
 
   @AUTH_002
-  Scenario: Mobile Number
+  Scenario: Forgot Password — Forgot Password
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "auth-mobile-number" in module "auth" has stored xpaths
+    Then airpay vyaapaar screen "auth-forgot-password" in module "auth" has stored xpaths
+
+  @AUTH_003
+  Scenario: Login with password
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "auth-login-with-password" in module "auth" has stored xpaths
 

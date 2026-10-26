@@ -57,6 +57,7 @@ public class VyaapaarDeepScanFlow {
     private final Set<String> explored = new LinkedHashSet<>();
     private final Set<String> finished = new LinkedHashSet<>();
     private final String appPackage;
+    private final String appActivity;
     private final int maxScreens;
     private final int maxDepth;
     private final int maxClicks;
@@ -66,11 +67,13 @@ public class VyaapaarDeepScanFlow {
     private final Set<String> openedDetails = new LinkedHashSet<>();
     private boolean awakePinned;
     private int captures;
+    private int signInRecoveries;
 
     public VyaapaarDeepScanFlow(TestContext context) {
         this.context = context;
         this.driver = context.driver();
         this.appPackage = context.config().require("vyaapaar.app.package");
+        this.appActivity = context.config().require("vyaapaar.app.activity");
         this.maxScreens = context.config().getInt("a11y.deep.max.screens", 300);
         this.maxDepth = context.config().getInt("a11y.crawl.max.depth", 8);
         this.maxClicks = context.config().getInt("a11y.crawl.max.clicks.per.screen", 28);
@@ -151,9 +154,10 @@ public class VyaapaarDeepScanFlow {
         keepAwake();
         AdbCommands.grantCommonRuntimePermissions(context.config().get("android.udid", ""), appPackage);
         try {
+            openAppForScan();
             if (!inApp()) {
-                driver.activateApp(appPackage);
-                sleep(1500);
+                LOG.warn("Vyaapaar did not open. The scan stopped before storing the phone home screen.");
+                return;
             }
             loginIfNeeded();
             if (!onSignedInHome(source()) && !isShopForm(source()) && !onboardingRoot(source())) {
@@ -1951,12 +1955,41 @@ public class VyaapaarDeepScanFlow {
     }
 
     private boolean needsBiometric(String src) {
-        if (src == null) {
-            return false;
+        String n = src == null ? "" : src.toLowerCase(Locale.ROOT);
+        String pkg = currentPackage().toLowerCase(Locale.ROOT);
+        if (pkg.contains("biometric") || pkg.contains("fingerprint")) {
+            return true;
         }
-        String n = src.toLowerCase(Locale.ROOT);
         return n.contains("biometric") || n.contains("fingerprint") || n.contains("use fingerprint")
-                || n.contains("confirm your identity");
+                || n.contains("face unlock") || n.contains("use face") || n.contains("face id")
+                || n.contains("confirm your identity") || n.contains("verify your identity")
+                || n.contains("verify identity") || n.contains("use pin")
+                || n.contains("enter your pin") || n.contains("confirm pin");
+    }
+
+    /**
+     * Fingerprint, face, or PIN has to be done by the person holding the phone.
+     * The scan does not tap it, press back, or reopen the app while it waits.
+     */
+    private void waitForUserUnlock() {
+        if (!needsBiometric(source())) {
+            return;
+        }
+        LOG.warn("Fingerprint, face, or PIN is on screen. Unlock it on the phone — the scan will wait and will not leave the app.");
+        long until = System.currentTimeMillis() + 10 * 60_000L;
+        long nextLog = System.currentTimeMillis() + 30_000L;
+        while (System.currentTimeMillis() < until) {
+            sleep(3000);
+            if (!needsBiometric(source()) && inApp()) {
+                LOG.info("Unlock done — scan continues");
+                return;
+            }
+            if (System.currentTimeMillis() >= nextLog) {
+                LOG.warn("Still waiting for fingerprint, face, or PIN on the phone");
+                nextLog = System.currentTimeMillis() + 30_000L;
+            }
+        }
+        LOG.warn("Fingerprint, face, or PIN was still on screen after waiting");
     }
 
     /** Stores the open list, selects one option, then stores the page that follows. */
@@ -2166,11 +2199,104 @@ public class VyaapaarDeepScanFlow {
         }
     }
 
+    /**
+     * Opens Vyaapaar when it is closed. Leaves it alone when it is already in front,
+     * so a signed-in session is not sent to fingerprint, face, or PIN.
+     * A lock screen is left for the person holding the phone.
+     */
+    private void openAppForScan() {
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+        }
+        if (inApp()) {
+            LOG.info("App is already open — scanning from this screen, not starting it again");
+            return;
+        }
+        LOG.info("App is not open — opening it");
+        try {
+            driver.activateApp(appPackage);
+            sleep(1500);
+        } catch (Exception e) {
+            LOG.warn("Could not resume the app: {}", e.toString());
+        }
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+        }
+        if (inApp()) {
+            LOG.info("App resumed");
+            return;
+        }
+        LOG.info("App was closed — starting it from scratch");
+        AdbCommands.shell(context.config().get("android.udid", ""),
+                "am", "start", "-n", appPackage + "/" + appActivity);
+        sleep(2500);
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+        }
+    }
+
+    /**
+     * Every bat run captures login first, including on another machine where the app
+     * is already signed in. Crawl still refuses Logout, so this happens only once at the start.
+     */
+    private boolean signOutToLogin() {
+        if (onAuthWall(source()) || isOtp(source()) || onRegistration(source())) {
+            return true;
+        }
+        LOG.info("Signing out once so this run captures login from the start");
+        if (!onProfile(source())) {
+            returnToSignedInHome();
+            if (!backToProfile()) {
+                tapLabel("Profile");
+                sleep(800);
+            }
+        }
+        for (int i = 0; i < 6 && inApp() && !onAuthWall(source()); i++) {
+            if (needsBiometric(source())) {
+                waitForUserUnlock();
+            }
+            if (tapLabel("Logout", "Log out", "Log Out", "Sign out", "Sign Out")) {
+                sleep(800);
+                tapLabel("Yes", "Logout", "Log out", "Confirm", "OK");
+                sleep(1200);
+                if (needsBiometric(source())) {
+                    waitForUserUnlock();
+                }
+                if (onAuthWall(source()) || isOtp(source())) {
+                    LOG.info("Login screen is open — capturing from the start");
+                    return true;
+                }
+            }
+            swipeUp();
+            sleep(400);
+        }
+        return onAuthWall(source()) || isOtp(source());
+    }
+
     private void loginIfNeeded() {
+        if (!inApp()) {
+            LOG.warn("App is not in front — the phone home screen is not a signed-in session");
+            return;
+        }
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+        }
         String src = source();
         if (!onAuthWall(src) && !onRegistration(src) && !isOtp(src) && !isAlert(src)) {
-            LOG.info("Signed in — scanning from the current screen and leaving the app open");
-            return;
+            if (!signOutToLogin()) {
+                LOG.warn("Could not reach login. Scanning from the screen that is already open.");
+                return;
+            }
+        }
+        if (Boolean.getBoolean("a11y.login.password")) {
+            if (context.config().get("vyaapaar.test.password", "").isBlank()) {
+                LOG.warn("a11y.login.password is set but vyaapaar.test.password is empty — using OTP login");
+            } else {
+                LOG.info("Capturing login from the start, then signing in");
+                scanLoginDetail();
+                loginWithUsernameAndPassword();
+                return;
+            }
         }
         String mobile = context.config().require("vyaapaar.test.mobile");
         LOG.info("Using mobile {}", mobile);
@@ -2189,6 +2315,43 @@ public class VyaapaarDeepScanFlow {
             backToLogin();
             loginWithOtp();
         }
+    }
+
+    /** Login wall detail pass: captures the form, its links and boxes, then leaves it for password login. */
+    private void scanLoginDetail() {
+        dismissAlerts();
+        if (!backToLogin()) {
+            LOG.warn("Login screen was not reached for the detail scan");
+            return;
+        }
+        String before = fingerprint();
+        String title = screenTitle(source());
+        capture("auth", "auth-" + slug(title) + "-detail", "Login detail — " + title);
+        openDropdowns("auth", "Login");
+        openLinkedDetails("auth", "Login");
+        acceptUncheckedBoxes();
+        fillIdentityIfSafe();
+        if (!fingerprint().equals(before)) {
+            capture("auth", "auth-" + slug(screenTitle(source())) + "-filled", "Login filled — " + screenTitle(source()));
+        }
+        captureLinkAndReturn("Register Here", "Register");
+        captureLinkAndReturn("Forgot Password?", "Forgot Password");
+        backToLogin();
+    }
+
+    /** Opens a login link for one capture and comes back. Never submits anything. */
+    private void captureLinkAndReturn(String link, String label) {
+        backToLogin();
+        String before = fingerprint();
+        if (!tapLabel(link) && !tapContaining(link)) {
+            return;
+        }
+        sleep(900);
+        if (fingerprint().equals(before)) {
+            return;
+        }
+        capture("auth", "auth-" + slug(label), label + " — " + screenTitle(source()));
+        backToLogin();
     }
 
     /** Registration screens, including OTP. Does not change a password on the forgot-password flow. */
@@ -2265,10 +2428,14 @@ public class VyaapaarDeepScanFlow {
 
     /**
      * Username/password login. Runs only from the dedicated scenario, after the
-     * accessibility scan. Needs {@code vyaapaar.test.password}.
+     * accessibility scan, or from the login wall when {@code a11y.login.password}
+     * is set. Needs {@code vyaapaar.test.password} (config/secrets.properties).
      */
     public void loginWithUsernameAndPassword() {
-        String mobile = context.config().require("vyaapaar.test.mobile");
+        String mobile = context.config().get("vyaapaar.test.username", "").trim();
+        if (mobile.isBlank()) {
+            mobile = context.config().require("vyaapaar.test.mobile");
+        }
         String password = context.config().get("vyaapaar.test.password", "");
         if (password == null || password.isBlank()) {
             throw new IllegalStateException(
@@ -2280,14 +2447,103 @@ public class VyaapaarDeepScanFlow {
             tapLabel("Login with password");
             sleep(800);
         }
-        typeBelowLabel(mobile, "Username or Mobile number", "Username", "Mobile Number");
-        typeBelowLabel(password, "Password", "MPIN");
+        // The login form uses floating labels INSIDE the fields, so the fields are
+        // targeted directly: first EditText = username, second = password.
+        boolean userOk = typeLoginField(0, mobile, true);
+        boolean passOk = typeLoginField(1, password, false);
+        LOG.info("Login form filled — username: {}, password: {}", userOk, passOk);
         capture("auth", "auth-login-with-password", "Login with password");
-        tapLabel("Login", "Sign in", "Continue");
-        sleep(1500);
-        if (isOtp(source())) {
-            enterOtp(mobile);
+        if (!userOk || !passOk) {
+            LOG.warn("Login fields did not fill — skipping the Login tap. Visible: {}", visibleLabels());
+            return;
         }
+        tapLabel("Login", "Sign in", "Continue");
+        // The OTP screen can appear a few seconds after the wall closes.
+        for (int wait = 0; wait < 8; wait++) {
+            sleep(1000);
+            String after = source();
+            if (isOtp(after)) {
+                LOG.info("Login asked for OTP — entering the configured OTP");
+                enterOtp(mobile);
+                break;
+            }
+            if (!onAuthWall(after) && !onRegistration(after)) {
+                LOG.info("Login tap left the login wall — continuing inside the app");
+                dismissEntryGates();
+                return;
+            }
+        }
+        if (isOtp(source())) {
+            LOG.warn("Still on the OTP screen after submitting the OTP. Visible: {}", visibleLabels());
+        } else if (onAuthWall(source()) || onRegistration(source())) {
+            LOG.warn("LOGIN FAILED — still on the login wall after the Login tap. Visible: {}", visibleLabels());
+        } else {
+            LOG.info("Signed in after OTP — continuing inside the app");
+            dismissEntryGates();
+        }
+    }
+
+    /**
+     * Types into the nth EditText on screen and verifies the text landed.
+     * Values are never logged. Falls back to adb key events on retry.
+     */
+    private boolean typeLoginField(int index, String value, boolean verifyExact) {
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            try {
+                List<WebElement> fields = driver.findElements(By.xpath("//android.widget.EditText"));
+                if (index >= fields.size()) {
+                    LOG.warn("Login field {} not found ({} fields on screen)", index, fields.size());
+                    return false;
+                }
+                WebElement field = fields.get(index);
+                field.click();
+                sleep(400);
+                try {
+                    field.clear();
+                } catch (Exception ignored) {
+                    // some fields reject clear
+                }
+                if (attempt == 1) {
+                    field.sendKeys(value);
+                } else {
+                    AdbCommands.shell(context.config().get("android.udid", ""), "input", "text",
+                            value.replace(" ", "%s"));
+                }
+            } catch (Exception e) {
+                LOG.warn("Login field {} typing failed (attempt {}): {}", index, attempt, e.toString());
+            }
+            hideKeyboard();
+            sleep(400);
+            if (loginFieldFilled(index, verifyExact ? value : null)) {
+                return true;
+            }
+            LOG.warn("Login field {} was still empty after attempt {}", index, attempt);
+        }
+        return false;
+    }
+
+    /** Checks the nth EditText holds text (and the exact value when expected is given). */
+    private boolean loginFieldFilled(int index, String expected) {
+        try {
+            List<Element> nodes = UiAutomatorXml.elements(source());
+            int seen = 0;
+            for (Element el : nodes) {
+                if (!UiAutomatorXml.className(el).contains("EditText")) {
+                    continue;
+                }
+                if (seen++ != index) {
+                    continue;
+                }
+                String text = UiAutomatorXml.attr(el, "text");
+                if (text == null || text.isBlank()) {
+                    return false;
+                }
+                return expected == null || text.equals(expected);
+            }
+        } catch (Exception e) {
+            LOG.warn("Login field {} verification failed: {}", index, e.toString());
+        }
+        return false;
     }
 
     private void walkForm(String module, String label, List<String> forward, int maxSteps, boolean allowNewPassword) {
@@ -2576,10 +2832,12 @@ public class VyaapaarDeepScanFlow {
     }
 
     private boolean enterOtp(String mobile) {
-        String otp = context.config().get("vyaapaar.test.otp", "");
-        if (otp == null || otp.isBlank()) {
+        String otp = context.config().get("vyaapaar.test.otp", "").trim();
+        if (otp.isBlank()) {
             otp = NotificationOtpReader.poll(driver, context.config(), mobile, Duration.ofSeconds(35),
                     () -> !isOtp(source()));
+        } else {
+            LOG.info("Using the OTP from vyaapaar.test.otp");
         }
         if (otp == null || otp.isBlank()) {
             otp = EmailOtpReader.readLatest(driver, context.config(), mobile, appPackage);
@@ -2597,8 +2855,12 @@ public class VyaapaarDeepScanFlow {
         }
         typeOtp(otp);
         sleep(400);
-        tapLabel("Verify", "Submit", "Continue", "Proceed", "Confirm");
-        sleep(1500);
+        tapLabel("Verify", "Verify OTP", "Submit", "Continue", "Proceed", "Confirm");
+        sleep(2000);
+        if (isOtp(source())) {
+            LOG.warn("OTP was submitted but the OTP screen is still open");
+            return false;
+        }
         return true;
     }
 
@@ -2634,7 +2896,13 @@ public class VyaapaarDeepScanFlow {
     }
 
     private void crawl(String id, String label, String module, int depth) {
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+        }
         if (timedOut() || depth > maxDepth || captures >= maxScreens || !inApp()) {
+            if (!inApp()) {
+                LOG.warn("App is not in front — not reopening it, so the session stays put");
+            }
             return;
         }
         allowDialogs();
@@ -2691,12 +2959,29 @@ public class VyaapaarDeepScanFlow {
                 clicks++;
                 sleep(350);
                 allowDialogs();
-                if (!inApp()) {
-                    leaveForeignApp();
+                if (needsBiometric(source())) {
+                    waitForUserUnlock();
                     continue;
                 }
-                if (onAuthWall(source())) {
-                    LOG.warn("Login screen opened after {} — stopping so the signed-in session stays put", action.label);
+                if (!inApp()) {
+                    LOG.warn("Left the app after {} — not reopening it", action.label);
+                    break;
+                }
+                if (isOtp(source())) {
+                    LOG.info("OTP screen opened after {} — entering the configured OTP", action.label);
+                    String who = context.config().get("vyaapaar.test.username", "").trim();
+                    if (who.isBlank()) {
+                        who = context.config().get("vyaapaar.test.mobile", "");
+                    }
+                    enterOtp(who);
+                    if (!isOtp(source()) && !onAuthWall(source())) {
+                        continue;
+                    }
+                }
+                if (onAuthWall(source()) && !isOtp(source())) {
+                    LOG.warn("Login screen opened after {} — signing back in so the rest of the app is scanned",
+                            action.label);
+                    recoverSignedIn();
                     break;
                 }
                 if (fingerprint().equals(before)) {
@@ -2713,8 +2998,8 @@ public class VyaapaarDeepScanFlow {
                         depth + 1);
                 if (!backUntil(before, beforeTitle)) {
                     LOG.warn("Did not return after {} — scanning the screen that stayed open", action.label);
-                    if (!inApp()) {
-                        bringAppBack();
+                    if (needsBiometric(source())) {
+                        waitForUserUnlock();
                     }
                     if (inApp() && !onAuthWall(source())) {
                         crawl(trimId(screenId + "-open-" + slug(action.label)),
@@ -2755,9 +3040,13 @@ public class VyaapaarDeepScanFlow {
                 continue;
             }
             sleep(500);
-            if (!inApp()) {
-                leaveForeignApp();
+            if (needsBiometric(source())) {
+                waitForUserUnlock();
                 continue;
+            }
+            if (!inApp()) {
+                LOG.warn("Left the app from dropdown {} — not reopening it", drop.label);
+                break;
             }
             if (fingerprint().equals(before) && !isPicker(source())) {
                 continue;
@@ -2972,6 +3261,7 @@ public class VyaapaarDeepScanFlow {
                 || n.contains("log out") || n.contains("logout") || n.contains("sign out")
                 || n.contains("delete account") || n.contains("upload") || n.contains("choose from")
                 || n.contains("biometric") || n.contains("fingerprint") || n.contains("face id")
+                || n.contains("face unlock") || n.contains("use pin") || n.contains("verify identity")
                 || n.equals("notification settings") || n.equals("dark theme")
                 || n.contains("http") || n.equals("www") || n.contains("www.")
                 || opensDocumentPicker(n)) {
@@ -3194,6 +3484,46 @@ public class VyaapaarDeepScanFlow {
         return src != null && src.contains("Featured Services");
     }
 
+    /**
+     * Signs in again when a signed-in crawl falls back to the login wall.
+     * Capped so a screen that always logs out cannot loop. Never logs the password.
+     */
+    private boolean recoverSignedIn() {
+        if (isOtp(source())) {
+            String who = context.config().get("vyaapaar.test.username", "").trim();
+            if (who.isBlank()) {
+                who = context.config().get("vyaapaar.test.mobile", "");
+            }
+            LOG.info("OTP screen is open — entering the configured OTP");
+            if (enterOtp(who) && !isOtp(source()) && !onAuthWall(source())) {
+                LOG.info("OTP accepted — scan continues");
+                return true;
+            }
+        }
+        if (signInRecoveries >= 3) {
+            LOG.warn("Signed-in session dropped again — not logging in a fourth time");
+            return false;
+        }
+        if (!Boolean.getBoolean("a11y.login.password")
+                || context.config().get("vyaapaar.test.password", "").isBlank()) {
+            return false;
+        }
+        signInRecoveries++;
+        LOG.warn("Signed-in session dropped to the login screen — signing in again ({})", signInRecoveries);
+        try {
+            loginWithUsernameAndPassword();
+        } catch (Exception e) {
+            LOG.warn("Could not sign back in: {}", e.toString());
+            return false;
+        }
+        if (onAuthWall(source())) {
+            LOG.warn("Still on the login screen after signing in again");
+            return false;
+        }
+        LOG.info("Signed back in — scan continues");
+        return true;
+    }
+
     /** Backs out of a module until the signed-in home tabs are visible. */
     private void returnToSignedInHome() {
         for (int i = 0; i < 6 && inApp(); i++) {
@@ -3203,6 +3533,9 @@ public class VyaapaarDeepScanFlow {
                 return;
             }
             if (onAuthWall(src)) {
+                if (recoverSignedIn()) {
+                    continue;
+                }
                 LOG.warn("Login wall while returning home — leaving the screen as it is");
                 return;
             }
@@ -3347,6 +3680,17 @@ public class VyaapaarDeepScanFlow {
         Element best = null;
         int bestGap = Integer.MAX_VALUE;
         int center = (labelBox[0] + labelBox[2]) / 2;
+        // Floating-label layouts put the label INSIDE its field — that field wins.
+        for (Element el : nodes) {
+            if (!UiAutomatorXml.className(el).contains("EditText")) {
+                continue;
+            }
+            int[] box = bounds(el);
+            if (box != null && box[0] <= labelBox[0] && box[1] <= labelBox[1]
+                    && box[2] >= labelBox[2] && box[3] >= labelBox[3]) {
+                return el;
+            }
+        }
         for (Element el : nodes) {
             if (!UiAutomatorXml.className(el).contains("EditText")) {
                 continue;
@@ -3432,12 +3776,18 @@ public class VyaapaarDeepScanFlow {
 
     private boolean backUntil(String fp, String title) {
         for (int i = 0; i < 3; i++) {
+            if (needsBiometric(source())) {
+                waitForUserUnlock();
+            }
             if (!inApp()) {
-                bringAppBack();
+                LOG.warn("Left the app while going back — not reopening it");
                 return false;
             }
             String src = source();
             if (onAuthWall(src)) {
+                if (recoverSignedIn()) {
+                    continue;
+                }
                 LOG.warn("Reached the login screen while going back — not leaving the app");
                 return false;
             }
@@ -3591,25 +3941,19 @@ public class VyaapaarDeepScanFlow {
     }
 
     private void bringAppBack() {
-        try {
-            driver.activateApp(appPackage);
-            sleep(600);
-        } catch (Exception e) {
-            LOG.debug("Could not bring the app forward: {}", e.toString());
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+            return;
         }
+        LOG.warn("App left the foreground — not reopening it, so the session is not sent to fingerprint, face, or PIN");
     }
 
     private void leaveForeignApp() {
-        try {
-            driver.navigate().back();
-            sleep(300);
-            if (!inApp()) {
-                driver.activateApp(appPackage);
-                sleep(800);
-            }
-        } catch (Exception e) {
-            LOG.debug("Could not leave foreign app: {}", e.toString());
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+            return;
         }
+        LOG.warn("Left the app — not reopening it, so the session is not sent to fingerprint, face, or PIN");
     }
 
     private boolean inApp() {

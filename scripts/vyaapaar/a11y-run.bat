@@ -2,9 +2,11 @@
 setlocal EnableDelayedExpansion
 rem Airpay Vyaapaar accessibility. This is the only accessibility batch file.
 rem The app session stays on the phone. Each screen is walked once.
-rem This file does not delete target\vyaapaar.
+rem Each run wipes target\vyaapaar and builds a fresh report (set FRESH_REPORT=No to merge instead).
 rem It starts Appium itself when Appium is down, and uses whichever phone is
 rem connected (set UDID=<serial> first to force one when several are attached).
+rem Login wall first: the login screen is scanned in detail, then the run signs in
+rem with the username/password login and scans the whole app signed in.
 
 cd /d "%~dp0..\.."
 
@@ -96,7 +98,18 @@ echo App %APP_PACKAGE% is on the phone.
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server.test
 
-"%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false"
+rem ---- Fresh report: wipe the previous run unless asked to keep it ----
+if /i not "%FRESH_REPORT%"=="No" (
+  if exist "%CD%\target\vyaapaar" (
+    echo Removing previous report at target\vyaapaar ...
+    rmdir /s /q "%CD%\target\vyaapaar"
+  )
+  echo Fresh report: target\vyaapaar will be built from this run.
+) else (
+  echo Keeping previous report at target\vyaapaar ^(merge mode^).
+)
+
+"%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true" "-Da11y.skip.fill=true"
 set "EXIT_CODE=%ERRORLEVEL%"
 
 echo.

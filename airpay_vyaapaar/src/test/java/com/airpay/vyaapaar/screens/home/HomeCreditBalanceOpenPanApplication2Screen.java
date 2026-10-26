@@ -5,150 +5,80 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / Visibility Off Icon. Module home. */
+/** airpay vyaapaar / Use PIN. Module home. */
 public class HomeCreditBalanceOpenPanApplication2Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-credit-balance-open-pan-application-visibility-off-icon";
+    public static final String PAGE_ID = "home-credit-balance-open-pan-application-use-pin";
 
-    public static final String CREDIT_BALANCE = "//android.widget.TextView[@text='Credit Balance']";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_ID = "//android.widget.FrameLayout[@resource-id='com.samsung.android.biometrics.app.setting:id/id_root_overlay_container']";
 
-    @AndroidFindBy(xpath = CREDIT_BALANCE)
-    private WebElement creditBalance;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_ID)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdId;
 
-    public static final String VISIBILITY_ON_ICON = "//android.view.View[contains(@content-desc,'Visibility On Icon')]";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BACKGROUND = "//android.widget.ImageView[@resource-id='com.samsung.android.biometrics.app.setting:id/background']";
 
-    @AndroidFindBy(xpath = VISIBILITY_ON_ICON)
-    private WebElement visibilityOnIcon;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BACKGROUND)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdBackground;
 
-    public static final String ADD_CREDITS = "//android.widget.TextView[@text='Add Credits']";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_PANEL = "//android.view.View[@resource-id='com.samsung.android.biometrics.app.setting:id/panel']";
 
-    @AndroidFindBy(xpath = ADD_CREDITS)
-    private WebElement addCredits;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_PANEL)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdPanel;
 
-    public static final String MONTHLY_TOTAL = "//android.widget.TextView[@text='Monthly Total']";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BASE = "//android.widget.LinearLayout[@resource-id='com.samsung.android.biometrics.app.setting:id/base_view']";
 
-    @AndroidFindBy(xpath = MONTHLY_TOTAL)
-    private WebElement monthlyTotal;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BASE)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdBase;
 
-    public static final String DMT = "//android.widget.TextView[@text='DMT']";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_MAIN = "//android.view.ViewGroup[@resource-id='com.samsung.android.biometrics.app.setting:id/main_view']";
 
-    @AndroidFindBy(xpath = DMT)
-    private WebElement dmt;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_MAIN)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdMain;
 
-    public static final String EL000 = "//android.widget.TextView[@text='₹0.00']";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_ICON = "//android.widget.ImageView[@resource-id='com.samsung.android.biometrics.app.setting:id/icon']";
 
-    @AndroidFindBy(xpath = EL000)
-    private WebElement el000;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_ICON)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdIcon;
 
-    public static final String AEPS = "//android.widget.TextView[@text='AEPS']";
+    public static final String VERIFY_IDENTITY = "//android.widget.TextView[@text='Verify Identity']";
 
-    @AndroidFindBy(xpath = AEPS)
-    private WebElement aeps;
+    @AndroidFindBy(xpath = VERIFY_IDENTITY)
+    private WebElement verifyIdentity;
 
-    public static final String H_ATM = "//android.widget.TextView[@text='H-ATM']";
+    public static final String LOG_IN_USING_YOUR_DEVICE_CREDENTIALS = "//android.widget.TextView[@text='Log in using your device credentials']";
 
-    @AndroidFindBy(xpath = H_ATM)
-    private WebElement hAtm;
+    @AndroidFindBy(xpath = LOG_IN_USING_YOUR_DEVICE_CREDENTIALS)
+    private WebElement logInUsingYourDeviceCredentials;
 
-    public static final String OTHER = "//android.widget.TextView[@text='Other']";
+    public static final String ENTER_YOUR_CURRENT_PIN = "//android.widget.TextView[@text='Enter your current PIN.']";
 
-    @AndroidFindBy(xpath = OTHER)
-    private WebElement other;
+    @AndroidFindBy(xpath = ENTER_YOUR_CURRENT_PIN)
+    private WebElement enterYourCurrentPin;
 
-    public static final String LIEN = "//android.widget.TextView[@text='Lien']";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_LOCKPASSWORD = "//android.widget.EditText[@resource-id='com.samsung.android.biometrics.app.setting:id/lockPassword']";
 
-    @AndroidFindBy(xpath = LIEN)
-    private WebElement lien;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_LOCKPASSWORD)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdLockpassword;
 
-    public static final String UP_ARROW = "//android.view.View[contains(@content-desc,'Up arrow')]";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BOTTOM = "//android.view.View[@resource-id='com.samsung.android.biometrics.app.setting:id/bottom_space']";
 
-    @AndroidFindBy(xpath = UP_ARROW)
-    private WebElement upArrow;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BOTTOM)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdBottom;
 
-    public static final String FEATURED_SERVICES = "//android.widget.TextView[@text='Featured Services']";
+    public static final String CANCEL = "//android.widget.Button[@text='Cancel']";
 
-    @AndroidFindBy(xpath = FEATURED_SERVICES)
-    private WebElement featuredServices;
+    @AndroidFindBy(xpath = CANCEL)
+    private WebElement cancel;
 
-    public static final String PAN_APPLICATION_ICON = "//android.view.View[contains(@content-desc,'PAN Application icon')]";
+    public static final String COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BUTTON = "//android.view.View[@resource-id='com.samsung.android.biometrics.app.setting:id/button_divider']";
 
-    @AndroidFindBy(xpath = PAN_APPLICATION_ICON)
-    private WebElement panApplicationIcon;
+    @AndroidFindBy(xpath = COM_SAMSUNG_ANDROID_BIOMETRICS_APP_SETTING_ID_BUTTON)
+    private WebElement comSamsungAndroidBiometricsAppSettingIdButton;
 
-    public static final String PAN_APPLICATION = "//android.widget.TextView[@text='PAN Application']";
+    public static final String EL_CONTINUE = "//android.widget.Button[@text='Continue']";
 
-    @AndroidFindBy(xpath = PAN_APPLICATION)
-    private WebElement panApplication;
-
-    public static final String POST_OFFICE_ICON = "//android.view.View[contains(@content-desc,'Post Office icon')]";
-
-    @AndroidFindBy(xpath = POST_OFFICE_ICON)
-    private WebElement postOfficeIcon;
-
-    public static final String POST_OFFICE = "//android.widget.TextView[@text='Post Office']";
-
-    @AndroidFindBy(xpath = POST_OFFICE)
-    private WebElement postOffice;
-
-    public static final String AEPS_ICON = "//android.view.View[contains(@content-desc,'AEPS icon')]";
-
-    @AndroidFindBy(xpath = AEPS_ICON)
-    private WebElement aepsIcon;
-
-    public static final String AADHAAR_PAY_ICON = "//android.view.View[contains(@content-desc,'Aadhaar Pay icon')]";
-
-    @AndroidFindBy(xpath = AADHAAR_PAY_ICON)
-    private WebElement aadhaarPayIcon;
-
-    public static final String AADHAAR_PAY = "//android.widget.TextView[@text='Aadhaar Pay']";
-
-    @AndroidFindBy(xpath = AADHAAR_PAY)
-    private WebElement aadhaarPay;
-
-    public static final String CMS_ICON = "//android.view.View[contains(@content-desc,'CMS icon')]";
-
-    @AndroidFindBy(xpath = CMS_ICON)
-    private WebElement cmsIcon;
-
-    public static final String CMS = "//android.widget.TextView[@text='CMS']";
-
-    @AndroidFindBy(xpath = CMS)
-    private WebElement cms;
-
-    public static final String KHATA_ICON = "//android.view.View[contains(@content-desc,'Khata icon')]";
-
-    @AndroidFindBy(xpath = KHATA_ICON)
-    private WebElement khataIcon;
-
-    public static final String KHATA = "//android.widget.TextView[@text='Khata']";
-
-    @AndroidFindBy(xpath = KHATA)
-    private WebElement khata;
-
-    public static final String NOTIFICATIONS = "//android.view.View[contains(@content-desc,'Notifications')]";
-
-    @AndroidFindBy(xpath = NOTIFICATIONS)
-    private WebElement notifications;
-
-    public static final String HOME = "//android.widget.TextView[@text='Home']";
-
-    @AndroidFindBy(xpath = HOME)
-    private WebElement home;
-
-    public static final String SERVICES = "//android.widget.TextView[@text='Services']";
-
-    @AndroidFindBy(xpath = SERVICES)
-    private WebElement services;
-
-    public static final String HISTORY = "//android.widget.TextView[@text='History']";
-
-    @AndroidFindBy(xpath = HISTORY)
-    private WebElement history;
-
-    public static final String PROFILE = "//android.widget.TextView[@text='Profile']";
-
-    @AndroidFindBy(xpath = PROFILE)
-    private WebElement profile;
+    @AndroidFindBy(xpath = EL_CONTINUE)
+    private WebElement elContinue;
 
     public HomeCreditBalanceOpenPanApplication2Screen(TestContext context) {
         super(context);

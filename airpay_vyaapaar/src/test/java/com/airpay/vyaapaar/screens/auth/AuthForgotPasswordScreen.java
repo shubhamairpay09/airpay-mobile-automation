@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Forgot Password. Module auth. */
+/** Forgot Password — Forgot Password. Module auth. */
 public class AuthForgotPasswordScreen extends BaseScreen {
 
     public static final String PAGE_ID = "auth-forgot-password";

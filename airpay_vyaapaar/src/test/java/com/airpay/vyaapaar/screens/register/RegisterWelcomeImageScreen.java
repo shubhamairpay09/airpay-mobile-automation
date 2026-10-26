@@ -45,6 +45,11 @@ public class RegisterWelcomeImageScreen extends BaseScreen {
     @AndroidFindBy(xpath = BACK_ICON)
     private WebElement backIcon;
 
+    public static final String RECEIVED_ANEW_MESSAGE_FROM_VIKASH_RANA_OK = "//android.widget.Toast[@text='Received a new message from Vikash Rana. ok done']";
+
+    @AndroidFindBy(xpath = RECEIVED_ANEW_MESSAGE_FROM_VIKASH_RANA_OK)
+    private WebElement receivedANewMessageFromVikashRanaOk;
+
     public RegisterWelcomeImageScreen(TestContext context) {
         super(context);
     }

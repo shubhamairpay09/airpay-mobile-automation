@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Login. Module auth. */
+/** Username or Mobile number. Module auth. */
 public class AuthUsernameOrMobileNumberScreen extends BaseScreen {
 
     public static final String PAGE_ID = "auth-username-or-mobile-number";
@@ -19,6 +19,11 @@ public class AuthUsernameOrMobileNumberScreen extends BaseScreen {
 
     @AndroidFindBy(xpath = USERNAME_OR_MOBILE_NUMBER)
     private WebElement usernameOrMobileNumber;
+
+    public static final String ELEMENT = "//android.widget.EditText[@text='•••••••••••']";
+
+    @AndroidFindBy(xpath = ELEMENT)
+    private WebElement element;
 
     public static final String PASSWORD = "//android.widget.TextView[@text='Password']";
 

@@ -5,120 +5,55 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / Post Office / India Post Office / BOOK. Module home. */
+/** airpay vyaapaar / Use PIN / Cancel / Add Credits — Select Payment Type. Module home. */
 public class HomeCreditBalanceOpenPanApplication5Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-credit-balance-open-pan-application-post-office-india-post-office-book";
+    public static final String PAGE_ID = "home-credit-balance-open-pan-application-use-pin-cancel-add-credits";
 
-    public static final String EL1 = "//android.widget.TextView[@text='1']";
+    public static final String SELECT_PAYMENT_TYPE = "//android.widget.TextView[@text='Select Payment Type']";
 
-    @AndroidFindBy(xpath = EL1)
-    private WebElement el1;
+    @AndroidFindBy(xpath = SELECT_PAYMENT_TYPE)
+    private WebElement selectPaymentType;
 
-    public static final String TARIFF_CHECK = "//android.widget.TextView[@text='Tariff Check']";
+    public static final String REQUEST_FROM_NETWORK_ICON = "//android.view.View[contains(@content-desc,'Request From Network icon')]";
 
-    @AndroidFindBy(xpath = TARIFF_CHECK)
-    private WebElement tariffCheck;
+    @AndroidFindBy(xpath = REQUEST_FROM_NETWORK_ICON)
+    private WebElement requestFromNetworkIcon;
 
-    public static final String EL2 = "//android.widget.TextView[@text='2']";
+    public static final String REQUEST_FROM_NETWORK = "//android.widget.TextView[@text='Request From Network']";
 
-    @AndroidFindBy(xpath = EL2)
-    private WebElement el2;
+    @AndroidFindBy(xpath = REQUEST_FROM_NETWORK)
+    private WebElement requestFromNetwork;
 
-    public static final String EL3 = "//android.widget.TextView[@text='3']";
+    public static final String AMOUNT = "//android.widget.TextView[@text='Amount']";
 
-    @AndroidFindBy(xpath = EL3)
-    private WebElement el3;
+    @AndroidFindBy(xpath = AMOUNT)
+    private WebElement amount;
 
-    public static final String EL4 = "//android.widget.TextView[@text='4']";
+    public static final String ADD_CREDIT = "//android.widget.TextView[@text='Add Credit']";
 
-    @AndroidFindBy(xpath = EL4)
-    private WebElement el4;
+    @AndroidFindBy(xpath = ADD_CREDIT)
+    private WebElement addCredit;
 
-    public static final String EL5 = "//android.widget.TextView[@text='5']";
+    public static final String LOCK_ICON = "//android.widget.ImageView[contains(@content-desc,'lock Icon')]";
 
-    @AndroidFindBy(xpath = EL5)
-    private WebElement el5;
+    @AndroidFindBy(xpath = LOCK_ICON)
+    private WebElement lockIcon;
 
-    public static final String EL6 = "//android.widget.TextView[@text='6']";
+    public static final String VERIFY_IDENTITY = "//android.widget.TextView[@text='Verify Identity']";
 
-    @AndroidFindBy(xpath = EL6)
-    private WebElement el6;
+    @AndroidFindBy(xpath = VERIFY_IDENTITY)
+    private WebElement verifyIdentity;
 
-    public static final String TARIFF_SERVICE_CHECK = "//android.widget.TextView[@text='Tariff & Service Check']";
+    public static final String LOG_IN_USING_YOUR_DEVICE_CREDENTIALS = "//android.widget.TextView[@text='Log in using your device credentials']";
 
-    @AndroidFindBy(xpath = TARIFF_SERVICE_CHECK)
-    private WebElement tariffServiceCheck;
+    @AndroidFindBy(xpath = LOG_IN_USING_YOUR_DEVICE_CREDENTIALS)
+    private WebElement logInUsingYourDeviceCredentials;
 
-    public static final String SPEED_POST_ICON = "//android.view.View[contains(@content-desc,'Speed Post icon')]";
+    public static final String LOGOUT = "//android.widget.TextView[@text='Logout']";
 
-    @AndroidFindBy(xpath = SPEED_POST_ICON)
-    private WebElement speedPostIcon;
-
-    public static final String SPEED_POST = "//android.widget.TextView[@text='Speed Post']";
-
-    @AndroidFindBy(xpath = SPEED_POST)
-    private WebElement speedPost;
-
-    public static final String QUICK_TARIFF_ESTIMATE = "//android.widget.TextView[@text='Quick Tariff Estimate']";
-
-    @AndroidFindBy(xpath = QUICK_TARIFF_ESTIMATE)
-    private WebElement quickTariffEstimate;
-
-    public static final String SOURCE_PINCODE = "//android.widget.TextView[@text='Source Pincode']";
-
-    @AndroidFindBy(xpath = SOURCE_PINCODE)
-    private WebElement sourcePincode;
-
-    public static final String DESTINATION_PINCODE = "//android.widget.TextView[@text='Destination Pincode']";
-
-    @AndroidFindBy(xpath = DESTINATION_PINCODE)
-    private WebElement destinationPincode;
-
-    public static final String ARTICLE_SHAPE = "//android.widget.TextView[@text='Article Shape']";
-
-    @AndroidFindBy(xpath = ARTICLE_SHAPE)
-    private WebElement articleShape;
-
-    public static final String DOCUMENT_FLAT_ICON = "//android.view.View[contains(@content-desc,'Document/ Flat icon')]";
-
-    @AndroidFindBy(xpath = DOCUMENT_FLAT_ICON)
-    private WebElement documentFlatIcon;
-
-    public static final String DOCUMENT_FLAT = "//android.widget.TextView[@text='Document/ Flat']";
-
-    @AndroidFindBy(xpath = DOCUMENT_FLAT)
-    private WebElement documentFlat;
-
-    public static final String ENVELOPES_FLAT_PACKETS = "//android.widget.TextView[@text='Envelopes, flat packets']";
-
-    @AndroidFindBy(xpath = ENVELOPES_FLAT_PACKETS)
-    private WebElement envelopesFlatPackets;
-
-    public static final String DIMENSIONS = "//android.widget.TextView[@text='Dimensions']";
-
-    @AndroidFindBy(xpath = DIMENSIONS)
-    private WebElement dimensions;
-
-    public static final String PHYSICAL_WEIGHT_GRAMS = "//android.widget.TextView[@text='Physical Weight (grams)']";
-
-    @AndroidFindBy(xpath = PHYSICAL_WEIGHT_GRAMS)
-    private WebElement physicalWeightGrams;
-
-    public static final String MIN1GM_MAX500GM = "//android.widget.TextView[@text='Min: 1gm  Max: 500gm']";
-
-    @AndroidFindBy(xpath = MIN1GM_MAX500GM)
-    private WebElement min1gmMax500gm;
-
-    public static final String BOOK_NEW_PARCEL = "//android.widget.TextView[@text='Book New Parcel']";
-
-    @AndroidFindBy(xpath = BOOK_NEW_PARCEL)
-    private WebElement bookNewParcel;
-
-    public static final String ESTIMATE_TARIFF = "//android.widget.TextView[@text='Estimate Tariff']";
-
-    @AndroidFindBy(xpath = ESTIMATE_TARIFF)
-    private WebElement estimateTariff;
+    @AndroidFindBy(xpath = LOGOUT)
+    private WebElement logout;
 
     public HomeCreditBalanceOpenPanApplication5Screen(TestContext context) {
         super(context);

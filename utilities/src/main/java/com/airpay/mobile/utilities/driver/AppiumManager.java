@@ -23,6 +23,7 @@ public final class AppiumManager {
     private final String udid;
     private final String appPackage;
     private final String appActivity;
+    private final boolean keepSession;
 
     /** One session for the whole run. App data is not cleared, so login stays on the phone. */
     public static synchronized AppiumManager open(FrameworkConfig config) {
@@ -55,6 +56,7 @@ public final class AppiumManager {
         this.appPackage = config.require(product + ".app.package");
         this.appActivity = config.require(product + ".app.activity");
         this.udid = config.get("android.udid", "");
+        this.keepSession = config.getBoolean("android.keep.session", false);
         String server = config.get("appium.server.url", "http://127.0.0.1:4723");
 
         UiAutomator2Options options = new UiAutomator2Options()
@@ -79,6 +81,7 @@ public final class AppiumManager {
 
         options.setCapability("appium:dontStopAppOnReset", true);
         options.setCapability("appium:forceAppLaunch", config.getBoolean(product + ".fresh.start", false));
+        options.setCapability("appium:autoLaunch", config.getBoolean("android.autoLaunch", true));
 
         LOG.info("Starting Appium session | server={} | udid={} | pkg={} | activity={}",
                 server, this.udid.isBlank() ? "(first device)" : this.udid, this.appPackage, this.appActivity);
@@ -126,6 +129,29 @@ public final class AppiumManager {
             }
         } catch (Exception ignored) {
             // Fall through and bring the app forward.
+        }
+        if (keepSession) {
+            LOG.info("App is not open — opening it");
+            try {
+                driver.activateApp(appPackage);
+                Thread.sleep(1500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                LOG.warn("Could not resume the app: {}", e.toString());
+            }
+            try {
+                if (!appPackage.equals(driver.getCurrentPackage())) {
+                    LOG.info("App was closed — starting it from scratch");
+                    AdbCommands.shell(udid, "am", "start", "-n", appPackage + "/" + appActivity);
+                    Thread.sleep(2500);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                LOG.warn("Could not start the app: {}", e.toString());
+            }
+            return;
         }
         try {
             driver.activateApp(appPackage);

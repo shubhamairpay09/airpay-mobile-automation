@@ -10,6 +10,11 @@ public class HomeCreditBalanceAepsScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-credit-balance-aeps";
 
+    public static final String AEPS = "//android.widget.TextView[@text='AEPS']";
+
+    @AndroidFindBy(xpath = AEPS)
+    private WebElement aeps;
+
     public static final String P1 = "//android.widget.TextView[@text='P1']";
 
     @AndroidFindBy(xpath = P1)
@@ -39,11 +44,6 @@ public class HomeCreditBalanceAepsScreen extends BaseScreen {
 
     @AndroidFindBy(xpath = SELECT_PARTNER_BANK)
     private WebElement selectPartnerBank;
-
-    public static final String AEPS = "//android.widget.TextView[@text='AEPS']";
-
-    @AndroidFindBy(xpath = AEPS)
-    private WebElement aeps;
 
     public HomeCreditBalanceAepsScreen(TestContext context) {
         super(context);

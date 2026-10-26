@@ -9,7 +9,7 @@ Feature: airpay vyaapaar pan-application screens
     Then airpay vyaapaar screen "home-credit-balance-pan-application" in module "panapplication" has stored xpaths
 
   @PAN_APPLICATION_002
-  Scenario: Credit Balance / PAN Application / dropdown
+  Scenario: Credit Balance / PAN Application / DOB
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-pan-application-dropdown" in module "panapplication" has stored xpaths
+    Then airpay vyaapaar screen "home-credit-balance-pan-application-dob" in module "panapplication" has stored xpaths
 

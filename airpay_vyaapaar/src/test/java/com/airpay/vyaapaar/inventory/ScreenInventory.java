@@ -12,10 +12,15 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 /**
  * Writes one Java screen class per captured page and one Cucumber feature per module.
  */
 public final class ScreenInventory {
+
+    private static final Logger LOG = LogManager.getLogger(ScreenInventory.class);
 
     private static final Set<String> JAVA_KEYWORDS = Set.of(
             "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const",
@@ -58,23 +63,33 @@ public final class ScreenInventory {
     }
 
     private void writePage(ModulePages module, Page page) {
-        Path dir = javaRoot().resolve(module.packageName);
-        Path file = dir.resolve(page.className + ".java");
-        try {
-            Files.createDirectories(dir);
-            Files.writeString(file, renderJava(module, page));
-        } catch (IOException e) {
-            throw new IllegalStateException("Could not write " + file, e);
-        }
+        writeInventory(javaRoot().resolve(module.packageName), page.className + ".java",
+                renderJava(module, page));
     }
 
     private void writeFeature(ModulePages module) {
         Path file = featureRoot().resolve(module.featureName + ".feature");
+        writeInventory(file.getParent(), file.getFileName().toString(), renderFeature(module));
+    }
+
+    /** Inventory writes never fail the scan: one retry after a pause, then a warning with the cause. */
+    private void writeInventory(Path dir, String name, String content) {
+        Path file = dir.resolve(name);
         try {
-            Files.createDirectories(file.getParent());
-            Files.writeString(file, renderFeature(module));
-        } catch (IOException e) {
-            throw new IllegalStateException("Could not write " + file, e);
+            Files.createDirectories(dir);
+            Files.writeString(file, content);
+            return;
+        } catch (IOException first) {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+            try {
+                Files.writeString(file, content);
+            } catch (IOException retry) {
+                LOG.warn("Screen inventory: could not write {} — scan continues", file, retry);
+            }
         }
     }
 
