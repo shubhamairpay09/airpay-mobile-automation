@@ -1,0 +1,61 @@
+/**
+ * Copy to jenkins/<product>/Jenkinsfile for a new Android app module.
+ * Set MODULE, PRODUCT, PRODUCT_TAG in environment block.
+ * Script Path in Jenkins: jenkins/<product>/Jenkinsfile
+ */
+def helpers
+
+pipeline {
+    agent any
+
+    parameters {
+        choice(name: 'ENV', choices: ['live', 'staging'])
+        choice(name: 'SUITE', choices: ['smoke', 'functional', 'a11y', 'custom'])
+        string(name: 'EXTRA_TAGS', defaultValue: '')
+        string(name: 'CUCUMBER_TAGS', defaultValue: '')
+        string(name: 'ANDROID_UDID', defaultValue: '')
+        booleanParam(name: 'CLEAN_PREVIOUS_REPORTS', defaultValue: true)
+    }
+
+    environment {
+        MODULE = 'airpay_NEWPRODUCT'
+        PRODUCT = 'newproduct'
+        PRODUCT_TAG = '@airpay-newproduct'
+        MAVEN_OPTS = '-Xmx1024m'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script { helpers = load 'jenkins/_lib/pipelineHelpers.groovy' }
+            }
+        }
+        stage('Clean + CI') {
+            steps {
+                script {
+                    if (params.CLEAN_PREVIOUS_REPORTS) {
+                        helpers.cleanReportDirs(env.MODULE)
+                    }
+                    helpers.writeCiOverrides([
+                            envName : params.ENV,
+                            product : env.PRODUCT,
+                            androidUdid: params.ANDROID_UDID
+                    ])
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    def tags = (params.CUCUMBER_TAGS ?: '').trim()
+                    if (!tags) {
+                        tags = helpers.suiteTags(env.PRODUCT_TAG, params.SUITE, params.EXTRA_TAGS)
+                    }
+                    helpers.runCmd("mvn -pl utilities -am install -DskipTests -q")
+                    helpers.runCmd("mvn -pl ${env.MODULE} -am test -Denv=${params.ENV} -Dairpay.product=${env.PRODUCT} \"-Dcucumber.filter.tags=${tags}\"")
+                }
+            }
+        }
+    }
+}

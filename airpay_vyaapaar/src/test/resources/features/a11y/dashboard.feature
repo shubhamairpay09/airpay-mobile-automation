@@ -1,0 +1,10 @@
+@airpay-vyaapaar @vyaapaar @android @a11y @dashboard
+Feature: airpay vyaapaar dashboard screens
+  Xpaths for this module live in screens/dashboard/.
+  Each screen was captured once during the deep scan.
+
+  @DASHBOARD_001
+  Scenario: Dashboard — Dashboard
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "dashboard" in module "dashboard" has stored xpaths
+

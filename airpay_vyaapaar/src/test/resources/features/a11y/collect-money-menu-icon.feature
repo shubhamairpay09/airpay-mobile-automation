@@ -1,0 +1,10 @@
+@airpay-vyaapaar @vyaapaar @android @a11y @collect-money-menu-icon
+Feature: airpay vyaapaar collect-money-menu-icon screens
+  Xpaths for this module live in screens/collectmoneymenuicon/.
+  Each screen was captured once during the deep scan.
+
+  @COLLECT_MONEY_MENU_ICON_001
+  Scenario: Collect Money / Menu Icon — Select Payment Type
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "collect-money-menu-icon" in module "collectmoneymenuicon" has stored xpaths
+

@@ -1,0 +1,90 @@
+/**
+ * Jenkins job: Airpay_Vyaapaar (mobile)
+ * Script Path: jenkins/vyaapaar/Jenkinsfile
+ */
+def helpers
+
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '6', daysToKeepStr: '14'))
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    parameters {
+        choice(name: 'ENV', choices: ['live', 'staging'], description: '-Denv')
+        choice(name: 'SUITE', choices: ['a11y', 'smoke', 'functional', 'custom'])
+        string(name: 'EXTRA_TAGS', defaultValue: '@deep')
+        string(name: 'CUCUMBER_TAGS', defaultValue: '')
+        string(name: 'ANDROID_UDID', defaultValue: '')
+        booleanParam(name: 'CLEAN_PREVIOUS_REPORTS', defaultValue: false)
+    }
+
+    environment {
+        MAVEN_OPTS = '-Xmx1024m'
+        JOB_LABEL = 'Airpay Vyaapaar Mobile'
+        MODULE = 'airpay_vyaapaar'
+        PRODUCT = 'vyaapaar'
+        PRODUCT_TAG = '@airpay-vyaapaar'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script { helpers = load 'jenkins/_lib/pipelineHelpers.groovy' }
+            }
+        }
+
+        stage('Clean previous reports') {
+            when { expression { params.CLEAN_PREVIOUS_REPORTS } }
+            steps {
+                script { helpers.cleanReportDirs(env.MODULE) }
+            }
+        }
+
+        stage('CI overrides') {
+            steps {
+                script {
+                    helpers.writeCiOverrides([
+                            envName     : params.ENV,
+                            product     : env.PRODUCT,
+                            androidUdid : params.ANDROID_UDID
+                    ])
+                }
+            }
+        }
+
+        stage('Install utilities') {
+            steps {
+                script { helpers.runCmd('mvn -pl utilities -am install -DskipTests -q') }
+            }
+        }
+
+        stage('Run tests') {
+            steps {
+                script {
+                    def tags = (params.CUCUMBER_TAGS ?: '').trim()
+                    if (!tags) {
+                        tags = helpers.suiteTags(env.PRODUCT_TAG, params.SUITE, params.EXTRA_TAGS)
+                    }
+                    echo "Cucumber tags: ${tags}"
+                    def cmd = "mvn -pl ${env.MODULE} -am test -Denv=${params.ENV} -Dairpay.product=${env.PRODUCT} \"-Dcucumber.filter.tags=${tags}\""
+                    def code = helpers.runCmdStatus(cmd)
+                    if (code != 0) {
+                        currentBuild.result = 'UNSTABLE'
+                        error "Tests failed (exit ${code})"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'target/vyaapaar/**', allowEmptyArchive: true
+            junit testResults: 'target/surefire-reports/airpay_vyaapaar/*.xml', allowEmptyResults: true
+        }
+    }
+}

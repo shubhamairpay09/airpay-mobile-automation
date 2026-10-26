@@ -1,0 +1,101 @@
+/**
+ * Jenkins job: Airpay_Capital (mobile)
+ * Script Path: jenkins/capital/Jenkinsfile
+ *
+ * Prerequisite: Appium server reachable at appium.server.url (defaults.properties).
+ */
+def helpers
+
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '6', daysToKeepStr: '14'))
+        timeout(time: 3, unit: 'HOURS')
+    }
+
+    parameters {
+        choice(name: 'ENV', choices: ['live', 'staging'], description: '-Denv')
+        choice(name: 'SUITE', choices: ['smoke', 'functional', 'a11y', 'custom'])
+        string(name: 'EXTRA_TAGS', defaultValue: '', description: 'Appended when SUITE != custom')
+        string(name: 'CUCUMBER_TAGS', defaultValue: '', description: 'Full expression when SUITE=custom')
+        string(name: 'ANDROID_UDID', defaultValue: '', description: 'Device UDID (overrides secrets)')
+        string(name: 'OTP', defaultValue: '1234', description: 'capital.test.otp')
+        booleanParam(name: 'CLEAN_PREVIOUS_REPORTS', defaultValue: true)
+        choice(name: 'SEND_EMAIL', choices: ['No', 'Yes'])
+    }
+
+    environment {
+        MAVEN_OPTS = '-Xmx1024m'
+        JOB_LABEL = 'Airpay Capital Mobile'
+        MODULE = 'airpay_capital'
+        PRODUCT = 'capital'
+        PRODUCT_TAG = '@airpay-capital'
+        A11Y_REPORT_DIR = 'target/capital/accessibility_testing_result'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script { helpers = load 'jenkins/_lib/pipelineHelpers.groovy' }
+            }
+        }
+
+        stage('Clean previous reports') {
+            when { expression { params.CLEAN_PREVIOUS_REPORTS } }
+            steps {
+                script { helpers.cleanReportDirs(env.MODULE) }
+            }
+        }
+
+        stage('CI overrides') {
+            steps {
+                script {
+                    def a11y = (params.SUITE == 'a11y')
+                    helpers.writeCiOverrides([
+                            envName      : params.ENV,
+                            product      : env.PRODUCT,
+                            androidUdid  : params.ANDROID_UDID,
+                            otp          : params.OTP,
+                            a11yEnabled  : a11y ? 'true' : 'false',
+                            a11yDeepScan : a11y ? 'true' : 'false',
+                            a11yReportDir: env.A11Y_REPORT_DIR
+                    ])
+                }
+            }
+        }
+
+        stage('Install utilities') {
+            steps {
+                script { helpers.runCmd('mvn -pl utilities -am install -DskipTests -q') }
+            }
+        }
+
+        stage('Run tests') {
+            steps {
+                script {
+                    def tags = (params.CUCUMBER_TAGS ?: '').trim()
+                    if (!tags) {
+                        tags = helpers.suiteTags(env.PRODUCT_TAG, params.SUITE, params.EXTRA_TAGS)
+                    }
+                    echo "Cucumber tags: ${tags}"
+                    def a11yArgs = (params.SUITE == 'a11y') ? '-Da11y.enabled=true -Da11y.deep.scan=true' : ''
+                    def cmd = "mvn -pl ${env.MODULE} -am test -Denv=${params.ENV} -Dairpay.product=${env.PRODUCT} ${a11yArgs} \"-Dcucumber.filter.tags=${tags}\""
+                    def code = helpers.runCmdStatus(cmd)
+                    if (code != 0) {
+                        currentBuild.result = 'UNSTABLE'
+                        error "Tests failed (exit ${code})"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'target/capital/**', allowEmptyArchive: true
+            junit testResults: 'target/surefire-reports/airpay_capital/*.xml', allowEmptyResults: true
+        }
+    }
+}
