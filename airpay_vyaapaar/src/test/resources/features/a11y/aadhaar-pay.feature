@@ -4,7 +4,7 @@ Feature: airpay vyaapaar aadhaar-pay screens
   Each screen was captured once during the deep scan.
 
   @AADHAAR_PAY_001
-  Scenario: Aadhaar Pay — Customer Mobile
+  Scenario: Credit Balance / Aadhaar Pay
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "featured-aadhaar-pay" in module "aadhaarpay" has stored xpaths
+    Then airpay vyaapaar screen "home-credit-balance-aadhaar-pay" in module "aadhaarpay" has stored xpaths
 

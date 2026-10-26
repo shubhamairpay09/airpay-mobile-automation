@@ -68,6 +68,7 @@ public class VyaapaarDeepScanFlow {
     private boolean awakePinned;
     private int captures;
     private int signInRecoveries;
+    private int crashReopens;
 
     public VyaapaarDeepScanFlow(TestContext context) {
         this.context = context;
@@ -429,8 +430,8 @@ public class VyaapaarDeepScanFlow {
     }
 
     private boolean ensureHome() {
-        if (!inApp()) {
-            LOG.warn("App is not in front — leaving it, not reopening");
+        if (!inApp() && !reopenAfterCrash()) {
+            LOG.warn("App is not in front and could not be opened again");
             return false;
         }
         for (int i = 0; i < 5; i++) {
@@ -2899,10 +2900,11 @@ public class VyaapaarDeepScanFlow {
         if (needsBiometric(source())) {
             waitForUserUnlock();
         }
-        if (timedOut() || depth > maxDepth || captures >= maxScreens || !inApp()) {
-            if (!inApp()) {
-                LOG.warn("App is not in front — not reopening it, so the session stays put");
-            }
+        if (!inApp() && !reopenAfterCrash()) {
+            LOG.warn("App is not in front and could not be opened again");
+            return;
+        }
+        if (timedOut() || depth > maxDepth || captures >= maxScreens) {
             return;
         }
         allowDialogs();
@@ -2963,8 +2965,8 @@ public class VyaapaarDeepScanFlow {
                     waitForUserUnlock();
                     continue;
                 }
-                if (!inApp()) {
-                    LOG.warn("Left the app after {} — not reopening it", action.label);
+                if (!inApp() && !reopenAfterCrash()) {
+                    LOG.warn("Left the app after {} — could not open it again", action.label);
                     break;
                 }
                 if (isOtp(source())) {
@@ -3044,8 +3046,8 @@ public class VyaapaarDeepScanFlow {
                 waitForUserUnlock();
                 continue;
             }
-            if (!inApp()) {
-                LOG.warn("Left the app from dropdown {} — not reopening it", drop.label);
+            if (!inApp() && !reopenAfterCrash()) {
+                LOG.warn("Left the app from dropdown {} — could not open it again", drop.label);
                 break;
             }
             if (fingerprint().equals(before) && !isPicker(source())) {
@@ -3779,8 +3781,8 @@ public class VyaapaarDeepScanFlow {
             if (needsBiometric(source())) {
                 waitForUserUnlock();
             }
-            if (!inApp()) {
-                LOG.warn("Left the app while going back — not reopening it");
+            if (!inApp() && !reopenAfterCrash()) {
+                LOG.warn("Left the app while going back — could not open it again");
                 return false;
             }
             String src = source();
@@ -3945,7 +3947,7 @@ public class VyaapaarDeepScanFlow {
             waitForUserUnlock();
             return;
         }
-        LOG.warn("App left the foreground — not reopening it, so the session is not sent to fingerprint, face, or PIN");
+        reopenAfterCrash();
     }
 
     private void leaveForeignApp() {
@@ -3953,7 +3955,56 @@ public class VyaapaarDeepScanFlow {
             waitForUserUnlock();
             return;
         }
-        LOG.warn("Left the app — not reopening it, so the session is not sent to fingerprint, face, or PIN");
+        reopenAfterCrash();
+    }
+
+    /** Crash dialog or a dead process. Opens the app again, then waits if fingerprint, face, or PIN is showing. */
+    private boolean reopenAfterCrash() {
+        if (inApp()) {
+            return true;
+        }
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+            return inApp();
+        }
+        dismissCrashDialog();
+        if (crashReopens >= 3) {
+            LOG.warn("App closed again — not opening it a fourth time");
+            return false;
+        }
+        crashReopens++;
+        LOG.warn("App crashed or closed — opening it again ({})", crashReopens);
+        openAppForScan();
+        if (needsBiometric(source())) {
+            waitForUserUnlock();
+        }
+        if (!inApp()) {
+            return false;
+        }
+        if (isOtp(source()) || onAuthWall(source())) {
+            LOG.info("App opened on login after the crash — signing in again");
+            String who = context.config().get("vyaapaar.test.username", "").trim();
+            if (who.isBlank()) {
+                who = context.config().get("vyaapaar.test.mobile", "");
+            }
+            if (isOtp(source())) {
+                enterOtp(who);
+            }
+            if (onAuthWall(source()) && !isOtp(source())) {
+                loginWithUsernameAndPassword();
+            }
+        }
+        return inApp();
+    }
+
+    private void dismissCrashDialog() {
+        String n = source().toLowerCase(Locale.ROOT);
+        if (!n.contains("has stopped") && !n.contains("keeps stopping") && !n.contains("isn't responding")) {
+            return;
+        }
+        LOG.warn("App crash dialog is on screen — closing it");
+        tapLabel("Close app", "Close", "OK");
+        sleep(600);
     }
 
     private boolean inApp() {

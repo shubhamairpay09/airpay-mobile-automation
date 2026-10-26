@@ -25,6 +25,11 @@ public class HomeCreditBalancePostOfficeIndia4Screen extends BaseScreen {
     @AndroidFindBy(xpath = TRACK_MANAGE)
     private WebElement trackManage;
 
+    public static final String RECEIVED_ANEW_MESSAGE_FROM_TRITA_KANAKDHAR_YES = "//android.widget.Toast[@text='Received a new message from Trita Kanakdhar. yes']";
+
+    @AndroidFindBy(xpath = RECEIVED_ANEW_MESSAGE_FROM_TRITA_KANAKDHAR_YES)
+    private WebElement receivedANewMessageFromTritaKanakdharYes;
+
     public HomeCreditBalancePostOfficeIndia4Screen(TestContext context) {
         super(context);
     }

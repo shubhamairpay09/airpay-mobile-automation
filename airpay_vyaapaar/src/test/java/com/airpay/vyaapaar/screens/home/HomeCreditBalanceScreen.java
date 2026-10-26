@@ -180,15 +180,15 @@ public class HomeCreditBalanceScreen extends BaseScreen {
     @AndroidFindBy(xpath = COLLECT_MONEY_ICON)
     private WebElement collectMoneyIcon;
 
-    public static final String COLLECT_MONEY = "//android.widget.TextView[@text='Collect Money']";
-
-    @AndroidFindBy(xpath = COLLECT_MONEY)
-    private WebElement collectMoney;
-
     public static final String BAAZAAR_ICON = "//android.view.View[contains(@content-desc,'Baazaar icon')]";
 
     @AndroidFindBy(xpath = BAAZAAR_ICON)
     private WebElement baazaarIcon;
+
+    public static final String COLLECT_MONEY = "//android.widget.TextView[@text='Collect Money']";
+
+    @AndroidFindBy(xpath = COLLECT_MONEY)
+    private WebElement collectMoney;
 
     public static final String BAAZAAR = "//android.widget.TextView[@text='Baazaar']";
 
@@ -240,11 +240,6 @@ public class HomeCreditBalanceScreen extends BaseScreen {
     @AndroidFindBy(xpath = RETAILER_TRANSACTION_HISTORY_ICON)
     private WebElement retailerTransactionHistoryIcon;
 
-    public static final String RETAILER_TRANSACTION_HISTORY = "//android.widget.TextView[@text='Retailer Transaction History']";
-
-    @AndroidFindBy(xpath = RETAILER_TRANSACTION_HISTORY)
-    private WebElement retailerTransactionHistory;
-
     public static final String ONDC = "//android.widget.TextView[@text='ONDC']";
 
     @AndroidFindBy(xpath = ONDC)
@@ -254,6 +249,11 @@ public class HomeCreditBalanceScreen extends BaseScreen {
 
     @AndroidFindBy(xpath = AGREEMENT)
     private WebElement agreement;
+
+    public static final String RETAILER_TRANSACTION_HISTORY = "//android.widget.TextView[@text='Retailer Transaction History']";
+
+    @AndroidFindBy(xpath = RETAILER_TRANSACTION_HISTORY)
+    private WebElement retailerTransactionHistory;
 
     public static final String CREDIT_LEDGER_HISTORY_ICON = "//android.view.View[contains(@content-desc,'Credit Ledger History icon')]";
 
@@ -340,15 +340,15 @@ public class HomeCreditBalanceScreen extends BaseScreen {
     @AndroidFindBy(xpath = DEVOTIONAL_EXPERIENCES_ICON)
     private WebElement devotionalExperiencesIcon;
 
-    public static final String DEVOTIONAL_EXPERIENCES = "//android.widget.TextView[@text='Devotional Experiences']";
-
-    @AndroidFindBy(xpath = DEVOTIONAL_EXPERIENCES)
-    private WebElement devotionalExperiences;
-
     public static final String FINANCE_ICON = "//android.view.View[contains(@content-desc,'Finance icon')]";
 
     @AndroidFindBy(xpath = FINANCE_ICON)
     private WebElement financeIcon;
+
+    public static final String DEVOTIONAL_EXPERIENCES = "//android.widget.TextView[@text='Devotional Experiences']";
+
+    @AndroidFindBy(xpath = DEVOTIONAL_EXPERIENCES)
+    private WebElement devotionalExperiences;
 
     public static final String FINANCE = "//android.widget.TextView[@text='Finance']";
 
@@ -409,6 +409,11 @@ public class HomeCreditBalanceScreen extends BaseScreen {
 
     @AndroidFindBy(xpath = GOVT_SERVICES_ICON)
     private WebElement govtServicesIcon;
+
+    public static final String GOVT_SERVICES = "//android.widget.TextView[@text='Govt Services']";
+
+    @AndroidFindBy(xpath = GOVT_SERVICES)
+    private WebElement govtServices;
 
     public HomeCreditBalanceScreen(TestContext context) {
         super(context);
