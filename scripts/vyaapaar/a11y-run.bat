@@ -45,9 +45,12 @@ echo This run does not save functional failure screenshots.
 echo.
 
 rem ---- Appium CLI + UiAutomator2: the server on :4723 must be THIS appium ----
+rem Prefer the npm shim; "where appium" can hit a different/broken entry first.
 set "APPIUM_BIN="
-for /f "delims=" %%A in ('where appium 2^>nul') do if not defined APPIUM_BIN set "APPIUM_BIN=%%A"
-if not defined APPIUM_BIN if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_BIN=%APPDATA%\npm\appium.cmd"
+if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_BIN=%APPDATA%\npm\appium.cmd"
+if not defined APPIUM_BIN if exist "%LOCALAPPDATA%\npm\appium.cmd" set "APPIUM_BIN=%LOCALAPPDATA%\npm\appium.cmd"
+if not defined APPIUM_BIN for /f "delims=" %%A in ('where appium.cmd 2^>nul') do if not defined APPIUM_BIN set "APPIUM_BIN=%%A"
+if not defined APPIUM_BIN for /f "delims=" %%A in ('where appium 2^>nul') do if not defined APPIUM_BIN set "APPIUM_BIN=%%A"
 if not defined APPIUM_BIN (
   echo Could not find appium. Install it once with: npm install -g appium
   echo Then install the Android driver: appium driver install uiautomator2
@@ -55,15 +58,30 @@ if not defined APPIUM_BIN (
   exit /b 1
 )
 echo Using Appium CLI: !APPIUM_BIN!
-"!APPIUM_BIN!" driver list --installed 2>nul | %SystemRoot%\System32\findstr /i /c:"uiautomator2" 1>nul
+
+set "DRIVER_LIST=%TEMP%\airpay-appium-drivers.txt"
+"!APPIUM_BIN!" driver list --installed > "%DRIVER_LIST%" 2>&1
+%SystemRoot%\System32\findstr /i /c:"uiautomator2" "%DRIVER_LIST%" 1>nul
 if errorlevel 1 (
   echo.
-  echo UiAutomator2 driver is not installed for this Appium CLI.
-  echo Install it once, then rerun this file:
-  echo   appium driver install uiautomator2
+  echo UiAutomator2 was not listed by this Appium CLI. Full output:
+  type "%DRIVER_LIST%"
   echo.
-  pause
-  exit /b 1
+  echo Installing uiautomator2 for this CLI now...
+  "!APPIUM_BIN!" driver install uiautomator2
+  if errorlevel 1 (
+    echo Install failed. Run manually: "!APPIUM_BIN!" driver install uiautomator2
+    pause
+    exit /b 1
+  )
+  "!APPIUM_BIN!" driver list --installed > "%DRIVER_LIST%" 2>&1
+  %SystemRoot%\System32\findstr /i /c:"uiautomator2" "%DRIVER_LIST%" 1>nul
+  if errorlevel 1 (
+    echo Still not listed after install. Output:
+    type "%DRIVER_LIST%"
+    pause
+    exit /b 1
+  )
 )
 echo Appium UiAutomator2 driver is installed for this CLI.
 
