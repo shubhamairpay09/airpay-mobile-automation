@@ -596,9 +596,19 @@ public class MoneyDeepScanFlow {
         try {
             String pkg = safePackage();
             if (!PKG.equals(pkg)) {
-                LOG.info("Money was not in foreground (pkg={}) — activating without restart", pkg);
-                context.driver().activateApp(PKG);
-                sleep(fastResume ? 400 : 700);
+                LOG.info("Money was not in foreground (pkg={}) — bringing Money back", pkg);
+                try {
+                    context.driver().activateApp(PKG);
+                } catch (Exception ignored) {
+                    // fall through to am start
+                }
+                sleep(fastResume ? 250 : 500);
+                if (!PKG.equals(safePackage())) {
+                    String udid = context.config().get("android.udid", "");
+                    AdbCommands.shell(udid, "am", "start", "-n",
+                            PKG + "/com.finmapp.fininfinity.MainActivity");
+                    sleep(fastResume ? 400 : 700);
+                }
             }
             unlockPinIfPresent();
         } catch (Exception e) {

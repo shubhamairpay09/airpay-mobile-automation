@@ -122,11 +122,10 @@ public final class MoneyProductsDeepWalker {
             deep.run();
             coveredIds.add(doneId);
             scan.scan(doneId, "Products / " + tile + " (deep done)", doneId);
-            publish.run();
+            // Do not publish HTML after every module — that looked like a hang.
             LOG.info("<<< Products DEEP DONE: {}", tile);
         } catch (Exception e) {
             LOG.warn("[{}] broke — recovering to Investments hub: {}", tile, e.toString());
-            publish.run();
         } finally {
             returnToInvestmentsHub();
         }
@@ -144,7 +143,7 @@ public final class MoneyProductsDeepWalker {
         LOG.info(">>> Products DEEP START: {}", tile);
         try {
             if (!returnToInvestmentsHub()) {
-                return;
+                LOG.warn("[{}] hub soft-fail — still tapping tile", tile);
             }
             if (scrollDown) {
                 for (int i = 0; i < 5; i++) {
@@ -160,11 +159,9 @@ public final class MoneyProductsDeepWalker {
             coverModuleShallow(tile, idPrefix);
             coveredIds.add(doneId);
             scan.scan(doneId, "Products / " + tile + " (deep done)", doneId);
-            publish.run();
             LOG.info("<<< Products DEEP DONE: {}", tile);
         } catch (Exception e) {
             LOG.warn("[{}] broke — hub recovery: {}", tile, e.toString());
-            publish.run();
         } finally {
             returnToInvestmentsHub();
         }
@@ -362,47 +359,53 @@ public final class MoneyProductsDeepWalker {
     }
 
     /**
-     * Fast hub recovery: ADB Products tab + short backs. Avoid 8× pageSource loops (~90s).
+     * Fast hub recovery. If WhatsApp/Teams steals focus, force Money back immediately.
+     * Hard cap ~3s — never burn 45–90s dumping page source on the wrong app.
      */
     private boolean returnToInvestmentsHub() {
+        long deadline = System.currentTimeMillis() + 3_000;
+        String udid = context.config().get("android.udid", "");
         keepForeground.run();
         unlockPin.run();
-        String udid = context.config().get("android.udid", "");
         if (onInvestmentsHub()) {
             return true;
         }
-        // Products tab (bottom-left on 1080×2340 Money).
         AdbCommands.shell(udid, "input", "tap", "180", "2200");
-        settle(250);
+        settle(200);
         unlockPin.run();
         if (onInvestmentsHub()) {
             return true;
         }
-        for (int i = 0; i < 4; i++) {
+        while (System.currentTimeMillis() < deadline) {
+            String pkg = currentPackage();
+            if (!PKG.equals(pkg)) {
+                LOG.warn("Left Money (pkg={}) — force reopen", pkg);
+                keepForeground.run();
+                unlockPin.run();
+            }
             home.tapBack();
             settle(TAP);
             AdbCommands.shell(udid, "input", "tap", "180", "2200");
-            settle(200);
-            unlockPin.run();
+            settle(150);
             if (onInvestmentsHub()) {
                 return true;
             }
         }
-        try {
-            home.openProductsTab();
-        } catch (Exception ignored) {
-            AdbCommands.shell(udid, "input", "tap", "180", "2200");
-        }
-        settle(250);
-        for (int i = 0; i < 2; i++) {
-            home.swipeDown();
-            settle(TAP);
-        }
+        home.swipeDown();
+        settle(TAP);
         boolean ok = onInvestmentsHub();
         if (!ok) {
-            LOG.warn("Hub check failed — labels: {}", headLabels(safeSource()));
+            LOG.warn("Hub check failed (pkg={})", currentPackage());
         }
         return ok;
+    }
+
+    private String currentPackage() {
+        try {
+            return context.driver().getCurrentPackage();
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private boolean onInvestmentsHub() {
@@ -420,14 +423,6 @@ public final class MoneyProductsDeepWalker {
         int tiles = (mf ? 1 : 0) + (nps ? 1 : 0) + (gold ? 1 : 0) + (fd ? 1 : 0);
         return tiles >= 2 && (src.contains("Investments") || src.contains("content-desc=\"Hello\"")
                 || src.contains("content-desc=\"Products\""));
-    }
-
-    private static String headLabels(String src) {
-        if (src == null || src.isBlank()) {
-            return "(empty)";
-        }
-        String flat = src.replaceAll("\\s+", " ");
-        return flat.length() > 280 ? flat.substring(0, 280) : flat;
     }
 
     private void scrollForTile(String tile) {

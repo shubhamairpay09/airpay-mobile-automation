@@ -10,28 +10,45 @@ rem with the username/password login. Signed in, report names follow the home
 rem sections: Featured Services/PAN Application, Money Transfer/..., Non Channels/...,
 rem Recharge & Billpay/..., Other Services/..., then Services, History, and Profile.
 
+rem Keep the window open when double-clicked so errors are readable.
+if /i not "%~1"=="KEEPOPEN" (
+  cmd /k call "%~f0" KEEPOPEN
+  exit /b %ERRORLEVEL%
+)
+
 cd /d "%~dp0..\.."
+if errorlevel 1 (
+  echo Could not cd to the repo root from %~dp0
+  goto :fail
+)
+
+set "BAT_LOG=%CD%\target\vyaapaar-a11y-run-bat.log"
+if not exist "%CD%\target" mkdir "%CD%\target" >nul 2>nul
+echo ==== a11y-run %DATE% %TIME% ==== > "%BAT_LOG%"
+call :log Repo=%CD%
 
 set "ADB=D:\Android_Studio\Sdk\platform-tools\adb.exe"
 if not exist "%ADB%" set "ADB=adb"
 set "APPIUM_URL=http://127.0.0.1:4723"
 set "APPIUM_WAIT_SECS=90"
 set "APP_PACKAGE=com.airpay.mahaepay_aeps"
+set "EXIT_CODE=0"
 
 rem ---- Java / Maven: use this machine's install, not a hard-coded PC path ----
 call :resolveJava
 if errorlevel 1 (
   echo Java was not found. Install JDK 17+ and set JAVA_HOME, then rerun.
-  pause
-  exit /b 1
+  goto :fail
 )
 call :resolveMaven
 if errorlevel 1 (
   echo Maven was not found. Install Apache Maven and set M2_HOME or MAVEN_HOME, or put mvn on PATH, then rerun.
   echo Expected boot jar under %%M2_HOME%%\boot\plexus-classworlds-*.jar
-  pause
-  exit /b 1
+  goto :fail
 )
+call :log JAVA_HOME=%JAVA_HOME%
+call :log M2_HOME=%M2_HOME%
+call :log CLASSWORLDS_JAR=%CLASSWORLDS_JAR%
 echo JAVA_HOME=%JAVA_HOME%
 echo M2_HOME=%M2_HOME%
 echo Maven launcher jar=%CLASSWORLDS_JAR%
@@ -41,11 +58,11 @@ echo === Airpay Vyaapaar accessibility ===
 echo Report: target\vyaapaar\accessibility_testing_result
 echo ZIP:    target\vyaapaar\accessibility_email_artifact\vyaapaar-a11y-reports.zip
 echo Logs:   target\vyaapaar\logs\automation.log
+echo Bat log: %BAT_LOG%
 echo This run does not save functional failure screenshots.
 echo.
 
-rem ---- Appium CLI + UiAutomator2: the server on :4723 must be THIS appium ----
-rem Prefer the npm shim; "where appium" can hit a different/broken entry first.
+rem ---- Appium CLI + UiAutomator2 ----
 set "APPIUM_BIN="
 if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_BIN=%APPDATA%\npm\appium.cmd"
 if not defined APPIUM_BIN if exist "%LOCALAPPDATA%\npm\appium.cmd" set "APPIUM_BIN=%LOCALAPPDATA%\npm\appium.cmd"
@@ -54,13 +71,13 @@ if not defined APPIUM_BIN for /f "delims=" %%A in ('where appium 2^>nul') do if 
 if not defined APPIUM_BIN (
   echo Could not find appium. Install it once with: npm install -g appium
   echo Then install the Android driver: appium driver install uiautomator2
-  pause
-  exit /b 1
+  goto :fail
 )
+call :log APPIUM_BIN=!APPIUM_BIN!
 echo Using Appium CLI: !APPIUM_BIN!
 
 set "DRIVER_LIST=%TEMP%\airpay-appium-drivers.txt"
-"!APPIUM_BIN!" driver list --installed > "%DRIVER_LIST%" 2>&1
+call "!APPIUM_BIN!" driver list --installed > "%DRIVER_LIST%" 2>&1
 %SystemRoot%\System32\findstr /i /c:"uiautomator2" "%DRIVER_LIST%" 1>nul
 if errorlevel 1 (
   echo.
@@ -68,55 +85,50 @@ if errorlevel 1 (
   type "%DRIVER_LIST%"
   echo.
   echo Installing uiautomator2 for this CLI now...
-  "!APPIUM_BIN!" driver install uiautomator2
+  call "!APPIUM_BIN!" driver install uiautomator2
   if errorlevel 1 (
-    echo Install failed. Run manually: "!APPIUM_BIN!" driver install uiautomator2
-    pause
-    exit /b 1
+    echo Install failed. Run manually:
+    echo   "!APPIUM_BIN!" driver install uiautomator2
+    goto :fail
   )
-  "!APPIUM_BIN!" driver list --installed > "%DRIVER_LIST%" 2>&1
+  call "!APPIUM_BIN!" driver list --installed > "%DRIVER_LIST%" 2>&1
   %SystemRoot%\System32\findstr /i /c:"uiautomator2" "%DRIVER_LIST%" 1>nul
   if errorlevel 1 (
     echo Still not listed after install. Output:
     type "%DRIVER_LIST%"
-    pause
-    exit /b 1
+    goto :fail
   )
 )
 echo Appium UiAutomator2 driver is installed for this CLI.
 
-rem Restart Appium with the same CLI so :4723 is not an old/other Appium without the driver.
-rem Set KEEP_APPIUM=Yes to skip the restart when you are sure the running server matches.
+rem Restart Appium with the same CLI. Set KEEP_APPIUM=Yes to skip.
 if /i not "%KEEP_APPIUM%"=="Yes" (
   echo Restarting Appium on %APPIUM_URL% with this CLI ^(set KEEP_APPIUM=Yes to skip^)...
-  powershell -NoProfile -Command "$ErrorActionPreference='SilentlyContinue'; Get-NetTCPConnection -LocalPort 4723 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'node|appium' -and $_.CommandLine -match 'appium' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+  powershell -NoProfile -Command "$ErrorActionPreference='SilentlyContinue'; Get-NetTCPConnection -LocalPort 4723 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"
   timeout /t 2 /nobreak >nul
-  start "Airpay Appium" "!APPIUM_BIN!"
+  start "Airpay Appium" cmd /k call "!APPIUM_BIN!"
   echo Waiting up to %APPIUM_WAIT_SECS%s for Appium to come up...
   powershell -NoProfile -Command "$t=0; while ($t -lt %APPIUM_WAIT_SECS%) { try { if ((Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 %APPIUM_URL%/status).StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 2; $t+=2 }; exit 1"
   if errorlevel 1 (
-    echo Appium did not come up in time. Check the Appium window, then rerun this file.
-    pause
-    exit /b 1
+    echo Appium did not come up in time. Check the "Airpay Appium" window, then rerun this file.
+    goto :fail
   )
   echo Appium is up with the CLI that has UiAutomator2.
 ) else (
   powershell -NoProfile -Command "try { if ((Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 %APPIUM_URL%/status).StatusCode -ne 200) { exit 1 } } catch { exit 1 }"
   if errorlevel 1 (
     echo KEEP_APPIUM=Yes but Appium is not running at %APPIUM_URL%.
-    pause
-    exit /b 1
+    goto :fail
   )
   echo Keeping existing Appium at %APPIUM_URL%.
 )
 
-rem ---- Phone: UDID wins when set, else the first connected device ----
+rem ---- Phone ----
 if defined UDID (
   "%ADB%" -s %UDID% get-state 1>nul 2>nul
   if errorlevel 1 (
     echo Phone %UDID% ^(from UDID^) is not connected.
-    pause
-    exit /b 1
+    goto :fail
   )
   echo Using phone from UDID: %UDID%
 ) else (
@@ -132,31 +144,28 @@ if defined UDID (
   )
   if not defined UDID (
     echo No phone is connected. Connect one with USB debugging on, then rerun this file.
-    pause
-    exit /b 1
+    goto :fail
   )
   echo Using connected phone: !UDID!
   "%ADB%" -s !UDID! get-state 1>nul 2>nul
   if errorlevel 1 (
     echo Phone !UDID! stopped responding. Reconnect it, then rerun this file.
-    pause
-    exit /b 1
+    goto :fail
   )
 )
 
-rem ---- App: fail fast when the build is not on the phone ----
+rem ---- App ----
 "%ADB%" -s %UDID% shell pm list packages 2>nul | %SystemRoot%\System32\findstr /c:"%APP_PACKAGE%" 1>nul
 if errorlevel 1 (
   echo %APP_PACKAGE% is not installed on %UDID%. Install the build, then rerun.
-  pause
-  exit /b 1
+  goto :fail
 )
 echo App %APP_PACKAGE% is on the phone.
 
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server.test
 
-rem ---- Fresh report: wipe the previous run unless asked to keep it ----
+rem ---- Fresh report ----
 if /i not "%FRESH_REPORT%"=="No" (
   if exist "%CD%\target\vyaapaar" (
     echo Removing previous report at target\vyaapaar ...
@@ -173,15 +182,30 @@ if defined CLASSWORLDS_JAR (
   call mvn test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true" "-Da11y.skip.fill=true"
 )
 set "EXIT_CODE=%ERRORLEVEL%"
+call :log Maven exit=%EXIT_CODE%
 
 echo.
 echo Scorecard: %CD%\target\vyaapaar\accessibility_testing_result\index.html
 echo ZIP:       %CD%\target\vyaapaar\accessibility_email_artifact\vyaapaar-a11y-reports.zip
 echo Logs:      %CD%\target\vyaapaar\logs\automation.log
+echo Bat log:   %BAT_LOG%
 echo Cucumber:  %CD%\target\vyaapaar\cucumber-reports\cucumber.html
 echo.
-pause
-exit /b %EXIT_CODE%
+echo Done. Exit code %EXIT_CODE%. You can close this window.
+goto :eof
+
+:fail
+set "EXIT_CODE=1"
+call :log FAILED
+echo.
+echo Bat stopped with an error. Log: %BAT_LOG%
+echo Fix the message above, then rerun this file.
+echo.
+goto :eof
+
+:log
+echo %*>> "%BAT_LOG%"
+goto :eof
 
 :resolveJava
 if defined JAVA_HOME if exist "%JAVA_HOME%\bin\java.exe" exit /b 0
