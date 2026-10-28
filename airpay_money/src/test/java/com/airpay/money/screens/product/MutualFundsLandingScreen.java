@@ -93,7 +93,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
     public boolean openSection(String label) {
         for (int i = 0; i < 6; i++) {
             if (tapLabel(label)) {
-                sleep(700);
+                sleep(120);
                 return true;
             }
             swipeUp();
@@ -112,7 +112,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
             if (row != null) {
                 var rect = row.getRect();
                 tapAt(rect.getX() + rect.getWidth() - 70, rect.getY() + rect.getHeight() / 2);
-                sleep(1200);
+                sleep(200);
                 if (pageSource().contains("Funds basis on your risk")) {
                     return true;
                 }
@@ -123,10 +123,10 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     public void openTab(String label) {
-        tapFirst(Duration.ofSeconds(4),
+        tapFirst(Duration.ofSeconds(2),
                 MobileWaits.xpath("//android.widget.Button[@content-desc=" + xpathLiteral(label) + "]"),
                 accessibility(label));
-        sleep(600);
+        sleep(120);
     }
 
     public boolean goalListed(String name, String amount) {
@@ -152,7 +152,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
     public boolean openGoal(String name) {
         for (int i = 0; i < 6; i++) {
             if (tapArrowBeside(name)) {
-                sleep(800);
+                sleep(150);
                 return true;
             }
             swipeUpSmall();
@@ -239,7 +239,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
             if (row != null) {
                 var rect = row.getRect();
                 tapAt(rect.getX() + rect.getWidth() - 90, rect.getY() + rect.getHeight() / 2);
-                sleep(1200);
+                sleep(200);
                 String src = pageSource();
                 if (src.contains("Create Goal") && src.contains("Bike")) {
                     return true;
@@ -263,7 +263,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
                         continue;
                     }
                     if (tapQuick(label)) {
-                        sleep(900);
+                        sleep(150);
                         return true;
                     }
                 }
@@ -283,7 +283,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
     public boolean openRiskEdit() {
         for (int i = 0; i < 10; i++) {
             if (pageSource().toLowerCase().contains("risk profile") && tapEditBesideRiskProfile()) {
-                sleep(700);
+                sleep(120);
                 return true;
             }
             swipeUpSmall();
@@ -346,7 +346,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
             return false;
         }
         eye.click();
-        sleep(600);
+        sleep(120);
         return true;
     }
 
@@ -441,14 +441,14 @@ public class MutualFundsLandingScreen extends BaseScreen {
     private void swipeUpSmall() {
         var size = driver.manage().window().getSize();
         drag(size.width / 2, (int) (size.height * 0.72), size.width / 2, (int) (size.height * 0.46));
-        sleep(350);
+        sleep(80);
     }
 
     private void swipeLeft() {
         var size = driver.manage().window().getSize();
         int y = (int) (size.height * 0.55);
         drag((int) (size.width * 0.86), y, (int) (size.width * 0.16), y);
-        sleep(350);
+        sleep(80);
     }
 
     private void drag(int startX, int startY, int endX, int endY) {

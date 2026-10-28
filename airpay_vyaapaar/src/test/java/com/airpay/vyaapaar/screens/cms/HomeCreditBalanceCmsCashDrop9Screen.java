@@ -5,50 +5,25 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / PM. Module cms. */
+/** Credit Balance / CMS / Cash Drop / Swiggy — Alert. Module cms. */
 public class HomeCreditBalanceCmsCashDrop9Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-pm";
+    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-swiggy";
 
-    public static final String MERCHANT_NAME = "//android.widget.TextView[@text='Merchant Name']";
+    public static final String ALERT = "//android.widget.TextView[@text='Alert']";
 
-    @AndroidFindBy(xpath = MERCHANT_NAME)
-    private WebElement merchantName;
+    @AndroidFindBy(xpath = ALERT)
+    private WebElement alert;
 
-    public static final String ELEMENT = "//android.widget.TextView[@text=':']";
+    public static final String SOMETHING_WENT_WRONG_PLEASE_CONNECT_TO_CUSTOMER_CARE = "//android.widget.TextView[@text='Something went wrong! please connect to customer care for support.']";
 
-    @AndroidFindBy(xpath = ELEMENT)
-    private WebElement element;
+    @AndroidFindBy(xpath = SOMETHING_WENT_WRONG_PLEASE_CONNECT_TO_CUSTOMER_CARE)
+    private WebElement somethingWentWrongPleaseConnectToCustomerCare;
 
-    public static final String POPULAR_MOTORS = "//android.widget.TextView[@text='Popular Motors']";
+    public static final String DISMISS = "//android.widget.TextView[@text='Dismiss']";
 
-    @AndroidFindBy(xpath = POPULAR_MOTORS)
-    private WebElement popularMotors;
-
-    public static final String MERCHANT_MOBILE = "//android.widget.TextView[@text='Merchant Mobile']";
-
-    @AndroidFindBy(xpath = MERCHANT_MOBILE)
-    private WebElement merchantMobile;
-
-    public static final String MERCHANT_EMAIL = "//android.widget.TextView[@text='Merchant Email']";
-
-    @AndroidFindBy(xpath = MERCHANT_EMAIL)
-    private WebElement merchantEmail;
-
-    public static final String POPULAR30MOTORSLTD_GMAIL_COM = "//android.widget.TextView[@text='popular30motorsltd@gmail.com']";
-
-    @AndroidFindBy(xpath = POPULAR30MOTORSLTD_GMAIL_COM)
-    private WebElement popular30motorsltdGmailCom;
-
-    public static final String SUBMIT = "//android.widget.TextView[@text='Submit']";
-
-    @AndroidFindBy(xpath = SUBMIT)
-    private WebElement submit;
-
-    public static final String DETAILS = "//android.widget.TextView[@text='Details']";
-
-    @AndroidFindBy(xpath = DETAILS)
-    private WebElement details;
+    @AndroidFindBy(xpath = DISMISS)
+    private WebElement dismiss;
 
     public HomeCreditBalanceCmsCashDrop9Screen(TestContext context) {
         super(context);

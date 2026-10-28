@@ -642,16 +642,39 @@ public class CalculatorSheetSteps {
     @When("I open every calculator on the Calculator sheet and return")
     public void openFromSheet() {
         for (String[] pair : MoneyExcel.rows("Option")) {
+            showCalculatorsHub();
             Assertions.assertThat(hub.openTile(pair[0]))
-                    .as(pair[0] + " should be tapped")
+                    .as(pair[0] + " must be listed on Financial Calculators. Visible: " + hub.visibleLabels())
                     .isTrue();
             Assertions.assertThat(calculator.showsTitle(pair[1]))
-                    .as(pair[0] + " should open " + pair[1])
+                    .as(pair[0] + " must open the page titled \"" + pair[1]
+                            + "\". Visible: " + calculator.visibleLabels())
                     .isTrue();
+            returnToHub(pair[1]);
+        }
+    }
+
+    /** Leave the calculator page, then the profile menu if Back landed there, and open the Calculators tab. */
+    private void returnToHub(String openedTitle) {
+        if (calculator.showsTitle(openedTitle)) {
             calculator.tapBack();
-            if (!hub.isDisplayed()) {
-                calculator.tapBack();
+            sleepQuiet(800);
+        }
+        showCalculatorsHub();
+    }
+
+    private void showCalculatorsHub() {
+        hub.unlockIfNeeded();
+        for (int i = 0; i < 4 && !hub.isDisplayed(); i++) {
+            if (hub.sourceContains("PROFILE SETTINGS", "Personal Details", "Log Out")) {
+                hub.tapBack();
+                sleepQuiet(700);
+                continue;
             }
+            if (finsight.openCalculatorsTab() && hub.isDisplayed()) {
+                return;
+            }
+            sleepQuiet(600);
         }
     }
 

@@ -32,6 +32,7 @@ public class BaseHooks {
     @Before(order = 0)
     public void beforeScenario(Scenario scenario) {
         testContext.setFailureScreenshotAttached(false);
+        applyProductFromScenario(scenario);
         testContext.setConfig(ConfigLoader.load());
         if (scenario.getSourceTagNames().contains("@capture")
                 && !scenario.getSourceTagNames().contains("@deep")) {
@@ -47,11 +48,32 @@ public class BaseHooks {
                 LOG.debug("Launch permission pass skipped: {}", e.toString());
             }
         }
-        LOG.info("Scenario start | {} | env={} | product={} | udid={}",
+        LOG.info("Scenario start | {} | env={} | product={} | pkg={} | udid={}",
                 scenario.getName(),
                 testContext.config().environment(),
                 testContext.config().product(),
+                testContext.config().get(testContext.config().product() + ".app.package", ""),
                 testContext.config().get("android.udid", ""));
+    }
+
+    /**
+     * Feature path / tags decide the product. Stops IntelliJ from launching Capital
+     * when a Money scenario is run with the shared default config.
+     */
+    private static void applyProductFromScenario(Scenario scenario) {
+        String uri = scenario.getUri() == null ? "" : scenario.getUri().toString().replace('\\', '/').toLowerCase();
+        var tags = scenario.getSourceTagNames();
+        if (uri.contains("airpay_money") || tags.contains("@airpay-money") || tags.contains("@money")) {
+            System.setProperty("airpay.product", "money");
+            return;
+        }
+        if (uri.contains("airpay_capital") || tags.contains("@airpay-capital") || tags.contains("@capital")) {
+            System.setProperty("airpay.product", "capital");
+            return;
+        }
+        if (uri.contains("airpay_vyaapaar") || tags.contains("@airpay-vyaapaar") || tags.contains("@vyaapaar")) {
+            System.setProperty("airpay.product", "vyaapaar");
+        }
     }
 
     @Before(order = Integer.MAX_VALUE)

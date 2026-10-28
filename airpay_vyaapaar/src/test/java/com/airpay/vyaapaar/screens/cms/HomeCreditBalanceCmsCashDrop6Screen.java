@@ -5,10 +5,10 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / BF. Module cms. */
+/** Credit Balance / CMS / Cash Drop / TW — Merchant Name. Module cms. */
 public class HomeCreditBalanceCmsCashDrop6Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-bf";
+    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-tw";
 
     public static final String MERCHANT_NAME = "//android.widget.TextView[@text='Merchant Name']";
 
@@ -20,10 +20,10 @@ public class HomeCreditBalanceCmsCashDrop6Screen extends BaseScreen {
     @AndroidFindBy(xpath = ELEMENT)
     private WebElement element;
 
-    public static final String BAJAJ_FINANCE = "//android.widget.TextView[@text='Bajaj Finance']";
+    public static final String THREE_WHEELS_CAPITAL = "//android.widget.TextView[@text='THREE WHEELS CAPITAL']";
 
-    @AndroidFindBy(xpath = BAJAJ_FINANCE)
-    private WebElement bajajFinance;
+    @AndroidFindBy(xpath = THREE_WHEELS_CAPITAL)
+    private WebElement threeWheelsCapital;
 
     public static final String MERCHANT_MOBILE = "//android.widget.TextView[@text='Merchant Mobile']";
 
@@ -35,15 +35,10 @@ public class HomeCreditBalanceCmsCashDrop6Screen extends BaseScreen {
     @AndroidFindBy(xpath = MERCHANT_EMAIL)
     private WebElement merchantEmail;
 
-    public static final String BAJAJFINANCETEST_GMAIL_COM = "//android.widget.TextView[@text='bajajfinancetest@gmail.com']";
+    public static final String TEST_TEST_CO_IN = "//android.widget.TextView[@text='test@test.co.in']";
 
-    @AndroidFindBy(xpath = BAJAJFINANCETEST_GMAIL_COM)
-    private WebElement bajajfinancetestGmailCom;
-
-    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
-
-    @AndroidFindBy(xpath = MOBILE_NUMBER)
-    private WebElement mobileNumber;
+    @AndroidFindBy(xpath = TEST_TEST_CO_IN)
+    private WebElement testTestCoIn;
 
     public static final String SEARCH_VALUE = "//android.widget.TextView[@text='Search Value']";
 

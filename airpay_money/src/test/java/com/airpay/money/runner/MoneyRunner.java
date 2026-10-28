@@ -20,6 +20,11 @@ import org.testng.annotations.DataProvider;
 )
 public class MoneyRunner extends AbstractTestNGCucumberTests {
 
+    static {
+        // IntelliJ often omits -Dairpay.product; defaults.properties points at capital.
+        System.setProperty("airpay.product", "money");
+    }
+
     @Override
     @DataProvider(parallel = false)
     public Object[][] scenarios() {

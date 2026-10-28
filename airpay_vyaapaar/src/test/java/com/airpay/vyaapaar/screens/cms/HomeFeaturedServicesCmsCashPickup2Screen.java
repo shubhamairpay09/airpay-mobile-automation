@@ -1,0 +1,36 @@
+package com.airpay.vyaapaar.screens.cms;
+
+import com.airpay.vyaapaar.screens.base.BaseScreen;
+import com.airpay.mobile.utilities.context.TestContext;
+import io.appium.java_client.pagefactory.AndroidFindBy;
+import org.openqa.selenium.WebElement;
+
+/** Featured Services/CMS/Cash Pickup/IS. Module cms. */
+public class HomeFeaturedServicesCmsCashPickup2Screen extends BaseScreen {
+
+    public static final String PAGE_ID = "home-featured-services-cms-cash-pickup-is";
+
+    public static final String EL_NEW = "//android.widget.TextView[@text='New']";
+
+    @AndroidFindBy(xpath = EL_NEW)
+    private WebElement elNew;
+
+    public static final String ACCEPTED = "//android.widget.TextView[@text='Accepted']";
+
+    @AndroidFindBy(xpath = ACCEPTED)
+    private WebElement accepted;
+
+    public static final String NO_RECORDS_FOUND = "//android.widget.TextView[@text='No records found']";
+
+    @AndroidFindBy(xpath = NO_RECORDS_FOUND)
+    private WebElement noRecordsFound;
+
+    public static final String CASH_PICKUP = "//android.widget.TextView[@text='Cash Pickup']";
+
+    @AndroidFindBy(xpath = CASH_PICKUP)
+    private WebElement cashPickup;
+
+    public HomeFeaturedServicesCmsCashPickup2Screen(TestContext context) {
+        super(context);
+    }
+}

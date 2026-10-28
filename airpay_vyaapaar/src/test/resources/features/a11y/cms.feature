@@ -4,57 +4,77 @@ Feature: airpay vyaapaar cms screens
   Each screen was captured once during the deep scan.
 
   @CMS_001
-  Scenario: Credit Balance / CMS
+  Scenario: Featured Services/CMS
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms" in module "cms" has stored xpaths
 
   @CMS_002
-  Scenario: Credit Balance / CMS / Cash Drop
+  Scenario: Featured Services/CMS/Cash Drop
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop" in module "cms" has stored xpaths
 
   @CMS_003
-  Scenario: Credit Balance / CMS / Cash Drop / AC
+  Scenario: Featured Services/CMS/Cash Drop/AC
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-ac" in module "cms" has stored xpaths
 
   @CMS_004
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday
+  Scenario: Featured Services/CMS/Cash Drop/Suryoday
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-suryoday" in module "cms" has stored xpaths
 
   @CMS_005
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday
+  Scenario: Featured Services/CMS/Cash Drop/MM
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-mm" in module "cms" has stored xpaths
 
   @CMS_006
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / MM
+  Scenario: Featured Services/CMS/Cash Drop/BF
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-mm" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-bf" in module "cms" has stored xpaths
 
   @CMS_007
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / BF
+  Scenario: Featured Services/CMS/Cash Drop/Others
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-bf" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-others" in module "cms" has stored xpaths
 
   @CMS_008
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / TW
+  Scenario: Featured Services/CMS/Cash Drop/TW
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-tw" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-tw" in module "cms" has stored xpaths
 
   @CMS_009
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / SI
+  Scenario: Featured Services/CMS/Cash Drop/SI
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-si" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-si" in module "cms" has stored xpaths
 
   @CMS_010
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / PM
+  Scenario: Featured Services/CMS/Cash Drop/PM
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-pm" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-pm" in module "cms" has stored xpaths
 
   @CMS_011
-  Scenario: Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / Swiggy
+  Scenario: Featured Services/CMS/Cash Drop/Swiggy
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-swiggy" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-swiggy" in module "cms" has stored xpaths
+
+  @CMS_012
+  Scenario: Featured Services/CMS/Cash Pickup
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-pickup" in module "cms" has stored xpaths
+
+  @CMS_013
+  Scenario: Featured Services/CMS/Cash Pickup/IS
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-pickup-is" in module "cms" has stored xpaths
+
+  @CMS_014
+  Scenario: Featured Services/CMS/Cash Burial
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-burial" in module "cms" has stored xpaths
+
+  @CMS_015
+  Scenario: Featured Services/CMS/Cash Burial/BN
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-burial-bn" in module "cms" has stored xpaths
 

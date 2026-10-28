@@ -20,6 +20,10 @@ import org.testng.annotations.DataProvider;
 )
 public class CapitalRunner extends AbstractTestNGCucumberTests {
 
+    static {
+        System.setProperty("airpay.product", "capital");
+    }
+
     @Override
     @DataProvider(parallel = false)
     public Object[][] scenarios() {

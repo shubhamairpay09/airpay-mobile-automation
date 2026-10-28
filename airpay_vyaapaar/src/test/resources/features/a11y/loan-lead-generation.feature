@@ -4,7 +4,7 @@ Feature: airpay vyaapaar loan-lead-generation screens
   Each screen was captured once during the deep scan.
 
   @LOAN_LEAD_GENERATION_001
-  Scenario: Loan Lead Generation — PIN code
+  Scenario: Non Channels/Loan Lead Generation
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "loan-lead-generation" in module "loanleadgeneration" has stored xpaths
+    Then airpay vyaapaar screen "home-non-channels-loan-lead-generation" in module "loanleadgeneration" has stored xpaths
 

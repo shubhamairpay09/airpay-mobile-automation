@@ -5,10 +5,10 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / TW. Module cms. */
+/** Credit Balance / CMS / Cash Drop / SI — Merchant Name. Module cms. */
 public class HomeCreditBalanceCmsCashDrop7Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-tw";
+    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-si";
 
     public static final String MERCHANT_NAME = "//android.widget.TextView[@text='Merchant Name']";
 
@@ -20,10 +20,10 @@ public class HomeCreditBalanceCmsCashDrop7Screen extends BaseScreen {
     @AndroidFindBy(xpath = ELEMENT)
     private WebElement element;
 
-    public static final String THREE_WHEELS_CAPITAL = "//android.widget.TextView[@text='THREE WHEELS CAPITAL']";
+    public static final String SHABRI_INVESTMENTS = "//android.widget.TextView[@text='Shabri Investments']";
 
-    @AndroidFindBy(xpath = THREE_WHEELS_CAPITAL)
-    private WebElement threeWheelsCapital;
+    @AndroidFindBy(xpath = SHABRI_INVESTMENTS)
+    private WebElement shabriInvestments;
 
     public static final String MERCHANT_MOBILE = "//android.widget.TextView[@text='Merchant Mobile']";
 
@@ -35,10 +35,10 @@ public class HomeCreditBalanceCmsCashDrop7Screen extends BaseScreen {
     @AndroidFindBy(xpath = MERCHANT_EMAIL)
     private WebElement merchantEmail;
 
-    public static final String TEST_TEST_CO_IN = "//android.widget.TextView[@text='test@test.co.in']";
+    public static final String TEST_ADMIN_COM = "//android.widget.TextView[@text='test@admin.com']";
 
-    @AndroidFindBy(xpath = TEST_TEST_CO_IN)
-    private WebElement testTestCoIn;
+    @AndroidFindBy(xpath = TEST_ADMIN_COM)
+    private WebElement testAdminCom;
 
     public static final String SEARCH_VALUE = "//android.widget.TextView[@text='Search Value']";
 

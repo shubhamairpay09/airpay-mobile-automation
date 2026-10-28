@@ -74,7 +74,11 @@ public final class PermissionDialogHandler {
         try {
             List<WebElement> clickable = driver.findElements(AppiumBy.xpath(
                     "//android.widget.Button | //android.widget.TextView[@clickable='true']"));
+            int checked = 0;
             for (WebElement el : clickable) {
+                if (checked++ >= 8) {
+                    break;
+                }
                 String label = firstLabel(el);
                 if (isAllowLabel(label)) {
                     el.click();
@@ -115,27 +119,8 @@ public final class PermissionDialogHandler {
     private static String firstLabel(WebElement el) {
         try {
             String text = el.getText();
-            if (text != null && !text.isBlank()) {
-                return text.trim();
-            }
+            return text == null ? "" : text.trim();
         } catch (Exception ignored) {
-            // stale
-        }
-        try {
-            String desc = el.getAttribute("contentDescription");
-            if (desc == null || desc.isBlank()) {
-                desc = el.getAttribute("content-desc");
-            }
-            if (desc != null && !desc.isBlank()) {
-                return desc.trim();
-            }
-        } catch (Exception ignored) {
-            // stale
-        }
-        try {
-            String textAttr = el.getAttribute("text");
-            return textAttr == null ? "" : textAttr.trim();
-        } catch (Exception e) {
             return "";
         }
     }

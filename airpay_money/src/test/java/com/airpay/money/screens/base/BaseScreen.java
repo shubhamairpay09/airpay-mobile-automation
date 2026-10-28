@@ -15,7 +15,10 @@ import org.openqa.selenium.support.PageFactory;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class BaseScreen {
 
@@ -102,6 +105,28 @@ public abstract class BaseScreen {
 
     public String pageSource() {
         return driver.getPageSource();
+    }
+
+    /** Short list of on-screen labels, so a failed check names what was actually open. */
+    public String visibleLabels() {
+        String source;
+        try {
+            source = pageSource();
+        } catch (Exception e) {
+            return "(screen not available)";
+        }
+        if (source == null) {
+            return "(screen not available)";
+        }
+        Matcher matcher = Pattern.compile("content-desc=\"([^\"]{1,80})\"").matcher(source);
+        LinkedHashSet<String> labels = new LinkedHashSet<>();
+        while (matcher.find() && labels.size() < 14) {
+            String value = matcher.group(1).replace("&#10;", " ").trim();
+            if (!value.isBlank() && !"null".equals(value)) {
+                labels.add(value);
+            }
+        }
+        return labels.isEmpty() ? "(no labelled controls)" : String.join(" | ", labels);
     }
 
     public boolean sourceContains(String... fragments) {
@@ -205,16 +230,21 @@ public abstract class BaseScreen {
         sleep(400);
     }
 
+    /**
+     * In-app header Back only. A system Back closes Airpay Money and the next step starts it again.
+     */
     public boolean tapBack() {
         if (tapLabel("Back")) {
+            sleep(400);
             return true;
         }
-        try {
-            driver.navigate().back();
-            return true;
-        } catch (Exception e) {
+        WebElement back = headerBackIcon();
+        if (back == null) {
             return false;
         }
+        pressElement(back);
+        sleep(400);
+        return true;
     }
 
     protected void tapAt(int x, int y) {
@@ -281,6 +311,20 @@ public abstract class BaseScreen {
         int startX = size.width / 2;
         int startY = (int) (size.height * 0.78);
         int endY = (int) (size.height * 0.28);
+        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
+        Sequence swipe = new Sequence(finger, 1);
+        swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
+        swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
+        swipe.addAction(finger.createPointerMove(Duration.ofMillis(300), PointerInput.Origin.viewport(), startX, endY));
+        swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+        driver.perform(List.of(swipe));
+    }
+
+    public void swipeDown() {
+        Dimension size = driver.manage().window().getSize();
+        int startX = size.width / 2;
+        int startY = (int) (size.height * 0.30);
+        int endY = (int) (size.height * 0.75);
         PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
         Sequence swipe = new Sequence(finger, 1);
         swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));

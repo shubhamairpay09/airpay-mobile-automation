@@ -4,12 +4,17 @@ Feature: airpay vyaapaar pan-application screens
   Each screen was captured once during the deep scan.
 
   @PAN_APPLICATION_001
-  Scenario: Credit Balance / PAN Application
+  Scenario: Featured Services/PAN Application
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-pan-application" in module "panapplication" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-pan-application" in module "panapplication" has stored xpaths
 
   @PAN_APPLICATION_002
-  Scenario: Credit Balance / PAN Application / DOB
+  Scenario: Featured Services/PAN Application/DOB
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-credit-balance-pan-application-dob" in module "panapplication" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-pan-application-dob" in module "panapplication" has stored xpaths
+
+  @PAN_APPLICATION_003
+  Scenario: Featured Services/PAN Application/dropdown
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "home-featured-services-pan-application-dropdown" in module "panapplication" has stored xpaths
 

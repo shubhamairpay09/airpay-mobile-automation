@@ -4,7 +4,7 @@ Feature: airpay vyaapaar withdrawal-limit screens
   Each screen was captured once during the deep scan.
 
   @WITHDRAWAL_LIMIT_001
-  Scenario: Withdrawal Limit — Withdrawal Limit
+  Scenario: Featured Services/Withdrawal Limit
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "withdrawal-limit" in module "withdrawallimit" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-withdrawal-limit" in module "withdrawallimit" has stored xpaths
 

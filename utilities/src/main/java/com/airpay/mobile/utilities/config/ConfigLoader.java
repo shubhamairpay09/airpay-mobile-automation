@@ -43,7 +43,7 @@ public final class ConfigLoader {
         if (fromFile != null && !fromFile.isBlank()) {
             return ProjectPaths.normalizeProduct(fromFile);
         }
-        return "capital";
+        return "money";
     }
 
     private static void overlaySystemProperties(Properties target) {

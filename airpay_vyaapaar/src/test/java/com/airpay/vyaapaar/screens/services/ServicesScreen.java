@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Services — Collect Money. Module services. */
+/** Services. Module services. */
 public class ServicesScreen extends BaseScreen {
 
     public static final String PAGE_ID = "services";

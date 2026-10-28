@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / Post Office / India Post Office / BOOK. Module post-office. */
+/** Credit Balance / Post Office / India Post Office / BOOK — Tariff Check. Module post-office. */
 public class HomeCreditBalancePostOfficeIndia2Screen extends BaseScreen {
 
     public static final String PAGE_ID = "home-credit-balance-post-office-india-post-office-book";
@@ -114,16 +114,6 @@ public class HomeCreditBalancePostOfficeIndia2Screen extends BaseScreen {
 
     @AndroidFindBy(xpath = BOOK_NEW_PARCEL)
     private WebElement bookNewParcel;
-
-    public static final String RECEIVED_ANEW_MESSAGE_FROM_KIRAN_OK_CHECK = "//android.widget.Toast[@text='Received a new message from Kiran. Ok check and we will look into it']";
-
-    @AndroidFindBy(xpath = RECEIVED_ANEW_MESSAGE_FROM_KIRAN_OK_CHECK)
-    private WebElement receivedANewMessageFromKiranOkCheck;
-
-    public static final String ESTIMATE_TARIFF = "//android.widget.TextView[@text='Estimate Tariff']";
-
-    @AndroidFindBy(xpath = ESTIMATE_TARIFF)
-    private WebElement estimateTariff;
 
     public HomeCreditBalancePostOfficeIndia2Screen(TestContext context) {
         super(context);

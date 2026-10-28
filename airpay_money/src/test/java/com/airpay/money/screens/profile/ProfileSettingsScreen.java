@@ -314,12 +314,6 @@ public class ProfileSettingsScreen extends BaseScreen {
         swipe(x, startY, x, endY);
     }
 
-    private void swipeDown() {
-        Dimension size = driver.manage().window().getSize();
-        int x = size.width / 2;
-        swipe(x, (int) (size.height * 0.30), x, (int) (size.height * 0.75));
-    }
-
     private void swipe(int x1, int y1, int x2, int y2) {
         String udid = context.config().get("android.udid", "");
         AdbCommands.shell(udid, "input", "swipe",

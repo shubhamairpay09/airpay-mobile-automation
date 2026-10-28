@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / PAN Application / DOB. Module pan-application. */
+/** Credit Balance / PAN Application / DOB — Close sheet. Module pan-application. */
 public class HomeCreditBalancePanApplicationDobScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-credit-balance-pan-application-dob";
@@ -20,10 +20,10 @@ public class HomeCreditBalancePanApplicationDobScreen extends BaseScreen {
     @AndroidFindBy(xpath = SELECT_DATE)
     private WebElement selectDate;
 
-    public static final String CURRENT_SELECTION_MONDAY26OCTOBER2026 = "//android.widget.TextView[contains(@content-desc,'Current selection: Monday, 26 October 2026')]";
+    public static final String CURRENT_SELECTION_TUESDAY27OCTOBER2026 = "//android.widget.TextView[contains(@content-desc,'Current selection: Tuesday, 27 October 2026')]";
 
-    @AndroidFindBy(xpath = CURRENT_SELECTION_MONDAY26OCTOBER2026)
-    private WebElement currentSelectionMonday26October2026;
+    @AndroidFindBy(xpath = CURRENT_SELECTION_TUESDAY27OCTOBER2026)
+    private WebElement currentSelectionTuesday27October2026;
 
     public static final String SWITCH_TO_TEXT_INPUT_MODE = "//android.view.View[contains(@content-desc,'Switch to text input mode')]";
 
@@ -210,15 +210,15 @@ public class HomeCreditBalancePanApplicationDobScreen extends BaseScreen {
     @AndroidFindBy(xpath = SUNDAY25OCTOBER2026)
     private WebElement sunday25October2026;
 
-    public static final String TODAY_MONDAY26OCTOBER2026 = "//android.widget.TextView[@text='Today, Monday, 26 October 2026']";
+    public static final String MONDAY26OCTOBER2026 = "//android.widget.TextView[@text='Monday, 26 October 2026']";
 
-    @AndroidFindBy(xpath = TODAY_MONDAY26OCTOBER2026)
-    private WebElement todayMonday26October2026;
+    @AndroidFindBy(xpath = MONDAY26OCTOBER2026)
+    private WebElement monday26October2026;
 
-    public static final String TUESDAY27OCTOBER2026 = "//android.widget.TextView[@text='Tuesday, 27 October 2026']";
+    public static final String TODAY_TUESDAY27OCTOBER2026 = "//android.widget.TextView[@text='Today, Tuesday, 27 October 2026']";
 
-    @AndroidFindBy(xpath = TUESDAY27OCTOBER2026)
-    private WebElement tuesday27October2026;
+    @AndroidFindBy(xpath = TODAY_TUESDAY27OCTOBER2026)
+    private WebElement todayTuesday27October2026;
 
     public static final String WEDNESDAY28OCTOBER2026 = "//android.widget.TextView[@text='Wednesday, 28 October 2026']";
 
@@ -249,41 +249,6 @@ public class HomeCreditBalancePanApplicationDobScreen extends BaseScreen {
 
     @AndroidFindBy(xpath = OK)
     private WebElement ok;
-
-    public static final String GET_YOUR_PAN_CARD_START_APPLICATION_NOW = "//android.widget.TextView[@text='Get Your PAN Card - Start Application Now']";
-
-    @AndroidFindBy(xpath = GET_YOUR_PAN_CARD_START_APPLICATION_NOW)
-    private WebElement getYourPanCardStartApplicationNow;
-
-    public static final String ENTER_YOUR_DETAILS_BELOW_AND_WE_WILL_REDIRECT = "//android.widget.TextView[@text='Enter your details below and we will redirect you to Protean(NSDL)to complete your PAN card process']";
-
-    @AndroidFindBy(xpath = ENTER_YOUR_DETAILS_BELOW_AND_WE_WILL_REDIRECT)
-    private WebElement enterYourDetailsBelowAndWeWillRedirect;
-
-    public static final String FULL_NAME_AS_PER_AADHAAR = "//android.widget.TextView[@text='Full Name (As per Aadhaar)']";
-
-    @AndroidFindBy(xpath = FULL_NAME_AS_PER_AADHAAR)
-    private WebElement fullNameAsPerAadhaar;
-
-    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
-
-    @AndroidFindBy(xpath = MOBILE_NUMBER)
-    private WebElement mobileNumber;
-
-    public static final String DOB = "//android.widget.TextView[@text='DOB']";
-
-    @AndroidFindBy(xpath = DOB)
-    private WebElement dob;
-
-    public static final String SUBMIT = "//android.widget.TextView[@text='Submit']";
-
-    @AndroidFindBy(xpath = SUBMIT)
-    private WebElement submit;
-
-    public static final String PAN_APPLICATION = "//android.widget.TextView[@text='PAN Application']";
-
-    @AndroidFindBy(xpath = PAN_APPLICATION)
-    private WebElement panApplication;
 
     public HomeCreditBalancePanApplicationDobScreen(TestContext context) {
         super(context);

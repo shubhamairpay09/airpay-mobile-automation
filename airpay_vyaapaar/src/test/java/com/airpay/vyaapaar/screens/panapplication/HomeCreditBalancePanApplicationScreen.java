@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / PAN Application. Module pan-application. */
+/** Credit Balance / PAN Application — Full Name (As per Aadhaar). Module pan-application. */
 public class HomeCreditBalancePanApplicationScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-credit-balance-pan-application";

@@ -46,13 +46,16 @@ public class BiometricScreen extends BaseScreen {
             boolean skipped = tapFirst(Duration.ofSeconds(2),
                     MobileWaits.xpath("//android.widget.Button[@content-desc='Skip for Now']"),
                     MobileWaits.xpath("//*[@content-desc='Skip for now' or @content-desc='Skip for Now']"));
-            if (!skipped) {
+            if (!skipped && sourceContains("Biometric", "fingerprint", "Face unlock", "Unlock faster")) {
                 skipped = tapAny(List.of(
                         "Skip for Now",
                         "Skip for now",
                         "Skip, Continue without enabling biometric authentication",
                         "Not now",
-                        "Maybe later"));
+                        "Maybe later",
+                        "USE PIN",
+                        "Use PIN",
+                        "Cancel"));
             }
             if (skipped) {
                 sleep(900);

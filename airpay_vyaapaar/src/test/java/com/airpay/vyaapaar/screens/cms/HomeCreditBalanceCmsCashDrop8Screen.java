@@ -5,10 +5,10 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / SI. Module cms. */
+/** Credit Balance / CMS / Cash Drop / PM — Merchant Name. Module cms. */
 public class HomeCreditBalanceCmsCashDrop8Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-si";
+    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-pm";
 
     public static final String MERCHANT_NAME = "//android.widget.TextView[@text='Merchant Name']";
 
@@ -20,10 +20,10 @@ public class HomeCreditBalanceCmsCashDrop8Screen extends BaseScreen {
     @AndroidFindBy(xpath = ELEMENT)
     private WebElement element;
 
-    public static final String SHABRI_INVESTMENTS = "//android.widget.TextView[@text='Shabri Investments']";
+    public static final String POPULAR_MOTORS = "//android.widget.TextView[@text='Popular Motors']";
 
-    @AndroidFindBy(xpath = SHABRI_INVESTMENTS)
-    private WebElement shabriInvestments;
+    @AndroidFindBy(xpath = POPULAR_MOTORS)
+    private WebElement popularMotors;
 
     public static final String MERCHANT_MOBILE = "//android.widget.TextView[@text='Merchant Mobile']";
 
@@ -35,15 +35,10 @@ public class HomeCreditBalanceCmsCashDrop8Screen extends BaseScreen {
     @AndroidFindBy(xpath = MERCHANT_EMAIL)
     private WebElement merchantEmail;
 
-    public static final String TEST_ADMIN_COM = "//android.widget.TextView[@text='test@admin.com']";
+    public static final String POPULAR30MOTORSLTD_GMAIL_COM = "//android.widget.TextView[@text='popular30motorsltd@gmail.com']";
 
-    @AndroidFindBy(xpath = TEST_ADMIN_COM)
-    private WebElement testAdminCom;
-
-    public static final String SEARCH_VALUE = "//android.widget.TextView[@text='Search Value']";
-
-    @AndroidFindBy(xpath = SEARCH_VALUE)
-    private WebElement searchValue;
+    @AndroidFindBy(xpath = POPULAR30MOTORSLTD_GMAIL_COM)
+    private WebElement popular30motorsltdGmailCom;
 
     public static final String SUBMIT = "//android.widget.TextView[@text='Submit']";
 

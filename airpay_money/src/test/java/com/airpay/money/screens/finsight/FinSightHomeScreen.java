@@ -128,9 +128,15 @@ public class FinSightHomeScreen extends BaseScreen {
     }
 
     public boolean openCalculatorsTab() {
-        return tapFirst(Duration.ofSeconds(6),
+        WebElement tab = firstPresent(Duration.ofSeconds(6),
                 MobileWaits.xpath("//android.widget.Button[@content-desc='Calculators']"),
                 MobileWaits.xpath("//android.view.View[@content-desc='Calculators']"),
                 AppiumBy.accessibilityId("Calculators"));
+        if (tab == null) {
+            return false;
+        }
+        pressElement(tab);
+        sleep(900);
+        return true;
     }
 }

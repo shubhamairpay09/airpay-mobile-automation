@@ -4,7 +4,7 @@ Feature: airpay vyaapaar mobile screens
   Each screen was captured once during the deep scan.
 
   @MOBILE_001
-  Scenario: Mobile — Allpay image
+  Scenario: Credit Balance / Mobile — Allpay image
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "mobile" in module "mobile" has stored xpaths
+    Then airpay vyaapaar screen "home-credit-balance-mobile" in module "mobile" has stored xpaths
 

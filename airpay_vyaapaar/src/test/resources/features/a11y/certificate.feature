@@ -4,7 +4,7 @@ Feature: airpay vyaapaar certificate screens
   Each screen was captured once during the deep scan.
 
   @CERTIFICATE_001
-  Scenario: Certificate — Image Content
+  Scenario: Non Channels/Certificate
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "certificate" in module "certificate" has stored xpaths
+    Then airpay vyaapaar screen "home-non-channels-certificate" in module "certificate" has stored xpaths
 

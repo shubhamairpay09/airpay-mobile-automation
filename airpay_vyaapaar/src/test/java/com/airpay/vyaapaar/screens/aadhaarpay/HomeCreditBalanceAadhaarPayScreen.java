@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / Aadhaar Pay. Module aadhaar-pay. */
+/** Credit Balance / Aadhaar Pay — Amount. Module aadhaar-pay. */
 public class HomeCreditBalanceAadhaarPayScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-credit-balance-aadhaar-pay";

@@ -118,12 +118,14 @@ public class MoneyLoginFlow {
             resetPinViaForgot(pin);
             return true;
         }
-        LOG.info("Entering session PIN");
+        LOG.info("Entering session PIN from the Login sheet");
         pinUnlock.enterPin(pin);
         sleep(1500);
+        biometric.dismissIfShown();
         if (sourceLooksLocked() || sourceContains("Incorrect PIN")) {
             resetPinViaForgot(pin);
         }
+        biometric.dismissIfShown();
         allowDialogs(Duration.ofSeconds(6));
         return true;
     }

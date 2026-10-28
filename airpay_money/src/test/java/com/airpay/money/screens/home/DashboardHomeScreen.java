@@ -5,10 +5,7 @@ import com.airpay.money.screens.finsight.FhcFlow;
 import com.airpay.money.screens.finsight.NetWorthConsentScreen;
 import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.waits.MobileWaits;
-import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.interactions.PointerInput;
-import org.openqa.selenium.interactions.Sequence;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -108,7 +105,7 @@ public class DashboardHomeScreen extends BaseScreen {
     public boolean healthInformationAligned() {
         WebElement card = firstPresent(Duration.ofSeconds(3),
                 MobileWaits.xpath("//*[contains(@content-desc,'Your Financial Health Score')]"));
-        WebElement button = letsStartButton();
+        WebElement button = healthCta();
         if (card == null || button == null) {
             return false;
         }
@@ -117,6 +114,7 @@ public class DashboardHomeScreen extends BaseScreen {
         if (buttonY <= card.getRect().getY()) {
             return false;
         }
+        boolean sawInfo = false;
         for (WebElement node : driver.findElements(MobileWaits.xpath("//*[@content-desc]"))) {
             try {
                 if (!node.isDisplayed()) {
@@ -127,35 +125,45 @@ public class DashboardHomeScreen extends BaseScreen {
                     continue;
                 }
                 String desc = String.valueOf(node.getAttribute("content-desc")).trim();
-                if (desc.length() < 4) {
+                if (desc.length() < 4
+                        || desc.equals("Reassess")
+                        || desc.equals("View Details")
+                        || desc.startsWith("Let's")) {
                     continue;
                 }
                 if (Math.abs(node.getRect().getX() - cardX) > 80) {
                     return false;
                 }
+                sawInfo = true;
             } catch (Exception ignored) {
                 // stale
             }
         }
-        return true;
+        // Completed score cards put "Last updated…" as a sibling above Reassess / View Details.
+        // Fresh accounts put copy between the score title and Let's Start.
+        return sawInfo || text().contains("Last updated");
     }
 
     public boolean letsStartDisplayed() {
-        return letsStartButton() != null;
+        return healthCta() != null;
     }
 
     public boolean tapLetsStart() {
-        WebElement button = letsStartButton();
-        if (button == null) {
+        FhcFlow fhc = new FhcFlow(context);
+        if (fhc.onPersonal()) {
+            return true;
+        }
+        if (healthCta() == null) {
             return false;
         }
-        pressElement(button);
-        sleep(900);
-        return new FhcFlow(context).onPersonal();
+        // Fresh: Let's Start. Completed score: Reassess / View Details via FhcFlow.
+        fhc.openPersonalDetails();
+        return fhc.onPersonal() || fhc.onDiagnosis() || text().contains("Personal Details");
     }
 
     public boolean personalDetailsDisplayed() {
-        return new FhcFlow(context).onPersonal();
+        FhcFlow fhc = new FhcFlow(context);
+        return fhc.onPersonal() || fhc.onDiagnosis() || text().contains("Personal Details");
     }
 
     public boolean syncButtonDisplayed() {
@@ -219,8 +227,7 @@ public class DashboardHomeScreen extends BaseScreen {
     }
 
     public boolean tabDisplayed(String label) {
-        return firstPresent(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.widget.Button[@content-desc=" + xpathLiteral(label) + "]")) != null;
+        return tab(label) != null;
     }
 
     public boolean tabsAligned() {
@@ -233,7 +240,9 @@ public class DashboardHomeScreen extends BaseScreen {
         int productsY = products.getRect().getY();
         int finsightY = finsight.getRect().getY();
         int calculatorsY = calculators.getRect().getY();
-        boolean sameRow = Math.abs(productsY - finsightY) <= 40 && Math.abs(finsightY - calculatorsY) <= 40;
+        // FinSight is an elevated center FAB-style tab; label Y can sit ~130px above Products/Calculators.
+        boolean sameRow = Math.abs(productsY - finsightY) <= 160 && Math.abs(finsightY - calculatorsY) <= 160
+                && Math.abs(productsY - calculatorsY) <= 40;
         boolean leftToRight = products.getRect().getX() < finsight.getRect().getX()
                 && finsight.getRect().getX() < calculators.getRect().getX();
         return sameRow && leftToRight;
@@ -254,6 +263,19 @@ public class DashboardHomeScreen extends BaseScreen {
         return button != null ? button : displayed("Let's Start");
     }
 
+    /** Fresh accounts show Let's Start; completed FHC shows Reassess / View Details. */
+    private WebElement healthCta() {
+        WebElement start = letsStartButton();
+        if (start != null) {
+            return start;
+        }
+        WebElement reassess = displayed("Reassess");
+        if (reassess != null) {
+            return reassess;
+        }
+        return displayed("View Details");
+    }
+
     private WebElement notification() {
         return firstPresent(Duration.ofSeconds(3),
                 MobileWaits.xpath("//android.widget.ImageView[@content-desc='Notifications']"));
@@ -261,7 +283,9 @@ public class DashboardHomeScreen extends BaseScreen {
 
     private WebElement tab(String label) {
         return firstPresent(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.widget.Button[@content-desc=" + xpathLiteral(label) + "]"));
+                MobileWaits.xpath("//android.widget.Button[@content-desc=" + xpathLiteral(label) + "]"),
+                MobileWaits.xpath("//android.view.View[@content-desc=" + xpathLiteral(label) + "]"),
+                MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(label) + "]"));
     }
 
     private WebElement displayed(String label) {
@@ -272,22 +296,8 @@ public class DashboardHomeScreen extends BaseScreen {
     private void scrollToTop() {
         for (int i = 0; i < 3; i++) {
             swipeDown();
+            sleep(300);
         }
-    }
-
-    private void swipeDown() {
-        Dimension size = driver.manage().window().getSize();
-        int x = size.width / 2;
-        int startY = (int) (size.height * 0.30);
-        int endY = (int) (size.height * 0.75);
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence swipe = new Sequence(finger, 1);
-        swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), x, startY));
-        swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        swipe.addAction(finger.createPointerMove(Duration.ofMillis(300), PointerInput.Origin.viewport(), x, endY));
-        swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        driver.perform(List.of(swipe));
-        sleep(300);
     }
 
     private String text() {

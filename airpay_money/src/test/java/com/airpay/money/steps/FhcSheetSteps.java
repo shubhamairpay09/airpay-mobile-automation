@@ -43,7 +43,7 @@ public class FhcSheetSteps {
     public void openPersonal() {
         fhc.openPersonalDetails();
         Assertions.assertThat(fhc.onPersonal())
-                .as("Personal Details page should be displayed")
+                .as("Personal Details must show the title, Full Name, and Pincode. Visible: " + fhc.visibleLabels())
                 .isTrue();
     }
 
@@ -64,7 +64,9 @@ public class FhcSheetSteps {
 
     @Then("the Personal Details page is displayed")
     public void personalDisplayed() {
-        Assertions.assertThat(fhc.onPersonal()).as("Personal Details page should be displayed").isTrue();
+        Assertions.assertThat(fhc.onPersonal())
+                .as("Personal Details must show the title, Full Name, and Pincode. Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @And("the Personal Details page has no error")
@@ -124,7 +126,7 @@ public class FhcSheetSteps {
 
     @Then("the Income and Expense page is displayed")
     public void incomeDisplayed() {
-        Assertions.assertThat(fhc.onIncome()).as("Income & Expense page should be displayed").isTrue();
+        requirePage(fhc.onIncome(), "Income & Expense must show the title and Net Monthly Income or My Loans");
     }
 
     @And("the Income and Expense page has no error")
@@ -135,22 +137,24 @@ public class FhcSheetSteps {
     @When("I open the Income and Expense page")
     public void openIncome() {
         fhc.openIncome();
-        Assertions.assertThat(fhc.onIncome()).as("Income & Expense page should be displayed").isTrue();
+        requirePage(fhc.onIncome(), "Income & Expense must show the title and Net Monthly Income or My Loans");
     }
 
-    @When("I enter net monthly income 100000")
+    @When("I enter the net monthly income from the FHC sheet")
     public void enterIncome() {
         fhc.ensureIncomeAmounts();
         Assertions.assertThat(fhc.fieldDigits("Income"))
-                .as("Net monthly income should be 100000")
+                .as("Net monthly income must equal the FHC sheet Income value " + FhcFlow.income()
+                        + ". Visible: " + fhc.visibleLabels())
                 .isEqualTo(FhcFlow.income());
     }
 
-    @When("I enter monthly household expenses 40000")
+    @When("I enter the monthly household expenses from the FHC sheet")
     public void enterExpense() {
         fhc.ensureIncomeAmounts();
         Assertions.assertThat(fhc.fieldDigits("Household"))
-                .as("Household expenses should be 40000")
+                .as("Household expenses must equal the FHC sheet Expenses value " + FhcFlow.expense()
+                        + ". Visible: " + fhc.visibleLabels())
                 .isEqualTo(FhcFlow.expense());
     }
 
@@ -187,7 +191,7 @@ public class FhcSheetSteps {
 
     @Then("the Insurance Details page is displayed")
     public void insuranceDisplayed() {
-        Assertions.assertThat(fhc.onInsurance()).as("Insurance Details page should be displayed").isTrue();
+        requirePage(fhc.onInsurance(), "Insurance Details must show the title and Do you have any Insurance");
     }
 
     @And("the Insurance Details page has no error")
@@ -200,9 +204,9 @@ public class FhcSheetSteps {
         fhc.goBack();
     }
 
-    @And("the pincode 247001 is still shown on Personal Details")
+    @And("the FHC sheet pincode is still shown on Personal Details")
     public void pincodeRetained() {
-        shows(FhcFlow.pincode(), "Pincode " + FhcFlow.pincode());
+        shows(FhcFlow.pincode(), "FHC sheet Pincode " + FhcFlow.pincode());
     }
 
     @Then("the Add Loan button is displayed")
@@ -222,7 +226,7 @@ public class FhcSheetSteps {
 
     @Then("the Add Loan Details page is displayed")
     public void addLoanPage() {
-        Assertions.assertThat(fhc.onAddLoan()).as("Add Loan Details page should be displayed").isTrue();
+        requirePage(fhc.onAddLoan(), "Add Loan Details must show Loan Type and Principal");
     }
 
     @And("the Add Loan Details page has no error")
@@ -233,7 +237,7 @@ public class FhcSheetSteps {
     @When("I open the Add Loan Details page")
     public void openAddLoan() {
         fhc.openAddLoan();
-        Assertions.assertThat(fhc.onAddLoan()).as("Add Loan Details page should be displayed").isTrue();
+        requirePage(fhc.onAddLoan(), "Add Loan Details must show Loan Type and Principal");
     }
 
     @Then("the Loan Type dropdown is displayed")
@@ -308,9 +312,9 @@ public class FhcSheetSteps {
         fhc.goBack();
     }
 
-    @And("the income amount 100000 is still shown on Income and Expense")
+    @And("the FHC sheet income is still shown on Income and Expense")
     public void incomeRetained() {
-        shows(FhcFlow.income(), "Income " + FhcFlow.income());
+        shows(FhcFlow.income(), "FHC sheet Income " + FhcFlow.income());
     }
 
     @When("I open the Loan Type dropdown")
@@ -394,7 +398,7 @@ public class FhcSheetSteps {
     @When("I open the Insurance Details page")
     public void openInsurance() {
         fhc.openInsurance();
-        Assertions.assertThat(fhc.onInsurance()).as("Insurance Details page should be displayed").isTrue();
+        requirePage(fhc.onInsurance(), "Insurance Details must show the title and Do you have any Insurance");
     }
 
     @When("I select Yes for insurance")
@@ -486,7 +490,7 @@ public class FhcSheetSteps {
 
     @Then("the Savings and Investments page is displayed")
     public void savingsDisplayed() {
-        Assertions.assertThat(fhc.onSavings()).as("Savings & Investments page should be displayed").isTrue();
+        requirePage(fhc.onSavings(), "Savings & Investments must show Savings and Investment");
     }
 
     @And("the Insurance Details page is no longer displayed")
@@ -504,7 +508,7 @@ public class FhcSheetSteps {
     @When("I open the Savings and Investments page")
     public void openSavings() {
         fhc.openSavings();
-        Assertions.assertThat(fhc.onSavings()).as("Savings & Investments page should be displayed").isTrue();
+        requirePage(fhc.onSavings(), "Savings & Investments must show Savings and Investment");
     }
 
     @When("I select No for investments")
@@ -535,9 +539,13 @@ public class FhcSheetSteps {
         fhc.chooseInvestmentTypePublic();
     }
 
-    @When("I enter current value 100000")
+    @When("I enter the current value from the FHC sheet")
     public void enterCurrentValue() {
         fhc.enterCurrentValue();
+        Assertions.assertThat(showsAmount(FhcFlow.currentValue()))
+                .as("Current value must show the FHC sheet CurrentValue " + FhcFlow.currentValue()
+                        + ". Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @When("I select No for associating a goal")
@@ -568,9 +576,13 @@ public class FhcSheetSteps {
                 .isTrue();
     }
 
-    @When("I enter total bank balance 100000")
+    @When("I enter the total bank balance from the FHC sheet")
     public void bankBalance() {
         fhc.enterBankBalance();
+        Assertions.assertThat(showsAmount(FhcFlow.bankBalance()))
+                .as("Bank balance must show the FHC sheet BankBalance " + FhcFlow.bankBalance()
+                        + ". Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @And("I select No for creating a plan")
@@ -804,7 +816,7 @@ public class FhcSheetSteps {
 
     @Then("the Summary Details page is displayed")
     public void summary() {
-        Assertions.assertThat(fhc.onSummary()).as("Summary Details page should be displayed").isTrue();
+        requirePage(fhc.onSummary(), "Summary Details must show Summary Details and My Personal Details");
     }
 
     @And("the summary shows the personal details section")
@@ -815,7 +827,7 @@ public class FhcSheetSteps {
     @When("I open the Summary Details page")
     public void openSummary() {
         fhc.openSummary();
-        Assertions.assertThat(fhc.onSummary()).as("Summary Details page should be displayed").isTrue();
+        requirePage(fhc.onSummary(), "Summary Details must show Summary Details and My Personal Details");
     }
 
     @When("I tap Next on Summary Details")
@@ -825,7 +837,7 @@ public class FhcSheetSteps {
 
     @Then("the Financial Health Score page is displayed")
     public void scorePage() {
-        Assertions.assertThat(fhc.onScore()).as("Financial Health Score page should be displayed").isTrue();
+        requirePage(fhc.onScore(), "Financial Health Score must show OUT OF 100 and YOUR FINANCIAL HEALTH SCORE");
     }
 
     @And("the score gauge shows OUT OF 100")
@@ -844,7 +856,7 @@ public class FhcSheetSteps {
     @And("I return to the Financial Health Score page")
     public void openScore() {
         fhc.openScore();
-        Assertions.assertThat(fhc.onScore()).as("Financial Health Score page should be displayed").isTrue();
+        requirePage(fhc.onScore(), "Financial Health Score must show OUT OF 100 and YOUR FINANCIAL HEALTH SCORE");
     }
 
     @Then("the displayed health category is Poor, Average, Good, Excellent, or Weak")
@@ -868,7 +880,7 @@ public class FhcSheetSteps {
 
     @Then("the Diagnosis page is displayed")
     public void diagnosis() {
-        Assertions.assertThat(fhc.onDiagnosis()).as("Diagnosis page should be displayed").isTrue();
+        requirePage(fhc.onDiagnosis(), "Diagnosis must show Your Money Diagnosed");
     }
 
     @When("I tap Back on the Financial Health Score page")
@@ -910,7 +922,7 @@ public class FhcSheetSteps {
     @When("I open the Diagnosis page")
     public void openDiagnosis() {
         fhc.openDiagnosis();
-        Assertions.assertThat(fhc.onDiagnosis()).as("Diagnosis page should be displayed").isTrue();
+        requirePage(fhc.onDiagnosis(), "Diagnosis must show Your Money Diagnosed");
     }
 
     @Then("the title Your Money Diagnosed is displayed")
@@ -945,8 +957,16 @@ public class FhcSheetSteps {
                 .isTrue();
     }
 
+    private void requirePage(boolean shown, String expected) {
+        Assertions.assertThat(shown)
+                .as(expected + ". Visible: " + fhc.visibleLabels())
+                .isTrue();
+    }
+
     private void shows(String label, String name) {
-        Assertions.assertThat(fhc.shows(label)).as(name + " should be displayed").isTrue();
+        Assertions.assertThat(fhc.shows(label))
+                .as(name + " must show \"" + label + "\". Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     private boolean showsAmount(String digits) {

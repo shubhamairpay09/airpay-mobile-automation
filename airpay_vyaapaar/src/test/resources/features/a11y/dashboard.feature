@@ -4,7 +4,7 @@ Feature: airpay vyaapaar dashboard screens
   Each screen was captured once during the deep scan.
 
   @DASHBOARD_001
-  Scenario: Dashboard — Dashboard
+  Scenario: Featured Services/Dashboard
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "dashboard" in module "dashboard" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-dashboard" in module "dashboard" has stored xpaths
 

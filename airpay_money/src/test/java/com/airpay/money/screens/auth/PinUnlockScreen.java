@@ -86,21 +86,21 @@ public class PinUnlockScreen extends BaseScreen {
 
     public void enterPin(String pin) {
         if (pin == null || pin.isBlank()) {
-            throw new IllegalStateException("money.test.pin is blank.");
+            throw new IllegalStateException("Login sheet PIN is blank.");
         }
         for (int i = 0; i < pin.length(); i++) {
             char digit = pin.charAt(i);
             if (digit < '0' || digit > '9') {
                 throw new IllegalArgumentException("PIN must be digits: " + pin);
             }
-            if (!tapFirst(Duration.ofSeconds(4),
+            if (!tapFirst(Duration.ofMillis(1500),
                     MobileWaits.xpath("//*[starts-with(@content-desc,'Digit " + digit + "')]"),
                     MobileWaits.xpath("//android.view.View[@content-desc='" + digit + "' and @clickable='true']"),
                     MobileWaits.xpath("//android.widget.Button[@content-desc='" + digit + "']"),
                     accessibility(String.valueOf(digit)))) {
                 throw new IllegalStateException("PIN key " + digit + " not found.");
             }
-            sleep(120);
+            sleep(50);
         }
     }
 }

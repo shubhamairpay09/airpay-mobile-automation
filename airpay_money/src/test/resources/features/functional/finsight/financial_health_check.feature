@@ -6,7 +6,7 @@ Feature: Financial Health Check after login
   Login and KYC are already done. These cases start on the logged-in home screen.
   The Financial Health Check entry on this build is Continue, Start Now, Let's start, View Details, or Reassess.
   Amounts are read from the FHC sheet in testdata/money-functional-data.xlsx.
-  Change Income, Expenses, Principal, EMI, InterestRate, CurrentValue, or BankBalance on the DEFAULT row to change what is typed.
+  The scenarios do not type a fixed amount. Income, Expenses, Principal, EMI, InterestRate, CurrentValue, BankBalance, and Pincode come from the DEFAULT row.
   Diagnosis share actions are not tapped.
 
   Background:
@@ -48,8 +48,8 @@ Feature: Financial Health Check after login
   @FHC_TC_004
   Scenario: TC_004 valid income and expense details open the next page
     When I open the Income and Expense page
-    And I enter net monthly income 100000
-    And I enter monthly household expenses 40000
+    And I enter the net monthly income from the FHC sheet
+    And I enter the monthly household expenses from the FHC sheet
     And I select No for the running loan question
     And I tap Next on Income and Expense
     Then the Insurance Details page is displayed
@@ -58,10 +58,10 @@ Feature: Financial Health Check after login
   @FHC_TC_005
   Scenario: TC_005 Back from Income and Expense returns to Personal Details
     When I open the Income and Expense page
-    And I enter net monthly income 100000
+    And I enter the net monthly income from the FHC sheet
     And I tap Back on Income and Expense
     Then the Personal Details page is displayed
-    And the pincode 247001 is still shown on Personal Details
+    And the FHC sheet pincode is still shown on Personal Details
 
   @FHC_TC_007
   Scenario: TC_007 Add Loan is shown when Yes is selected
@@ -104,7 +104,7 @@ Feature: Financial Health Check after login
     When I open the Add Loan Details page
     And I tap Back on Add Loan Details
     Then the Income and Expense page is displayed
-    And the income amount 100000 is still shown on Income and Expense
+    And the FHC sheet income is still shown on Income and Expense
 
   @FHC_TC_012
   Scenario: TC_012 Loan Type search filters the list
@@ -145,8 +145,8 @@ Feature: Financial Health Check after login
   @FHC_TC_015
   Scenario: TC_015 Next on Income and Expense opens Insurance Details
     When I open the Income and Expense page
-    And I enter net monthly income 100000
-    And I enter monthly household expenses 40000
+    And I enter the net monthly income from the FHC sheet
+    And I enter the monthly household expenses from the FHC sheet
     And I select No for the running loan question
     And I tap Next on Income and Expense
     Then the Insurance Details page is displayed
@@ -211,7 +211,7 @@ Feature: Financial Health Check after login
   Scenario: TC_023 an investment can be added
     When I open the Add Investment Details page
     And I select Public Provident Fund as the investment type
-    And I enter current value 100000
+    And I enter the current value from the FHC sheet
     And I select No for associating a goal
     And I tap Add on the investment form
     Then the Savings and Investments page is displayed
@@ -221,7 +221,7 @@ Feature: Financial Health Check after login
   Scenario: TC_024 an investment with a goal returns to My Investments
     When I open the Add Investment Details page
     And I select Public Provident Fund as the investment type
-    And I enter current value 100000
+    And I enter the current value from the FHC sheet
     And I select Yes for associating a goal
     And I choose the Car goal
     And I tap Add on the investment form
@@ -231,7 +231,7 @@ Feature: Financial Health Check after login
   @FHC_TC_025
   Scenario: TC_025 Next on Savings and Investments opens the risk profile introduction
     When I open the Savings and Investments page
-    And I enter total bank balance 100000
+    And I enter the total bank balance from the FHC sheet
     And I select No for investments
     And I select No for creating a plan
     And I tap Next on Savings and Investments

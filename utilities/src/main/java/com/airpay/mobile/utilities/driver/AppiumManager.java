@@ -27,9 +27,16 @@ public final class AppiumManager {
 
     /** One session for the whole run. App data is not cleared, so login stays on the phone. */
     public static synchronized AppiumManager open(FrameworkConfig config) {
+        String wantedPackage = config.require(config.product() + ".app.package");
+        if (open != null && open.alive() && !wantedPackage.equals(open.appPackage)) {
+            LOG.info("Product changed | oldPkg={} | newPkg={} | product={} — closing old session",
+                    open.appPackage, wantedPackage, config.product());
+            open.quit();
+            open = null;
+        }
         if (open != null && open.alive()) {
             open.createdNow = false;
-            LOG.info("Reusing Appium session | session={}", open.driver.getSessionId());
+            LOG.info("Reusing Appium session | session={} | pkg={}", open.driver.getSessionId(), open.appPackage);
             if (!open.alreadyInApp()) {
                 open.bringAppToForeground(open.udid, open.appPackage, open.appActivity);
             }
@@ -37,6 +44,7 @@ public final class AppiumManager {
         }
         if (open != null) {
             open.quit();
+            open = null;
         }
         open = new AppiumManager(config);
         return open;
@@ -56,7 +64,7 @@ public final class AppiumManager {
         this.appPackage = config.require(product + ".app.package");
         this.appActivity = config.require(product + ".app.activity");
         this.udid = config.get("android.udid", "");
-        this.keepSession = config.getBoolean("android.keep.session", false);
+        this.keepSession = config.getBoolean("android.keep.session", true);
         String server = config.get("appium.server.url", "http://127.0.0.1:4723");
 
         UiAutomator2Options options = new UiAutomator2Options()
@@ -92,8 +100,12 @@ public final class AppiumManager {
         try {
             this.driver = new AndroidDriver(URI.create(server).toURL(), options);
         } catch (Exception e) {
+            String reason = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
             throw new IllegalStateException(
-                    "Failed to create AndroidDriver. Is Appium running at " + server + "?", e);
+                    "Failed to create AndroidDriver at " + server
+                            + " | udid=" + (this.udid.isBlank() ? "(first device)" : this.udid)
+                            + " | pkg=" + this.appPackage
+                            + " | cause=" + reason, e);
         }
         this.driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
         AdbCommands.grantCommonRuntimePermissions(this.udid, this.appPackage);
@@ -130,52 +142,12 @@ public final class AppiumManager {
         } catch (Exception ignored) {
             // Fall through and bring the app forward.
         }
-        if (keepSession) {
-            LOG.info("App is not open — opening it");
-            try {
-                driver.activateApp(appPackage);
-                Thread.sleep(1500);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (Exception e) {
-                LOG.warn("Could not resume the app: {}", e.toString());
-            }
-            try {
-                if (!appPackage.equals(driver.getCurrentPackage())) {
-                    LOG.info("App was closed — starting it from scratch");
-                    AdbCommands.shell(udid, "am", "start", "-n", appPackage + "/" + appActivity);
-                    Thread.sleep(2500);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } catch (Exception e) {
-                LOG.warn("Could not start the app: {}", e.toString());
-            }
-            return;
-        }
-        try {
-            driver.activateApp(appPackage);
-        } catch (Exception e) {
-            LOG.warn("activateApp failed: {}", e.toString());
-        }
+        LOG.info("Resuming the existing app session | keepSession={}", keepSession);
+        AdbCommands.shell(udid, "am", "start", "-n", appPackage + "/" + appActivity);
         try {
             Thread.sleep(1500);
-            String src = driver.getPageSource();
-            boolean inApp = src != null && src.contains(appPackage);
-            boolean onLauncher = src != null && src.contains("com.sec.android.app.launcher") && !inApp;
-            if (!inApp || onLauncher) {
-                AdbCommands.shell(udid, "am", "start", "-n", appPackage + "/" + appActivity);
-                Thread.sleep(2500);
-            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        } catch (Exception e) {
-            AdbCommands.shell(udid, "am", "start", "-n", appPackage + "/" + appActivity);
-            try {
-                Thread.sleep(2500);
-            } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-            }
         }
     }
 

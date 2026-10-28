@@ -1,0 +1,36 @@
+package com.airpay.vyaapaar.screens.services;
+
+import com.airpay.vyaapaar.screens.base.BaseScreen;
+import com.airpay.mobile.utilities.context.TestContext;
+import io.appium.java_client.pagefactory.AndroidFindBy;
+import org.openqa.selenium.WebElement;
+
+/** Credit Balance / Services / Certificate — Image Content. Module services. */
+public class HomeCreditBalanceServicesCertificateScreen extends BaseScreen {
+
+    public static final String PAGE_ID = "home-credit-balance-services-certificate";
+
+    public static final String IMAGE_CONTENT = "//android.view.View[contains(@content-desc,'Image Content')]";
+
+    @AndroidFindBy(xpath = IMAGE_CONTENT)
+    private WebElement imageContent;
+
+    public static final String BACK_ICON = "//android.view.View[contains(@content-desc,'Back Icon')]";
+
+    @AndroidFindBy(xpath = BACK_ICON)
+    private WebElement backIcon;
+
+    public static final String CERTIFICATE = "//android.widget.TextView[@text='Certificate']";
+
+    @AndroidFindBy(xpath = CERTIFICATE)
+    private WebElement certificate;
+
+    public static final String DOWNLOAD_ICON = "//android.view.View[contains(@content-desc,'Download Icon')]";
+
+    @AndroidFindBy(xpath = DOWNLOAD_ICON)
+    private WebElement downloadIcon;
+
+    public HomeCreditBalanceServicesCertificateScreen(TestContext context) {
+        super(context);
+    }
+}

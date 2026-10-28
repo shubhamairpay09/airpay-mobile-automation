@@ -4,7 +4,7 @@ Feature: airpay vyaapaar collect-money screens
   Each screen was captured once during the deep scan.
 
   @COLLECT_MONEY_001
-  Scenario: Collect Money — Select Payment Type
+  Scenario: Non Channels/Collect Money
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "collect-money" in module "collectmoney" has stored xpaths
+    Then airpay vyaapaar screen "home-non-channels-collect-money" in module "collectmoney" has stored xpaths
 

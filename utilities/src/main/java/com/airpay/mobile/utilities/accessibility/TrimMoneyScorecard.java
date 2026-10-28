@@ -7,8 +7,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,18 +31,65 @@ public final class TrimMoneyScorecard {
         Path scan = report.resolve("money-scan.json");
         Path backup = repo.resolve("target/money/money-scan-full-before-trim.json");
         Files.createDirectories(backup.getParent());
+
+        if (args.length > 1 && "restore".equalsIgnoreCase(args[1])) {
+            if (!Files.isRegularFile(backup)) {
+                throw new IllegalStateException("Missing backup: " + backup);
+            }
+            List<A11yPageScanResult> full = A11yJson.parsePages(Files.readString(backup));
+            List<A11yPageScanResult> current = Files.isRegularFile(scan)
+                    ? A11yJson.parsePages(Files.readString(scan)) : List.of();
+            Map<String, A11yPageScanResult> byId = new LinkedHashMap<>();
+            for (A11yPageScanResult p : full) {
+                byId.put(p.page().id(), p);
+            }
+            for (A11yPageScanResult p : current) {
+                byId.put(p.page().id(), p);
+            }
+            System.setProperty("airpay.product", "money");
+            Path html = A11yScorecardWriter.writeReplacing(
+                    ConfigLoader.load(),
+                    "com.finmapp.fininfinity",
+                    new ArrayList<>(byId.values()),
+                    ProjectPaths.resolveKind(ProjectPaths.KIND_A11Y),
+                    "money",
+                    "airpay money Android");
+            System.out.println("RESTORE pages=" + byId.size() + " fromBackup=" + full.size()
+                    + " fromCurrent=" + current.size() + " html=" + html);
+            return;
+        }
+
         Files.copy(scan, backup, StandardCopyOption.REPLACE_EXISTING);
 
         Set<String> keep = new LinkedHashSet<>();
         for (int i = 1; i < args.length; i++) {
-            String log = Files.readString(Path.of(args[i]));
-            Matcher matcher = SCANNED.matcher(log);
-            while (matcher.find()) {
-                keep.add(matcher.group(1).trim());
+            Path input = Path.of(args[i]);
+            String text = Files.readString(input);
+            String name = input.getFileName().toString().toLowerCase();
+            if (name.contains("deep-scan-ids") || name.endsWith("-ids.txt") || !text.contains("A11y ")) {
+                for (String line : text.split("\\R")) {
+                    String trimmed = line.trim();
+                    if (trimmed.isEmpty() || trimmed.startsWith("Money ")) {
+                        continue;
+                    }
+                    // "12. prod-us-stocks" or bare id
+                    int dot = trimmed.indexOf(". ");
+                    String id = (dot > 0 && Character.isDigit(trimmed.charAt(0)))
+                            ? trimmed.substring(dot + 2).trim()
+                            : trimmed;
+                    if (!id.isEmpty() && !id.contains(" ")) {
+                        keep.add(id);
+                    }
+                }
+            } else {
+                Matcher matcher = SCANNED.matcher(text);
+                while (matcher.find()) {
+                    keep.add(matcher.group(1).trim());
+                }
             }
         }
         if (keep.isEmpty()) {
-            throw new IllegalStateException("No scanned page ids found in the log files.");
+            throw new IllegalStateException("No scanned page ids found in the input files.");
         }
 
         List<A11yPageScanResult> all = A11yJson.parsePages(Files.readString(scan));

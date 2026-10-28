@@ -80,28 +80,28 @@ public class DashboardHomeSteps {
     @And("the Financial Health Check information sits above Let's Start")
     public void healthAligned() {
         Assertions.assertThat(dashboard.healthInformationAligned())
-                .as("Financial Health Check information should sit above the Let's Start button and share the card's left edge")
+                .as("Financial Health Check information should sit above Let's Start / Reassess and share the card's left edge")
                 .isTrue();
     }
 
     @And("the Let's Start button is displayed")
     public void letsStart() {
         Assertions.assertThat(dashboard.letsStartDisplayed())
-                .as("Let's Start button should be displayed")
+                .as("Let's Start, Reassess, or View Details should be displayed on the health card")
                 .isTrue();
     }
 
     @When("I tap Let's Start on the dashboard")
     public void tapLetsStart() {
         Assertions.assertThat(dashboard.tapLetsStart())
-                .as("Let's Start should open Personal Details")
+                .as("Let's Start or Reassess should open the Financial Health Check journey")
                 .isTrue();
     }
 
     @Then("the Financial Health Check Personal Details page is displayed")
     public void personalDetails() {
         Assertions.assertThat(dashboard.personalDetailsDisplayed())
-                .as("Personal Details should show Personal Details, Full Name, and Pincode")
+                .as("Personal Details or the completed diagnosis should be displayed")
                 .isTrue();
     }
 

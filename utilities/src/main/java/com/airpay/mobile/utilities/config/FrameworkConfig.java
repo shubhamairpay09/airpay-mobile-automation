@@ -56,7 +56,7 @@ public final class FrameworkConfig {
     }
 
     public String product() {
-        return get("airpay.product", "capital").trim();
+        return get("airpay.product", "money").trim();
     }
 
     public String environment() {

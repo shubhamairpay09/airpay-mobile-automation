@@ -4,7 +4,12 @@ Feature: airpay vyaapaar devotional-experiences screens
   Each screen was captured once during the deep scan.
 
   @DEVOTIONAL_EXPERIENCES_001
-  Scenario: Devotional Experiences — Screen
+  Scenario: Non Channels/Devotional Experiences
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "devotional-experiences" in module "devotionalexperiences" has stored xpaths
+    Then airpay vyaapaar screen "home-non-channels-devotional-experiences" in module "devotionalexperiences" has stored xpaths
+
+  @DEVOTIONAL_EXPERIENCES_002
+  Scenario: Non Channels/Devotional Experiences/Ayodhya Darshan Booking
+    Given the airpay vyaapaar app is installed on the device
+    Then airpay vyaapaar screen "home-non-channels-devotional-experiences-ayodhya-darshan-booking" in module "devotionalexperiences" has stored xpaths
 

@@ -135,8 +135,10 @@ public class ProductsHubScreen extends BaseScreen {
     }
 
     public boolean isDisplayed() {
+        // Investments section + at least one other investment tile (not MF interior alone).
         return sourceContains("Investments")
-                && sourceContains("Digital Gold", "Mutual Funds", "Fixed Deposit", "Hello");
+                && sourceContains("Digital Gold", "NPS", "Fixed Deposit")
+                && !sourceContains("View all Mutual Funds", "Features of NPS", "Buy Gold", "Calculate Now");
     }
 
     public boolean open() {
@@ -146,6 +148,7 @@ public class ProductsHubScreen extends BaseScreen {
         }
         if (!tapFirst(Duration.ofSeconds(4),
                 MobileWaits.xpath("//android.widget.Button[@content-desc='Products']"),
+                MobileWaits.xpath("//android.view.View[@content-desc='Products']"),
                 accessibility("Products"))) {
             new FinSightHomeScreen(context).openProductsTab();
         }

@@ -4,7 +4,7 @@ Feature: airpay vyaapaar pos-activation screens
   Each screen was captured once during the deep scan.
 
   @POS_ACTIVATION_001
-  Scenario: POS Activation — Pos Activation
+  Scenario: Non Channels/POS Activation
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "pos-activation" in module "posactivation" has stored xpaths
+    Then airpay vyaapaar screen "home-non-channels-pos-activation" in module "posactivation" has stored xpaths
 

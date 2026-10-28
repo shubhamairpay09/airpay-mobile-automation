@@ -1,0 +1,56 @@
+package com.airpay.vyaapaar.screens.finance;
+
+import com.airpay.vyaapaar.screens.base.BaseScreen;
+import com.airpay.mobile.utilities.context.TestContext;
+import io.appium.java_client.pagefactory.AndroidFindBy;
+import org.openqa.selenium.WebElement;
+
+/** Credit Balance / Finance / Unsecured Credit Cards / Credilio — Start Your Credit Journey Securely! Logo. Module finance. */
+public class HomeCreditBalanceFinanceUnsecuredCredit3Screen extends BaseScreen {
+
+    public static final String PAGE_ID = "home-credit-balance-finance-unsecured-credit-cards-credilio";
+
+    public static final String START_YOUR_CREDIT_JOURNEY_SECURELY_LOGO = "//android.view.View[contains(@content-desc,'Start Your Credit Journey Securely! Logo')]";
+
+    @AndroidFindBy(xpath = START_YOUR_CREDIT_JOURNEY_SECURELY_LOGO)
+    private WebElement startYourCreditJourneySecurelyLogo;
+
+    public static final String START_YOUR_CREDIT_JOURNEY_SECURELY = "//android.widget.TextView[@text='Start Your Credit Journey Securely!']";
+
+    @AndroidFindBy(xpath = START_YOUR_CREDIT_JOURNEY_SECURELY)
+    private WebElement startYourCreditJourneySecurely;
+
+    public static final String EL3QUICK_FIELDS_WE_LL_TAKE_YOU_TO = "//android.widget.TextView[@text=concat('3 quick fields - we',\"'\",'ll take you to Credilio to finish instantly.')]";
+
+    @AndroidFindBy(xpath = EL3QUICK_FIELDS_WE_LL_TAKE_YOU_TO)
+    private WebElement el3QuickFieldsWeLlTakeYouTo;
+
+    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
+
+    @AndroidFindBy(xpath = MOBILE_NUMBER)
+    private WebElement mobileNumber;
+
+    public static final String NAME_AS_PER_PAN = "//android.widget.TextView[@text='Name as Per PAN']";
+
+    @AndroidFindBy(xpath = NAME_AS_PER_PAN)
+    private WebElement nameAsPerPan;
+
+    public static final String PINCODE = "//android.widget.TextView[@text='Pincode']";
+
+    @AndroidFindBy(xpath = PINCODE)
+    private WebElement pincode;
+
+    public static final String SUBMIT = "//android.widget.TextView[@text='Submit']";
+
+    @AndroidFindBy(xpath = SUBMIT)
+    private WebElement submit;
+
+    public static final String CREDILIO = "//android.widget.TextView[@text='Credilio']";
+
+    @AndroidFindBy(xpath = CREDILIO)
+    private WebElement credilio;
+
+    public HomeCreditBalanceFinanceUnsecuredCredit3Screen(TestContext context) {
+        super(context);
+    }
+}

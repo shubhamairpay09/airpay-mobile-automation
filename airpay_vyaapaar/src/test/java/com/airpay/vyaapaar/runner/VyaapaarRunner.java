@@ -20,6 +20,10 @@ import org.testng.annotations.DataProvider;
 )
 public class VyaapaarRunner extends AbstractTestNGCucumberTests {
 
+    static {
+        System.setProperty("airpay.product", "vyaapaar");
+    }
+
     @Override
     @DataProvider(parallel = false)
     public Object[][] scenarios() {

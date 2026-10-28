@@ -90,6 +90,16 @@ public final class MoneyExcel {
         return fallback == null ? "" : fallback;
     }
 
+    /** Session PIN from the Login sheet. Every module uses this row. */
+    public static String pin(String fallback) {
+        load();
+        String value = CELLS.get(id("Login", "DEFAULT", "Pin"));
+        if (value != null && !value.isBlank()) {
+            return value;
+        }
+        return fallback == null ? "" : fallback;
+    }
+
     /** Repeated rows for the running case, or the ALL rows when this case has none. */
     public static List<String[]> rows(String key) {
         load();
@@ -109,11 +119,52 @@ public final class MoneyExcel {
     public static void main(String[] args) throws Exception {
         Path path = Path.of(args.length > 0 ? args[0] : "src/test/resources/testdata/money-functional-data.xlsx");
         Files.createDirectories(path.getParent());
+        if (Files.isRegularFile(path)) {
+            ensureLoginPin(path);
+            System.out.println("Login PIN is on " + path.toAbsolutePath());
+            return;
+        }
         try (Workbook book = new XSSFWorkbook(); OutputStream out = Files.newOutputStream(path)) {
             fill(book);
             book.write(out);
         }
         System.out.println("Wrote " + path.toAbsolutePath());
+    }
+
+    /** Adds the Login sheet PIN without rewriting the other module rows. */
+    public static void ensureLoginPin(Path path) throws Exception {
+        Workbook book;
+        try (InputStream in = Files.newInputStream(path)) {
+            book = new XSSFWorkbook(in);
+        }
+        Sheet sheet = book.getSheet("Login");
+        if (sheet == null) {
+            sheet = book.createSheet("Login");
+            header(sheet);
+        }
+        DataFormatter formatter = new DataFormatter();
+        boolean found = false;
+        for (Row row : sheet) {
+            if ("DEFAULT".equals(cell(formatter, row, 0)) && "Pin".equals(cell(formatter, row, 1))) {
+                if (row.getCell(2) == null) {
+                    row.createCell(2);
+                }
+                row.getCell(2).setCellValue("880272");
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            Row row = sheet.createRow(Math.max(sheet.getLastRowNum(), 0) + 1);
+            row.createCell(0).setCellValue("DEFAULT");
+            row.createCell(1).setCellValue("Pin");
+            row.createCell(2).setCellValue("880272");
+            row.createCell(3).setCellValue("Used when the app asks for the Airpay Money PIN");
+        }
+        try (OutputStream out = Files.newOutputStream(path)) {
+            book.write(out);
+        }
+        book.close();
     }
 
     private static void load() {
@@ -125,6 +176,15 @@ public final class MoneyExcel {
         if (file == null) {
             return;
         }
+        ingest(file);
+        String pin = CELLS.get(id("Login", "DEFAULT", "Pin"));
+        Path login = file.getParent().resolve("money-login.xlsx");
+        if ((pin == null || pin.isBlank()) && Files.isRegularFile(login)) {
+            ingest(login);
+        }
+    }
+
+    private static void ingest(Path file) {
         DataFormatter formatter = new DataFormatter();
         try (InputStream in = Files.newInputStream(file); Workbook book = new XSSFWorkbook(in)) {
             for (int s = 0; s < book.getNumberOfSheets(); s++) {
@@ -156,9 +216,19 @@ public final class MoneyExcel {
                 Path.of("airpay_money/src/test/resources/testdata/money-functional-data.xlsx")
         };
         for (Path candidate : candidates) {
-            if (Files.isRegularFile(candidate)) {
-                return candidate;
+            if (!Files.isRegularFile(candidate)) {
+                continue;
             }
+            Path updated = candidate.resolveSibling(candidate.getFileName().toString() + ".tmp");
+            try {
+                if (Files.isRegularFile(updated)
+                        && Files.getLastModifiedTime(updated).compareTo(Files.getLastModifiedTime(candidate)) > 0) {
+                    return updated;
+                }
+            } catch (Exception ignored) {
+                // The saved workbook is still readable.
+            }
+            return candidate;
         }
         return null;
     }
@@ -241,7 +311,7 @@ public final class MoneyExcel {
                 {"NPS Calculator", "NPS Calculator"},
                 {"Retirement Calculator", "Retirement Calculator"},
                 {"Crorepati Calculator", "Crorepati Calculator"},
-                {"Term Insurance Calculator", "Term Insurance"},
+                {"Term Insurance Calculator", "Retirement Calculator"},
                 {"Buy vs Rent Calculator", "Buy Vs Rent"},
                 {"Taxation Indian Equity", "Taxation Indian Equity"},
                 {"Taxation International Equity", "Taxation International Equity"},
@@ -266,6 +336,9 @@ public final class MoneyExcel {
         header(book.createSheet("Sync Net Worth"));
         put(book, "Sync Net Worth", "ALL", "Note",
                 "The sheet listed Allow Consent twice. That case is automated once as NW_TC.", "");
+
+        header(book.createSheet("Login"));
+        put(book, "Login", "DEFAULT", "Pin", "880272", "Used when the app asks for the Airpay Money PIN");
     }
 
     private static void header(Sheet sheet) {

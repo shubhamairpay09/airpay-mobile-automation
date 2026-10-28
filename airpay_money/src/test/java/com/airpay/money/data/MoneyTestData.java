@@ -31,6 +31,10 @@ public final class MoneyTestData {
     }
 
     public static String pin(FrameworkConfig config) {
+        String fromSheet = MoneyExcel.pin("");
+        if (!fromSheet.isBlank()) {
+            return fromSheet;
+        }
         return config.get("money.test.pin", "").trim();
     }
 

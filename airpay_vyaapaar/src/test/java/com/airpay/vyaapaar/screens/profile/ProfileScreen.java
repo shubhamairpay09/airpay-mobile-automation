@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Profile — Vcare test. Module profile. */
+/** Profile. Module profile. */
 public class ProfileScreen extends BaseScreen {
 
     public static final String PAGE_ID = "profile";

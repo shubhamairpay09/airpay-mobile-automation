@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / Post Office / India Post Office. Module post-office. */
+/** Credit Balance / Post Office / India Post Office — BOOK. Module post-office. */
 public class HomeCreditBalancePostOfficeIndiaScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-credit-balance-post-office-india-post-office";

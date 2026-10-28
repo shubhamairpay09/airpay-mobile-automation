@@ -5,7 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / CMS. Module cms. */
+/** Credit Balance / CMS — Effortlessly manage your cash. Module cms. */
 public class HomeCreditBalanceCmsScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-credit-balance-cms";

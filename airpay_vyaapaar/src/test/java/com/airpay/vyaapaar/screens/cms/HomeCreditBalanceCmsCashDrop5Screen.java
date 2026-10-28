@@ -5,10 +5,10 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Credit Balance / CMS / Cash Drop / AC / Suryoday / Suryoday / MM. Module cms. */
+/** Credit Balance / CMS / Cash Drop / BF — Merchant Name. Module cms. */
 public class HomeCreditBalanceCmsCashDrop5Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-ac-suryoday-suryoday-mm";
+    public static final String PAGE_ID = "home-credit-balance-cms-cash-drop-bf";
 
     public static final String MERCHANT_NAME = "//android.widget.TextView[@text='Merchant Name']";
 
@@ -20,10 +20,10 @@ public class HomeCreditBalanceCmsCashDrop5Screen extends BaseScreen {
     @AndroidFindBy(xpath = ELEMENT)
     private WebElement element;
 
-    public static final String MIDLAND_MICROFIN_LIMITED = "//android.widget.TextView[@text='Midland Microfin Limited']";
+    public static final String BAJAJ_FINANCE = "//android.widget.TextView[@text='Bajaj Finance']";
 
-    @AndroidFindBy(xpath = MIDLAND_MICROFIN_LIMITED)
-    private WebElement midlandMicrofinLimited;
+    @AndroidFindBy(xpath = BAJAJ_FINANCE)
+    private WebElement bajajFinance;
 
     public static final String MERCHANT_MOBILE = "//android.widget.TextView[@text='Merchant Mobile']";
 
@@ -35,10 +35,15 @@ public class HomeCreditBalanceCmsCashDrop5Screen extends BaseScreen {
     @AndroidFindBy(xpath = MERCHANT_EMAIL)
     private WebElement merchantEmail;
 
-    public static final String TESTBHAVNA_BHAGAT_MIDLANDMICROFIN_COM = "//android.widget.TextView[@text='testbhavna.bhagat@midlandmicrofin.com']";
+    public static final String BAJAJFINANCETEST_GMAIL_COM = "//android.widget.TextView[@text='bajajfinancetest@gmail.com']";
 
-    @AndroidFindBy(xpath = TESTBHAVNA_BHAGAT_MIDLANDMICROFIN_COM)
-    private WebElement testbhavnaBhagatMidlandmicrofinCom;
+    @AndroidFindBy(xpath = BAJAJFINANCETEST_GMAIL_COM)
+    private WebElement bajajfinancetestGmailCom;
+
+    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
+
+    @AndroidFindBy(xpath = MOBILE_NUMBER)
+    private WebElement mobileNumber;
 
     public static final String SEARCH_VALUE = "//android.widget.TextView[@text='Search Value']";
 

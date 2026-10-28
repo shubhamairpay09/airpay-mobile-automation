@@ -187,7 +187,7 @@ public class FhcFlow extends BaseScreen {
         }
         openFinsight();
         scrollTo("Financial Health");
-        pressFirst("Continue", "Start Now", "Let's start", "Let's Start", "View Details", "Reassess");
+        pressFirst("Continue", "Start Now", "Let's start", "Let's Start", "Reassess", "View Details");
         sleep(900);
         if (!onPersonal() && (onScore() || shows("See the diagnosis"))) {
             pressFirst("Reassess", "Let's start", "Start Now", "Continue");

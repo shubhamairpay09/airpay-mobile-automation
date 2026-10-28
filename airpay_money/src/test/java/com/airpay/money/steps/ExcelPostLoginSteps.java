@@ -1,6 +1,8 @@
 package com.airpay.money.steps;
 
 import com.airpay.money.data.MoneyExcel;
+import com.airpay.money.screens.auth.BiometricScreen;
+import com.airpay.money.screens.auth.PinUnlockScreen;
 import com.airpay.money.screens.finsight.FinSightHomeScreen;
 import com.airpay.money.screens.home.HomeScreen;
 import com.airpay.money.screens.product.DigitalGoldBuyScreen;
@@ -14,9 +16,15 @@ import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.assertj.core.api.Assertions;
 
+import java.time.Duration;
+
 public class ExcelPostLoginSteps {
+
+    private static final Logger LOG = LogManager.getLogger(ExcelPostLoginSteps.class);
 
     private final HomeScreen home;
     private final FinSightHomeScreen finsight;
@@ -26,6 +34,8 @@ public class ExcelPostLoginSteps {
     private final DigitalGoldSellScreen sell;
     private final FixedDepositsLandingScreen fixedDeposit;
     private final FdPlanBookingScreen fdPlan;
+    private final PinUnlockScreen pinUnlock;
+    private final BiometricScreen biometric;
 
     public ExcelPostLoginSteps(TestContext context) {
         this.home = new HomeScreen(context);
@@ -36,13 +46,16 @@ public class ExcelPostLoginSteps {
         this.sell = new DigitalGoldSellScreen(context);
         this.fixedDeposit = new FixedDepositsLandingScreen(context);
         this.fdPlan = new FdPlanBookingScreen(context);
+        this.pinUnlock = new PinUnlockScreen(context);
+        this.biometric = new BiometricScreen(context);
     }
 
     @Given("the logged-in airpay money home screen is open")
     public void loggedInHome() {
         home.dismissHomeCoachIfShown();
+        unlockPinAndSkipBiometric();
         Assertions.assertThat(onPinOrLogin())
-                .as("Login, OTP, and PIN cases are not part of this run. The session should already be signed in.")
+                .as("PIN from the Login sheet should unlock the session")
                 .isFalse();
         if (insideHealthCheck()) {
             return;
@@ -55,8 +68,9 @@ public class ExcelPostLoginSteps {
         if (!products.isDisplayed()) {
             openFinsight();
         }
+        unlockPinAndSkipBiometric();
         Assertions.assertThat(onPinOrLogin())
-                .as("Login, OTP, and PIN cases are not part of this run. The session should already be signed in.")
+                .as("PIN from the Login sheet should unlock the session")
                 .isFalse();
         Assertions.assertThat(products.isDisplayed() || finsight.isDisplayed() || home.looksLoggedIn())
                 .as("Expected the logged-in home dashboard or products hub")
@@ -83,16 +97,20 @@ public class ExcelPostLoginSteps {
 
     @Then("the Financial Health Check card is displayed")
     public void healthCard() {
+        scrollHomeTop();
         Assertions.assertThat(home.sourceContains(
-                        "Your Financial Health Score", "Financial Health", "Let's start", "Let's Start"))
+                        "Your Financial Health Score", "Financial Health",
+                        "Let's start", "Let's Start", "Reassess", "View Details"))
                 .as("Financial Health Check card should be displayed")
                 .isTrue();
     }
 
     @Then("the Sync Your Net Worth card is displayed")
     public void syncCard() {
-        swipeUntil("Net Worth", "Accounts Synced", "Sync Your Net Worth");
-        Assertions.assertThat(home.sourceContains("Sync Your Net Worth", "Accounts Synced", "View Net Worth"))
+        scrollHomeTop();
+        swipeUntil("Net Worth", "Accounts Synced", "Sync Your Net Worth", "Actual Net Worth");
+        Assertions.assertThat(home.sourceContains(
+                        "Sync Your Net Worth", "Accounts Synced", "View Net Worth", "Actual Net Worth"))
                 .as("Sync Your Net Worth card, or the already synced net worth card, should be displayed")
                 .isTrue();
     }
@@ -134,10 +152,12 @@ public class ExcelPostLoginSteps {
     @When("I open the net worth card")
     public void tapSync() {
         openFinsight();
-        swipeUntil("View Net Worth", "Accounts Synced", "Sync Your Net Worth");
+        scrollHomeTop();
+        swipeUntil("View Net Worth", "Accounts Synced", "Sync Your Net Worth", "Actual Net Worth");
         boolean opened = finsight.tapLabel("Sync Your Net Worth")
                 || home.tapLabel("View Net Worth")
-                || home.tapLabel("Accounts Synced");
+                || home.tapLabel("Accounts Synced")
+                || home.tapLabel("Actual Net Worth");
         Assertions.assertThat(opened)
                 .as("Sync Your Net Worth, or the already synced View Net Worth card, should open")
                 .isTrue();
@@ -506,6 +526,22 @@ public class ExcelPostLoginSteps {
             finsight.tapLabel("FinSight");
             home.dismissHomeCoachIfShown();
         }
+        scrollHomeTop();
+    }
+
+    private void scrollHomeTop() {
+        for (int i = 0; i < 5; i++) {
+            if (home.sourceContains("Your Financial Health Score")
+                    && (home.sourceContains("Hello")
+                    || home.sourceContains("Reassess")
+                    || home.sourceContains("Let's start")
+                    || home.sourceContains("Let's Start"))) {
+                return;
+            }
+            home.swipeDown();
+            sleepQuiet(300);
+        }
+        home.scrollIntoDescription("Your Financial Health Score");
     }
 
     private void leaveSideMenu() {
@@ -523,10 +559,24 @@ public class ExcelPostLoginSteps {
                 "Financial Health Check", "Add Goal Details", "OUT OF 100", "See the diagnosis");
     }
 
+    private void unlockPinAndSkipBiometric() {
+        biometric.dismissIfShown();
+        if (!pinUnlock.waitUntilDisplayed(Duration.ofSeconds(3))
+                && !home.sourceContains("Enter your Airpay Money PIN")) {
+            biometric.dismissIfShown();
+            return;
+        }
+        String pin = MoneyExcel.pin("880272");
+        LOG.info("Entering session PIN from the Login sheet");
+        pinUnlock.enterPin(pin);
+        sleepQuiet(1200);
+        biometric.dismissIfShown();
+    }
+
     private boolean onPinOrLogin() {
         return home.sourceContains(
-                "Login with Mobile", "Enter your Airpay Money PIN", "Welcome Back",
-                "Forgot PIN", "Sign Up or Login");
+                "Login with Mobile", "Enter your Airpay Money PIN",
+                "Forgot PIN", "Sign Up or Login", "Unlock faster with Biometrics");
     }
 
     private static void sleepQuiet(long ms) {
@@ -538,8 +588,16 @@ public class ExcelPostLoginSteps {
     }
 
     private void swipeUntil(String... fragments) {
-        for (int i = 0; i < 3 && !home.sourceContains(fragments); i++) {
+        if (home.sourceContains(fragments)) {
+            return;
+        }
+        for (int i = 0; i < 4 && !home.sourceContains(fragments); i++) {
+            home.swipeDown();
+            sleepQuiet(250);
+        }
+        for (int i = 0; i < 4 && !home.sourceContains(fragments); i++) {
             home.swipeUp();
+            sleepQuiet(250);
         }
     }
 }
