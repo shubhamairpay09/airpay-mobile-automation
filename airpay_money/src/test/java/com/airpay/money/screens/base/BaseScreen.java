@@ -54,6 +54,7 @@ public abstract class BaseScreen {
 
     protected boolean tapFirst(Duration wait, By... locators) {
         long end = System.currentTimeMillis() + wait.toMillis();
+        long poll = Math.min(80, Math.max(40, wait.toMillis() / 5));
         while (System.currentTimeMillis() < end) {
             for (By by : locators) {
                 try {
@@ -71,13 +72,14 @@ public abstract class BaseScreen {
                     // invalid locator on this screen
                 }
             }
-            sleep(300);
+            sleep(poll);
         }
         return false;
     }
 
     protected WebElement firstPresent(Duration wait, By... locators) {
         long end = System.currentTimeMillis() + wait.toMillis();
+        long poll = Math.min(80, Math.max(40, wait.toMillis() / 5));
         while (System.currentTimeMillis() < end) {
             for (By by : locators) {
                 try {
@@ -94,7 +96,7 @@ public abstract class BaseScreen {
                     // ignore
                 }
             }
-            sleep(250);
+            sleep(poll);
         }
         return null;
     }
@@ -149,6 +151,15 @@ public abstract class BaseScreen {
 
     public boolean tapLabel(String label) {
         return tapFirst(Duration.ofSeconds(4),
+                accessibility(label),
+                MobileWaits.xpath("//*[@clickable='true' and @content-desc=" + xpathLiteral(label) + "]"),
+                MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc," + xpathLiteral(label) + ")]"),
+                MobileWaits.xpath("//*[contains(@content-desc," + xpathLiteral(label) + ")]"));
+    }
+
+    /** Fast deep-scan tap: ~400ms miss budget (not 4s). Prefer when probing many labels. */
+    public boolean tapLabelFast(String label) {
+        return tapFirst(Duration.ofMillis(400),
                 accessibility(label),
                 MobileWaits.xpath("//*[@clickable='true' and @content-desc=" + xpathLiteral(label) + "]"),
                 MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc," + xpathLiteral(label) + ")]"),

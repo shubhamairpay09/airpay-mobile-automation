@@ -110,8 +110,7 @@ public final class MoneyProductsDeepWalker {
         LOG.info(">>> Products DEEP START: {}", tile);
         try {
             if (!returnToInvestmentsHub()) {
-                LOG.warn("[{}] hub missing — skip", tile);
-                return;
+                LOG.warn("[{}] hub check soft-fail — still tapping tile", tile);
             }
             scrollForTile(tile);
             if (!products.openModule(tile) && !home.tapProductTile(tile)) {
@@ -275,7 +274,11 @@ public final class MoneyProductsDeepWalker {
     }
 
     private void openScanBack(String[] labels, String id, String title) {
+        String src = safeSource();
         for (String label : labels) {
+            if (!srcContains(src, label)) {
+                continue;
+            }
             if (quickTap(label)) {
                 settle(SCREEN);
                 scanOnce(id, title + " / " + label);
@@ -286,36 +289,49 @@ public final class MoneyProductsDeepWalker {
     }
 
     private void openScanStay(String[] labels, String idPrefix) {
+        String src = safeSource();
         int n = 0;
         for (String label : labels) {
             if (n >= 6 || !timeLeft.getAsBoolean()) {
                 return;
             }
-            if (!quickTap(label)) {
+            if (!srcContains(src, label) || !quickTap(label)) {
                 continue;
             }
             settle(SCREEN);
             scanOnce(idPrefix + "-" + slug(label), "Open / " + label);
             n++;
+            src = safeSource();
             if (!onMfDash()) {
                 home.tapBack();
                 settle(TAP);
+                src = safeSource();
             }
         }
     }
 
     private boolean openFirstGoal() {
-        return quickTap("Goal") || home.tapLabel("Bike") || home.tapLabel("Car")
-                || home.tapLabel("Home") || home.tapLabel("Education");
+        String src = safeSource();
+        for (String label : new String[]{"Bike", "Car", "Education", "Home", "Goal"}) {
+            if (srcContains(src, label) && quickTap(label)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean openFirstFundCard() {
         String src = safeSource();
-        // Prefer a clickable fund-like row; fall back to first View all sibling already open.
-        if (quickTap("Direct") || quickTap("Growth") || home.tapLabel("Invest")) {
-            return true;
+        for (String label : new String[]{"Direct", "Growth", "Invest"}) {
+            if (srcContains(src, label) && quickTap(label)) {
+                return true;
+            }
         }
-        return src.contains("Fund") && home.tapProductTile("Fund");
+        return false;
+    }
+
+    private static boolean srcContains(String src, String label) {
+        return src != null && src.contains(label);
     }
 
     private void backToMfDash() {
@@ -345,47 +361,73 @@ public final class MoneyProductsDeepWalker {
                 || src.contains("Recommendation") || src.contains("Curated"));
     }
 
+    /**
+     * Fast hub recovery: ADB Products tab + short backs. Avoid 8× pageSource loops (~90s).
+     */
     private boolean returnToInvestmentsHub() {
         keepForeground.run();
         unlockPin.run();
         String udid = context.config().get("android.udid", "");
-        for (int i = 0; i < 8; i++) {
+        if (onInvestmentsHub()) {
+            return true;
+        }
+        // Products tab (bottom-left on 1080×2340 Money).
+        AdbCommands.shell(udid, "input", "tap", "180", "2200");
+        settle(250);
+        unlockPin.run();
+        if (onInvestmentsHub()) {
+            return true;
+        }
+        for (int i = 0; i < 4; i++) {
+            home.tapBack();
+            settle(TAP);
+            AdbCommands.shell(udid, "input", "tap", "180", "2200");
+            settle(200);
+            unlockPin.run();
             if (onInvestmentsHub()) {
                 return true;
             }
-            if (home.tapLabel("Close") || home.tapLabel("Dismiss") || home.tapLabel("Cancel")) {
-                settle(TAP);
-                continue;
-            }
-            if (home.tapBack()) {
-                settle(TAP);
-                continue;
-            }
-            try {
-                home.openProductsTab();
-            } catch (Exception e) {
-                AdbCommands.shell(udid, "input", "tap", "180", "2200");
-            }
-            settle(SCREEN);
         }
-        products.open();
-        settle(SCREEN);
-        return onInvestmentsHub();
+        try {
+            home.openProductsTab();
+        } catch (Exception ignored) {
+            AdbCommands.shell(udid, "input", "tap", "180", "2200");
+        }
+        settle(250);
+        for (int i = 0; i < 2; i++) {
+            home.swipeDown();
+            settle(TAP);
+        }
+        boolean ok = onInvestmentsHub();
+        if (!ok) {
+            LOG.warn("Hub check failed — labels: {}", headLabels(safeSource()));
+        }
+        return ok;
     }
 
     private boolean onInvestmentsHub() {
         String src = safeSource();
-        if (!src.contains("content-desc=\"Investments\"")) {
-            return false;
-        }
         if (src.contains("View all Mutual Funds") || src.contains("Features of NPS")
-                || src.contains("Buy Gold") || src.contains("Calculate Now")
-                || src.contains("Create Goal")) {
+                || src.contains("Open NPS Account") || src.contains("Buy in rupees")
+                || src.contains("Buy Gold") || src.contains("Calculate Now")) {
             return false;
         }
-        return src.contains("content-desc=\"Digital Gold\"")
-                || src.contains("content-desc=\"NPS\"")
-                || src.contains("content-desc=\"Fixed Deposit\"");
+        // Real Products investments grid: several investment tiles together.
+        boolean mf = src.contains("content-desc=\"Mutual Funds\"") || src.contains("content-desc=\"Mutual Fund\"");
+        boolean nps = src.contains("content-desc=\"NPS\"");
+        boolean gold = src.contains("content-desc=\"Digital Gold\"");
+        boolean fd = src.contains("content-desc=\"Fixed Deposit\"");
+        int tiles = (mf ? 1 : 0) + (nps ? 1 : 0) + (gold ? 1 : 0) + (fd ? 1 : 0);
+        return tiles >= 2 && (src.contains("Investments") || src.contains("content-desc=\"Hello\"")
+                || src.contains("content-desc=\"Products\""));
+    }
+
+    private static String headLabels(String src) {
+        if (src == null || src.isBlank()) {
+            return "(empty)";
+        }
+        String flat = src.replaceAll("\\s+", " ");
+        return flat.length() > 280 ? flat.substring(0, 280) : flat;
     }
 
     private void scrollForTile(String tile) {
@@ -406,15 +448,14 @@ public final class MoneyProductsDeepWalker {
     }
 
     private boolean quickTap(String label) {
-        return home.tapLabel(label);
+        return home.tapLabelFast(label);
     }
 
     private void scanOnce(String id, String label) {
         if (coveredIds.contains(id)) {
             return;
         }
-        keepForeground.run();
-        unlockPin.run();
+        // Do not unlock/pageSource on every scan — that was burning minutes.
         scan.scan(id, label, id);
         coveredIds.add(id);
     }

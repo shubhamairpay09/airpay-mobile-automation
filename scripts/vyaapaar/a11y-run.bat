@@ -44,20 +44,36 @@ echo Logs:   target\vyaapaar\logs\automation.log
 echo This run does not save functional failure screenshots.
 echo.
 
-rem ---- Appium: reuse it when up, start it when down ----
-powershell -NoProfile -Command "try { if ((Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 %APPIUM_URL%/status).StatusCode -ne 200) { exit 1 } } catch { exit 1 }"
+rem ---- Appium CLI + UiAutomator2: the server on :4723 must be THIS appium ----
+set "APPIUM_BIN="
+for /f "delims=" %%A in ('where appium 2^>nul') do if not defined APPIUM_BIN set "APPIUM_BIN=%%A"
+if not defined APPIUM_BIN if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_BIN=%APPDATA%\npm\appium.cmd"
+if not defined APPIUM_BIN (
+  echo Could not find appium. Install it once with: npm install -g appium
+  echo Then install the Android driver: appium driver install uiautomator2
+  pause
+  exit /b 1
+)
+echo Using Appium CLI: !APPIUM_BIN!
+"!APPIUM_BIN!" driver list --installed 2>nul | %SystemRoot%\System32\findstr /i /c:"uiautomator2" 1>nul
 if errorlevel 1 (
-  echo Appium is not running at %APPIUM_URL% — starting it now.
-  set "APPIUM_CMD="
-  for /f "delims=" %%A in ('where appium 2^>nul') do if not defined APPIUM_CMD set "APPIUM_CMD=%%A"
-  if not defined APPIUM_CMD if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_CMD=%APPDATA%\npm\appium.cmd"
-  if not defined APPIUM_CMD (
-    echo Could not find appium. Install it once with: npm install -g appium
-    pause
-    exit /b 1
-  )
-  echo Using !APPIUM_CMD!
-  start "Airpay Appium" "!APPIUM_CMD!"
+  echo.
+  echo UiAutomator2 driver is not installed for this Appium CLI.
+  echo Install it once, then rerun this file:
+  echo   appium driver install uiautomator2
+  echo.
+  pause
+  exit /b 1
+)
+echo Appium UiAutomator2 driver is installed for this CLI.
+
+rem Restart Appium with the same CLI so :4723 is not an old/other Appium without the driver.
+rem Set KEEP_APPIUM=Yes to skip the restart when you are sure the running server matches.
+if /i not "%KEEP_APPIUM%"=="Yes" (
+  echo Restarting Appium on %APPIUM_URL% with this CLI ^(set KEEP_APPIUM=Yes to skip^)...
+  powershell -NoProfile -Command "$ErrorActionPreference='SilentlyContinue'; Get-NetTCPConnection -LocalPort 4723 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }; Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'node|appium' -and $_.CommandLine -match 'appium' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+  timeout /t 2 /nobreak >nul
+  start "Airpay Appium" "!APPIUM_BIN!"
   echo Waiting up to %APPIUM_WAIT_SECS%s for Appium to come up...
   powershell -NoProfile -Command "$t=0; while ($t -lt %APPIUM_WAIT_SECS%) { try { if ((Invoke-WebRequest -UseBasicParsing -TimeoutSec 3 %APPIUM_URL%/status).StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 2; $t+=2 }; exit 1"
   if errorlevel 1 (
@@ -65,9 +81,15 @@ if errorlevel 1 (
     pause
     exit /b 1
   )
-  echo Appium is up.
+  echo Appium is up with the CLI that has UiAutomator2.
 ) else (
-  echo Appium is already running at %APPIUM_URL%.
+  powershell -NoProfile -Command "try { if ((Invoke-WebRequest -UseBasicParsing -TimeoutSec 5 %APPIUM_URL%/status).StatusCode -ne 200) { exit 1 } } catch { exit 1 }"
+  if errorlevel 1 (
+    echo KEEP_APPIUM=Yes but Appium is not running at %APPIUM_URL%.
+    pause
+    exit /b 1
+  )
+  echo Keeping existing Appium at %APPIUM_URL%.
 )
 
 rem ---- Phone: UDID wins when set, else the first connected device ----

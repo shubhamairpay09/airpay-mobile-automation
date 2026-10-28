@@ -146,13 +146,13 @@ public class ProductsHubScreen extends BaseScreen {
         if (isDisplayed()) {
             return true;
         }
-        if (!tapFirst(Duration.ofSeconds(4),
+        if (!tapFirst(Duration.ofMillis(800),
                 MobileWaits.xpath("//android.widget.Button[@content-desc='Products']"),
                 MobileWaits.xpath("//android.view.View[@content-desc='Products']"),
                 accessibility("Products"))) {
             new FinSightHomeScreen(context).openProductsTab();
         }
-        sleep(800);
+        sleep(200);
         return isDisplayed();
     }
 
@@ -175,14 +175,16 @@ public class ProductsHubScreen extends BaseScreen {
     public boolean openModule(String label) {
         String quoted = xpathLiteral(label);
         for (int i = 0; i < 4; i++) {
-            if (tapFirst(Duration.ofSeconds(2),
+            if (tapFirst(Duration.ofMillis(700),
                     MobileWaits.xpath("//android.view.View[@content-desc=" + quoted + "]/android.widget.ImageView"),
                     MobileWaits.xpath("//android.widget.ImageView[@content-desc=" + quoted + "]"),
-                    MobileWaits.xpath("//android.view.View[@content-desc=" + quoted + "]"))) {
-                sleep(1200);
+                    MobileWaits.xpath("//android.view.View[@content-desc=" + quoted + "]"),
+                    MobileWaits.xpath("//*[@clickable='true' and @content-desc=" + quoted + "]"))) {
+                sleep(200);
                 return true;
             }
             swipeUp();
+            sleep(80);
         }
         return false;
     }

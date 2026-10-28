@@ -201,18 +201,18 @@ public class HomeScreen extends BaseScreen {
     }
 
     public boolean tapProductTile(String label) {
-        if (tapFirst(Duration.ofSeconds(5),
+        if (tapFirst(Duration.ofMillis(700),
                 MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc," + xpathLiteral(label) + ")]"),
                 accessibility(label))) {
-            sleep(800);
+            sleep(150);
             return true;
         }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 3; i++) {
             swipeUp();
-            sleep(300);
-            if (tapFirst(Duration.ofSeconds(3),
+            sleep(80);
+            if (tapFirst(Duration.ofMillis(500),
                     MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc," + xpathLiteral(label) + ")]"))) {
-                sleep(800);
+                sleep(150);
                 return true;
             }
         }

@@ -1745,19 +1745,18 @@ public class MoneyDeepScanFlow {
     }
 
     private void scan(String id, String label, String route) {
-        holdForManualEntry();
-        if (!safeSource().contains(PKG)) {
-            bringMoneyToForeground();
-            if (!safeSource().contains(PKG)) {
-                return;
-            }
+        if (isPinPad()) {
+            unlockPinIfPresent();
         }
         String unique = id;
         int n = 2;
         while (!scannedIds.add(unique)) {
             unique = id + "-" + n++;
         }
-        allowDialogs(Duration.ofSeconds(2));
+        // Deep scan: do not burn 2s permission polls on every screen.
+        if (!fastResume) {
+            allowDialogs(Duration.ofSeconds(2));
+        }
         recordScreen(unique, label, route);
     }
 
