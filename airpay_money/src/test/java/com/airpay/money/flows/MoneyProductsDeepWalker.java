@@ -99,7 +99,7 @@ public final class MoneyProductsDeepWalker {
     }
 
     private void coverInvestment(String tile, Runnable deep) {
-        if (!timeLeft.getAsBoolean()) {
+        if (!timeLeft.getAsBoolean() || !sessionAlive()) {
             return;
         }
         String doneId = "prod-" + slug(tile) + "-done";
@@ -127,12 +127,14 @@ public final class MoneyProductsDeepWalker {
         } catch (Exception e) {
             LOG.warn("[{}] broke — recovering to Investments hub: {}", tile, e.toString());
         } finally {
-            returnToInvestmentsHub();
+            if (sessionAlive()) {
+                returnToInvestmentsHub();
+            }
         }
     }
 
     private void coverSectionTile(String tile, String idPrefix, boolean scrollDown) {
-        if (!timeLeft.getAsBoolean()) {
+        if (!timeLeft.getAsBoolean() || !sessionAlive()) {
             return;
         }
         String doneId = idPrefix + "-done";
@@ -163,7 +165,9 @@ public final class MoneyProductsDeepWalker {
         } catch (Exception e) {
             LOG.warn("[{}] broke — hub recovery: {}", tile, e.toString());
         } finally {
-            returnToInvestmentsHub();
+            if (sessionAlive()) {
+                returnToInvestmentsHub();
+            }
         }
     }
 
@@ -359,45 +363,86 @@ public final class MoneyProductsDeepWalker {
     }
 
     /**
-     * Fast hub recovery. If WhatsApp/Teams steals focus, force Money back immediately.
-     * Hard cap ~3s — never burn 45–90s dumping page source on the wrong app.
+     * Hub recovery after a module: leave FD/MF/NPS interior with Back, then open Products tab.
+     * Cap ~8s — never the old 45–90s wrong-app pageSource loop.
      */
     private boolean returnToInvestmentsHub() {
-        long deadline = System.currentTimeMillis() + 3_000;
+        if (!sessionAlive()) {
+            return false;
+        }
         String udid = context.config().get("android.udid", "");
         keepForeground.run();
         unlockPin.run();
         if (onInvestmentsHub()) {
             return true;
         }
-        AdbCommands.shell(udid, "input", "tap", "180", "2200");
-        settle(200);
-        unlockPin.run();
-        if (onInvestmentsHub()) {
-            return true;
-        }
-        while (System.currentTimeMillis() < deadline) {
-            String pkg = currentPackage();
-            if (!PKG.equals(pkg)) {
-                LOG.warn("Left Money (pkg={}) — force reopen", pkg);
-                keepForeground.run();
-                unlockPin.run();
+        // Exit product interior (FD tabs, NPS, Gold, etc.) before tab-tapping.
+        for (int i = 0; i < 6; i++) {
+            if (!sessionAlive()) {
+                return false;
             }
-            home.tapBack();
-            settle(TAP);
-            AdbCommands.shell(udid, "input", "tap", "180", "2200");
-            settle(150);
             if (onInvestmentsHub()) {
                 return true;
             }
+            if (!PKG.equals(currentPackage())) {
+                LOG.warn("Left Money (pkg={}) — force reopen", currentPackage());
+                keepForeground.run();
+                unlockPin.run();
+            }
+            String src = safeSource();
+            if (!insideProductModule(src)) {
+                break;
+            }
+            if (!home.tapBack()) {
+                break;
+            }
+            settle(120);
+            unlockPin.run();
         }
-        home.swipeDown();
-        settle(TAP);
+        for (int i = 0; i < 4; i++) {
+            if (!sessionAlive()) {
+                return false;
+            }
+            if (onInvestmentsHub()) {
+                return true;
+            }
+            keepForeground.run();
+            try {
+                if (products.open()) {
+                    return true;
+                }
+            } catch (Exception e) {
+                LOG.warn("products.open during hub recovery: {}", e.toString());
+            }
+            try {
+                home.openProductsTab();
+            } catch (Exception e) {
+                AdbCommands.shell(udid, "input", "tap", "180", "2200");
+            }
+            settle(250);
+            unlockPin.run();
+            try {
+                home.swipeDown();
+            } catch (Exception e) {
+                LOG.warn("swipeDown during hub recovery failed: {}", e.toString());
+                return false;
+            }
+            settle(TAP);
+        }
         boolean ok = onInvestmentsHub();
         if (!ok) {
             LOG.warn("Hub check failed (pkg={})", currentPackage());
         }
         return ok;
+    }
+
+    private boolean sessionAlive() {
+        try {
+            context.driver().getCurrentPackage();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private String currentPackage() {
@@ -408,21 +453,35 @@ public final class MoneyProductsDeepWalker {
         }
     }
 
+    private static boolean insideProductModule(String src) {
+        return src.contains("View all Mutual Funds")
+                || src.contains("Create Goal")
+                || src.contains("Features of NPS")
+                || src.contains("Open NPS Account")
+                || src.contains("Explore NPS")
+                || src.contains("Calculate Now")
+                || src.contains("Buy Gold")
+                || src.contains("Sell Gold")
+                || src.contains("Own the Best Digital")
+                || src.contains("Book FD")
+                || src.contains("Select FD")
+                || src.contains("Buy in rupees");
+    }
+
     private boolean onInvestmentsHub() {
         String src = safeSource();
-        if (src.contains("View all Mutual Funds") || src.contains("Features of NPS")
-                || src.contains("Open NPS Account") || src.contains("Buy in rupees")
-                || src.contains("Buy Gold") || src.contains("Calculate Now")) {
+        if (!src.contains("content-desc=\"Investments\"") && !src.contains("Investments")) {
             return false;
         }
-        // Real Products investments grid: several investment tiles together.
-        boolean mf = src.contains("content-desc=\"Mutual Funds\"") || src.contains("content-desc=\"Mutual Fund\"");
-        boolean nps = src.contains("content-desc=\"NPS\"");
-        boolean gold = src.contains("content-desc=\"Digital Gold\"");
-        boolean fd = src.contains("content-desc=\"Fixed Deposit\"");
-        int tiles = (mf ? 1 : 0) + (nps ? 1 : 0) + (gold ? 1 : 0) + (fd ? 1 : 0);
-        return tiles >= 2 && (src.contains("Investments") || src.contains("content-desc=\"Hello\"")
-                || src.contains("content-desc=\"Products\""));
+        if (insideProductModule(src)) {
+            return false;
+        }
+        boolean hasTiles = src.contains("content-desc=\"Digital Gold\"")
+                || src.contains("content-desc=\"NPS\"")
+                || src.contains("content-desc=\"Fixed Deposit\"");
+        return hasTiles && (src.contains("content-desc=\"Products\"")
+                || src.contains("content-desc=\"Hello\"")
+                || src.contains("content-desc=\"Mutual Funds\""));
     }
 
     private void scrollForTile(String tile) {
@@ -434,6 +493,12 @@ public final class MoneyProductsDeepWalker {
                 home.swipeUp();
                 settle(TAP);
             }
+        } else if (n.contains("us stocks") || n.contains("indian stocks")) {
+            // Investments grid: MF…FD at top; US/Indian Stocks sit just below — one swipe up.
+            home.swipeDown();
+            settle(TAP);
+            home.swipeUp();
+            settle(TAP);
         } else {
             for (int i = 0; i < 2; i++) {
                 home.swipeDown();

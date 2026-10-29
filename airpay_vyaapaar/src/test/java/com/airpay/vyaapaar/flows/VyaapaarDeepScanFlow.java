@@ -3074,34 +3074,109 @@ public class VyaapaarDeepScanFlow {
         if (onAuthWall(source()) || isOtp(source()) || onRegistration(source())) {
             return true;
         }
-        LOG.info("Signing out once so this run captures login from the start");
-        if (!onProfile(source())) {
-            returnToSignedInHome();
-            if (!backToProfile()) {
+        LOG.info("Signing out once so this run captures login with valid credentials");
+        returnToSignedInHome();
+        for (int open = 0; open < 4 && !profileHubVisible(source()); open++) {
+            if (!tapNamed("Profile")) {
                 tapLabel("Profile");
-                sleep(800);
             }
-        }
-        for (int i = 0; i < 6 && inApp() && !onAuthWall(source()); i++) {
+            sleep(900);
             if (needsBiometric(source())) {
                 waitForUserUnlock();
             }
-            if (tapLabel("Logout", "Log out", "Log Out", "Sign out", "Sign Out")) {
-                sleep(800);
-                tapLabel("Yes", "Logout", "Log out", "Confirm", "OK");
-                sleep(1200);
+        }
+        if (!profileHubVisible(source()) && !backToProfile()) {
+            LOG.warn("Profile hub was not open before Logout — still trying Logout locators");
+        }
+        for (int i = 0; i < 12 && inApp() && !onAuthWall(source()) && !isOtp(source()); i++) {
+            if (needsBiometric(source())) {
+                waitForUserUnlock();
+            }
+            bringLabelIntoView("Logout");
+            boolean tapped = tapLogoutControl();
+            if (tapped) {
+                sleep(700);
+                confirmLogoutDialog();
+                sleep(1500);
                 if (needsBiometric(source())) {
                     waitForUserUnlock();
                 }
                 if (onAuthWall(source()) || isOtp(source())) {
-                    LOG.info("Login screen is open — capturing from the start");
+                    LOG.info("Login screen is open — capturing username/password screens");
                     return true;
                 }
+                LOG.warn("Logout was tapped but login wall did not open. Visible: {}", visibleLabels());
             }
-            swipeUp();
+            // Logout icon sits near the top of Profile; alternate scroll directions to find it.
+            if (i % 2 == 0) {
+                scrollToTop();
+            } else {
+                swipeUp();
+            }
             sleep(400);
+            if (!profileHubVisible(source())) {
+                if (!tapNamed("Profile")) {
+                    tapLabel("Profile");
+                }
+                sleep(700);
+            }
         }
-        return onAuthWall(source()) || isOtp(source());
+        boolean onLogin = onAuthWall(source()) || isOtp(source());
+        if (!onLogin) {
+            LOG.warn("Could not sign out to login. Last screen: {}", screenTitle(source()));
+        }
+        return onLogin;
+    }
+
+    /** Profile tab with hub rows, or any screen that still shows the Logout control. */
+    private boolean profileHubVisible(String src) {
+        if (src == null || src.isBlank()) {
+            return false;
+        }
+        if (onProfile(src)) {
+            return true;
+        }
+        return src.contains("Logout") || src.contains("Logout icon")
+                || src.contains("Manage PIN") || src.contains("Change Password")
+                || src.contains("QR Activation");
+    }
+
+    private boolean tapLogoutControl() {
+        if (tapByXpath(com.airpay.vyaapaar.screens.profile.ProfileScreen.LOGOUT_ICON)
+                || tapByXpath(com.airpay.vyaapaar.screens.profile.ProfileScreen.LOGOUT)) {
+            return true;
+        }
+        return tapLabel("Logout", "Log out", "Log Out", "Sign out", "Sign Out")
+                || tapVisibleIcon("Logout")
+                || tapNamed("Logout")
+                || tapContaining("Logout");
+    }
+
+    private void confirmLogoutDialog() {
+        if (tapLabel("Yes", "Logout", "Log out", "Confirm", "OK", "Yes, Logout")) {
+            return;
+        }
+        tapByXpath("//android.widget.Button[contains(@text,'Yes') or contains(@text,'Logout')"
+                + " or contains(@content-desc,'Yes') or contains(@content-desc,'Logout')]");
+    }
+
+    private boolean tapByXpath(String xpath) {
+        try {
+            List<WebElement> nodes = driver.findElements(By.xpath(xpath));
+            for (WebElement node : nodes) {
+                try {
+                    if (node.isDisplayed()) {
+                        node.click();
+                        return true;
+                    }
+                } catch (Exception ignored) {
+                    // try next match
+                }
+            }
+        } catch (Exception e) {
+            LOG.debug("Logout xpath miss {}: {}", xpath, e.toString());
+        }
+        return false;
     }
 
     private void loginIfNeeded() {
@@ -3112,20 +3187,31 @@ public class VyaapaarDeepScanFlow {
         if (needsBiometric(source())) {
             waitForUserUnlock();
         }
+        boolean passwordLogin = Boolean.getBoolean("a11y.login.password");
+        String password = context.config().get("vyaapaar.test.password", "");
         String src = source();
         if (!onAuthWall(src) && !onRegistration(src) && !isOtp(src) && !isAlert(src)) {
             if (!signOutToLogin()) {
-                LOG.warn("Could not reach login. Scanning from the screen that is already open.");
+                if (passwordLogin && password != null && !password.isBlank()) {
+                    LOG.warn("Could not reach login for username/password capture. "
+                            + "Open the app on the login screen (or logout once), then rerun the bat.");
+                } else {
+                    LOG.warn("Could not reach login. Scanning from the screen that is already open.");
+                }
                 return;
             }
         }
-        if (Boolean.getBoolean("a11y.login.password")) {
-            if (context.config().get("vyaapaar.test.password", "").isBlank()) {
-                LOG.warn("a11y.login.password is set but vyaapaar.test.password is empty — using OTP login");
+        if (passwordLogin) {
+            if (password == null || password.isBlank()) {
+                LOG.warn("a11y.login.password is set but vyaapaar.test.password is empty in "
+                        + "config/secrets.properties — using OTP login instead");
             } else {
-                LOG.info("Capturing login from the start, then signing in");
+                LOG.info("Capturing login with valid username/password, then signing in");
                 scanLoginDetail();
                 loginWithUsernameAndPassword();
+                if (onSignedInHome(source()) || onMainShell(source())) {
+                    capture("home", "home-after-password-login", "Home after password login");
+                }
                 return;
             }
         }
@@ -3274,6 +3360,7 @@ public class VyaapaarDeepScanFlow {
                             + "This step stays after the accessibility scan.");
         }
         openLogin();
+        capture("auth", "auth-login-wall", "Login");
         if (source().contains("Login with password")) {
             tapLabel("Login with password");
             sleep(800);
@@ -3294,7 +3381,8 @@ public class VyaapaarDeepScanFlow {
             sleep(1000);
             String after = source();
             if (isOtp(after)) {
-                LOG.info("Login asked for OTP — entering the configured OTP");
+                LOG.info("Login asked for OTP — storing OTP, then entering the configured OTP");
+                capture("auth", "auth-login-password-otp", "Login with password/OTP");
                 enterOtp(mobile);
                 break;
             }
@@ -3310,7 +3398,7 @@ public class VyaapaarDeepScanFlow {
         } else if (onAuthWall(source()) || onRegistration(source())) {
             LOG.warn("LOGIN FAILED — still on the login wall after the Login tap. Visible: {}", visibleLabels());
         } else {
-            LOG.info("Signed in after OTP — continuing inside the app");
+            LOG.info("Signed in with username/password — continuing inside the app");
             waitIfBiometricAppears();
             dismissEntryGates();
         }

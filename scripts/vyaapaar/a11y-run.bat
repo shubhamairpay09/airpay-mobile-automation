@@ -162,6 +162,25 @@ if errorlevel 1 (
 )
 echo App %APP_PACKAGE% is on the phone.
 
+rem ---- Password login secret (required for username/password screen coverage) ----
+set "SECRETS=%CD%\config\secrets.properties"
+if not exist "%SECRETS%" (
+  echo.
+  echo Missing config\secrets.properties — username/password login screens will be skipped.
+  echo Create it with: vyaapaar.test.password=YOUR_PASSWORD
+  echo ^(gitignored; copy from another machine that already runs this bat^)
+  goto :fail
+)
+%SystemRoot%\System32\findstr /r /c:"^vyaapaar.test.password=[^ ]" "%SECRETS%" 1>nul
+if errorlevel 1 (
+  echo.
+  echo config\secrets.properties has no vyaapaar.test.password value.
+  echo Add: vyaapaar.test.password=YOUR_PASSWORD
+  echo Without it the bat cannot cover Login with password / valid credential screens.
+  goto :fail
+)
+echo Password login secret is present ^(value not printed^).
+
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server.test
 
