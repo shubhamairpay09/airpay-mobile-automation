@@ -174,17 +174,26 @@ public class ProductsHubScreen extends BaseScreen {
 
     public boolean openModule(String label) {
         String quoted = xpathLiteral(label);
-        for (int i = 0; i < 4; i++) {
-            if (tapFirst(Duration.ofMillis(700),
-                    MobileWaits.xpath("//android.view.View[@content-desc=" + quoted + "]/android.widget.ImageView"),
-                    MobileWaits.xpath("//android.widget.ImageView[@content-desc=" + quoted + "]"),
-                    MobileWaits.xpath("//android.view.View[@content-desc=" + quoted + "]"),
-                    MobileWaits.xpath("//*[@clickable='true' and @content-desc=" + quoted + "]"))) {
-                sleep(200);
+        // contains() — Tax etc. often use multiline content-desc (label + FY).
+        scrollIntoDescription(label);
+        if (tapFirst(Duration.ofMillis(500),
+                MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]/android.widget.ImageView"),
+                MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc," + quoted + ")]"),
+                MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]"),
+                MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc," + quoted + ")]"))) {
+            sleep(120);
+            return true;
+        }
+        for (int i = 0; i < 5; i++) {
+            swipeUp();
+            sleep(60);
+            if (tapFirst(Duration.ofMillis(400),
+                    MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]/android.widget.ImageView"),
+                    MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc," + quoted + ")]"),
+                    MobileWaits.xpath("//*[contains(@content-desc," + quoted + ") and @clickable='true']"))) {
+                sleep(120);
                 return true;
             }
-            swipeUp();
-            sleep(80);
         }
         return false;
     }

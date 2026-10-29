@@ -10,27 +10,27 @@ public class HomeNonChannelsLoanLeadGenerationScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-non-channels-loan-lead-generation";
 
-    public static final String PIN_CODE = "//android.widget.TextView[@text='PIN code']";
+    public static final String PIN_CODE = "//android.view.View[contains(@content-desc,'PIN code')]";
 
     @AndroidFindBy(xpath = PIN_CODE)
     private WebElement pinCode;
 
-    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile number']";
+    public static final String MOBILE_NUMBER = "//android.view.View[contains(@content-desc,'Mobile number')]";
 
     @AndroidFindBy(xpath = MOBILE_NUMBER)
     private WebElement mobileNumber;
 
-    public static final String FIRST_NAME = "//android.widget.TextView[@text='First name']";
+    public static final String FIRST_NAME = "//android.view.View[contains(@content-desc,'First name')]";
 
     @AndroidFindBy(xpath = FIRST_NAME)
     private WebElement firstName;
 
-    public static final String LAST_NAME = "//android.widget.TextView[@text='Last name']";
+    public static final String LAST_NAME = "//android.view.View[contains(@content-desc,'Last name')]";
 
     @AndroidFindBy(xpath = LAST_NAME)
     private WebElement lastName;
 
-    public static final String EMAIL = "//android.widget.TextView[@text='Email']";
+    public static final String EMAIL = "//android.view.View[contains(@content-desc,'Email')]";
 
     @AndroidFindBy(xpath = EMAIL)
     private WebElement email;

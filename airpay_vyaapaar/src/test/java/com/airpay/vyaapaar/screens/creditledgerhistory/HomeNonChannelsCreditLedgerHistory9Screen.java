@@ -5,25 +5,35 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Non Channels/Credit Ledger History/Filter Icon. Module credit-ledger-history. */
+/** Non Channels/Credit Ledger History/Filter Icon/Show More/Sort/2500 - 5000/Below 2500. Module credit-ledger-history. */
 public class HomeNonChannelsCreditLedgerHistory9Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-non-channels-credit-ledger-history-dropdown-filter-icon-filter-icon";
+    public static final String PAGE_ID = "home-non-channels-credit-ledger-history-dropdown-filter-icon-show-more-sort-2500-5000-belo";
 
-    public static final String FILTER = "//android.widget.TextView[@text='Filter']";
+    public static final String SORT = "//android.widget.TextView[@text='Sort']";
 
-    @AndroidFindBy(xpath = FILTER)
-    private WebElement filter;
+    @AndroidFindBy(xpath = SORT)
+    private WebElement sort;
 
-    public static final String CLEAR_ALL = "//android.widget.TextView[@text='Clear All']";
+    public static final String PRICE_HIGH_TO_LOW = "//android.widget.TextView[contains(@content-desc,'Price - High to Low')]";
 
-    @AndroidFindBy(xpath = CLEAR_ALL)
-    private WebElement clearAll;
+    @AndroidFindBy(xpath = PRICE_HIGH_TO_LOW)
+    private WebElement priceHighToLow;
 
-    public static final String SELECT_DATE = "//android.widget.TextView[@text='Select Date']";
+    public static final String PRICE_LOW_TO_HIGH = "//android.widget.TextView[contains(@content-desc,'Price - Low to High')]";
 
-    @AndroidFindBy(xpath = SELECT_DATE)
-    private WebElement selectDate;
+    @AndroidFindBy(xpath = PRICE_LOW_TO_HIGH)
+    private WebElement priceLowToHigh;
+
+    public static final String STORE_ATO_Z = "//android.widget.TextView[contains(@content-desc,'Store - A to Z')]";
+
+    @AndroidFindBy(xpath = STORE_ATO_Z)
+    private WebElement storeAToZ;
+
+    public static final String STORE_ZTO_A = "//android.widget.TextView[contains(@content-desc,'Store - Z to A')]";
+
+    @AndroidFindBy(xpath = STORE_ZTO_A)
+    private WebElement storeZToA;
 
     public static final String APPLY = "//android.widget.TextView[@text='Apply']";
 

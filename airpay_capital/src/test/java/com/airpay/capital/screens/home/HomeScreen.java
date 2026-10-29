@@ -74,7 +74,7 @@ public class HomeScreen extends BaseScreen {
                 MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc,'Home')]"))) {
             tapLabel("Home");
         }
-        sleep(400);
+        waitUntilSourceContains(Duration.ofSeconds(6), "Personal Loan", "Home Loan", "Dashboard");
     }
 
     public void openProfile() {
@@ -108,10 +108,9 @@ public class HomeScreen extends BaseScreen {
     /** Tap product card Apply Now strip from home grid (Flutter-safe coordinate tap). */
     public boolean tapProductApplyNow(String productLabel) {
         openHome();
-        sleep(500);
         for (int i = 0; i < 6 && !sourceContains(productLabel); i++) {
             swipeUp();
-            sleep(280);
+            waitUntilSourceContains(Duration.ofSeconds(2), productLabel);
         }
         String exclude = "Home Loan".equals(productLabel) ? "Loan Against" : "";
         String xpath = "//android.widget.Button[@clickable='true' and contains(@content-desc,"
@@ -122,13 +121,15 @@ public class HomeScreen extends BaseScreen {
         bringCardAboveTabBar(xpath);
         String before = shortFingerprint();
         if (tapApplyStrip(xpath)) {
-            sleep(2000);
+            waitUntilSourceContains(Duration.ofSeconds(12),
+                    "Tell us about your work", "Enter PAN", "Salaried", "Resume Application");
             if (leftHomeGridOrInApply(before)) {
                 return true;
             }
         }
         tapApplyStrip(xpath);
-        sleep(1800);
+        waitUntilSourceContains(Duration.ofSeconds(12),
+                "Tell us about your work", "Enter PAN", "Salaried", "Resume Application");
         return leftHomeGridOrInApply(before);
     }
 
@@ -138,7 +139,6 @@ public class HomeScreen extends BaseScreen {
                 List<WebElement> els = driver.findElements(MobileWaits.xpath(cardXpath));
                 if (els.isEmpty()) {
                     swipeUp();
-                    sleep(300);
                     continue;
                 }
                 var r = els.get(0).getRect();
@@ -148,7 +148,6 @@ public class HomeScreen extends BaseScreen {
                     return;
                 }
                 swipeUp();
-                sleep(300);
             } catch (Exception e) {
                 return;
             }

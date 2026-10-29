@@ -46,9 +46,12 @@ public final class CapitalTestData {
         return digits.length() > 10 ? digits.substring(0, 10) : digits;
     }
 
+    /**
+     * Explicit static OTP from config only. Blank means callers must read from
+     * {@link com.airpay.mobile.utilities.android.NotificationOtpReader}.
+     */
     public static String otp(FrameworkConfig config) {
-        String otp = config.get("capital.test.otp", "1234").trim();
-        return otp.isBlank() ? "1234" : otp;
+        return config.get("capital.test.otp", "").trim();
     }
 
     public static String cibilLowMessageFragment(FrameworkConfig config) {

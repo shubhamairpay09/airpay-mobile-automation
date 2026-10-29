@@ -10,7 +10,7 @@ public class HomeNonChannelsBaazaarSearchOilScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-non-channels-baazaar-search-oil-almonds-earphones-here";
 
-    public static final String SEARCH_OIL_ALMONDS_EARPHONES_HERE = "//android.widget.TextView[@text='Search oil, almonds, earphones here']";
+    public static final String SEARCH_OIL_ALMONDS_EARPHONES_HERE = "//android.widget.TextView[contains(@content-desc,'Search oil, almonds, earphones here')]";
 
     @AndroidFindBy(xpath = SEARCH_OIL_ALMONDS_EARPHONES_HERE)
     private WebElement searchOilAlmondsEarphonesHere;

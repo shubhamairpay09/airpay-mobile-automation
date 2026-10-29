@@ -10,32 +10,32 @@ public class HomeFeaturedServicesAepsScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-featured-services-aeps";
 
-    public static final String P1 = "//android.widget.TextView[@text='P1']";
+    public static final String P1 = "//android.widget.TextView[contains(@content-desc,'P1')]";
 
     @AndroidFindBy(xpath = P1)
     private WebElement p1;
 
-    public static final String NOT_VERIFIED = "//android.widget.TextView[@text='Not Verified']";
+    public static final String NOT_VERIFIED = "//android.widget.TextView[contains(@content-desc,'Not Verified')]";
 
     @AndroidFindBy(xpath = NOT_VERIFIED)
     private WebElement notVerified;
 
-    public static final String P2 = "//android.widget.TextView[@text='P2']";
+    public static final String P2 = "//android.widget.TextView[contains(@content-desc,'P2')]";
 
     @AndroidFindBy(xpath = P2)
     private WebElement p2;
 
-    public static final String NOT_ONBOARDED = "//android.widget.TextView[@text='Not Onboarded']";
+    public static final String NOT_ONBOARDED = "//android.widget.TextView[contains(@content-desc,'Not Onboarded')]";
 
     @AndroidFindBy(xpath = NOT_ONBOARDED)
     private WebElement notOnboarded;
 
-    public static final String P3 = "//android.widget.TextView[@text='P3']";
+    public static final String P3 = "//android.widget.TextView[contains(@content-desc,'P3')]";
 
     @AndroidFindBy(xpath = P3)
     private WebElement p3;
 
-    public static final String SELECT_PARTNER_BANK = "//android.widget.TextView[@text='Select partner bank']";
+    public static final String SELECT_PARTNER_BANK = "//android.widget.TextView[contains(@content-desc,'Select partner bank')]";
 
     @AndroidFindBy(xpath = SELECT_PARTNER_BANK)
     private WebElement selectPartnerBank;

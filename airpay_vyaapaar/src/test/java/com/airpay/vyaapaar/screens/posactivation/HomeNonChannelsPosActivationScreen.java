@@ -10,12 +10,12 @@ public class HomeNonChannelsPosActivationScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-non-channels-pos-activation";
 
-    public static final String ACTIVATE_NEW_POS_DEVICE = "//android.widget.TextView[@text='Activate new POS device']";
+    public static final String ACTIVATE_NEW_POS_DEVICE = "//android.widget.TextView[contains(@content-desc,'Activate new POS device')]";
 
     @AndroidFindBy(xpath = ACTIVATE_NEW_POS_DEVICE)
     private WebElement activateNewPosDevice;
 
-    public static final String DEVICE_SERIAL_NUMBER = "//android.widget.TextView[@text='Device Serial Number']";
+    public static final String DEVICE_SERIAL_NUMBER = "//android.view.View[contains(@content-desc,'Device Serial Number')]";
 
     @AndroidFindBy(xpath = DEVICE_SERIAL_NUMBER)
     private WebElement deviceSerialNumber;

@@ -1,5 +1,6 @@
 package com.airpay.capital.screens.apply;
 
+import com.airpay.capital.data.CapitalExcel;
 import com.airpay.capital.data.ScreenMessages;
 import com.airpay.capital.screens.base.BaseScreen;
 import com.airpay.mobile.utilities.context.TestContext;
@@ -12,7 +13,7 @@ import org.openqa.selenium.WebElement;
 import java.time.Duration;
 import java.util.List;
 
-/** Shared PAN / name / email / loan amount form for all products. */
+/** Shared PAN / name / email / loan amount form for all products. Values come from Capital Excel. */
 public class ApplyDetailsScreen extends BaseScreen {
 
     @AndroidFindBy(xpath = "//*[contains(@content-desc,'Enter your details as per official records')]")
@@ -51,12 +52,22 @@ public class ApplyDetailsScreen extends BaseScreen {
         return sourceContains(ScreenMessages.DETAILS_BANNER, "Enter PAN", "Date of birth as per PAN");
     }
 
+    public boolean waitUntilDisplayed(Duration timeout) {
+        return waitUntilSourceContains(timeout, ScreenMessages.DETAILS_BANNER, "Enter PAN", "Date of birth as per PAN")
+                || firstPresent(timeout, MobileWaits.xpath("//android.widget.EditText[contains(@hint,'PAN')]")) != null;
+    }
+
     public ApplyDetailsScreen fillStandardDetails() {
-        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'PAN')]"), "ABCDE1234F");
-        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Name as per PAN')]"), "Test User");
-        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Email')]"), "test.user@airpay.example");
-        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Desired loan amount')]"), "500000");
-        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Income') or contains(@hint,'Salary')]"), "75000");
+        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'PAN')]"),
+                CapitalExcel.text("PAN", "ABCDE1234F"));
+        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Name as per PAN')]"),
+                CapitalExcel.text("Name", "Test User"));
+        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Email')]"),
+                CapitalExcel.text("Email", "test.user@airpay.example"));
+        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Desired loan amount')]"),
+                CapitalExcel.text("LoanAmount", "500000"));
+        typeIfPresent(MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Income') or contains(@hint,'Salary')]"),
+                CapitalExcel.text("MonthlyIncome", "75000"));
         new DummyFormFiller(driver).fillVisibleFields(2);
         return this;
     }
@@ -71,16 +82,13 @@ public class ApplyDetailsScreen extends BaseScreen {
     public boolean acceptTermsAndTapApply() {
         for (int pass = 0; pass < 6; pass++) {
             tickTermsCheckboxes();
-            sleep(450);
             if (tapEnabledApplyOrContinue()) {
-                sleep(900);
+                waitUntilSourceGone(Duration.ofSeconds(8), "Terms and conditions");
                 return true;
             }
             swipeUp();
-            sleep(280);
         }
         tickTermsCheckboxes();
-        sleep(400);
         return tapEnabledApplyOrContinue() || tapContinue();
     }
 
@@ -102,7 +110,6 @@ public class ApplyDetailsScreen extends BaseScreen {
                 }
                 box.click();
                 n++;
-                sleep(220);
             } catch (Exception ignored) {
                 // stale
             }

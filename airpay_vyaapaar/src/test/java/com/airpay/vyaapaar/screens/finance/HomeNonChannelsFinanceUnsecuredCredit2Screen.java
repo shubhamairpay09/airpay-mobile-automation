@@ -15,12 +15,12 @@ public class HomeNonChannelsFinanceUnsecuredCredit2Screen extends BaseScreen {
     @AndroidFindBy(xpath = LOGO)
     private WebElement logo;
 
-    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
+    public static final String MOBILE_NUMBER = "//android.view.View[contains(@content-desc,'Mobile Number')]";
 
     @AndroidFindBy(xpath = MOBILE_NUMBER)
     private WebElement mobileNumber;
 
-    public static final String CUSTOMER_NAME = "//android.widget.TextView[@text='Customer Name']";
+    public static final String CUSTOMER_NAME = "//android.view.View[contains(@content-desc,'Customer Name')]";
 
     @AndroidFindBy(xpath = CUSTOMER_NAME)
     private WebElement customerName;

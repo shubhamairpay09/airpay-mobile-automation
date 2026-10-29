@@ -4,12 +4,12 @@ Feature: airpay vyaapaar aeps screens
   Each screen was captured once during the deep scan.
 
   @AEPS_001
-  Scenario: Featured Services/AEPS
+  Scenario: OTP/AEPS
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-aeps" in module "aeps" has stored xpaths
+    Then airpay vyaapaar screen "auth-otp-aeps" in module "aeps" has stored xpaths
 
   @AEPS_002
-  Scenario: Featured Services/AEPS/P2
+  Scenario: OTP/AEPS/P2
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-aeps-p2" in module "aeps" has stored xpaths
+    Then airpay vyaapaar screen "auth-otp-aeps-p2" in module "aeps" has stored xpaths
 

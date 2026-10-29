@@ -40,7 +40,7 @@ public class HomeFeaturedServicesCmsCashDrop4Screen extends BaseScreen {
     @AndroidFindBy(xpath = TESTBHAVNA_BHAGAT_MIDLANDMICROFIN_COM)
     private WebElement testbhavnaBhagatMidlandmicrofinCom;
 
-    public static final String SEARCH_VALUE = "//android.widget.TextView[@text='Search Value']";
+    public static final String SEARCH_VALUE = "//android.view.View[contains(@content-desc,'Search Value')]";
 
     @AndroidFindBy(xpath = SEARCH_VALUE)
     private WebElement searchValue;

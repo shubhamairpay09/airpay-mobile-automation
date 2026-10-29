@@ -10,30 +10,30 @@ public class HomeNonChannelsCreditLedgerHistory5Screen extends BaseScreen {
 
     public static final String PAGE_ID = "home-non-channels-credit-ledger-history-dropdown-filter-icon-show-more-sort";
 
-    public static final String SORT = "//android.widget.TextView[@text='Sort']";
+    public static final String FILTER = "//android.widget.TextView[@text='Filter']";
 
-    @AndroidFindBy(xpath = SORT)
-    private WebElement sort;
+    @AndroidFindBy(xpath = FILTER)
+    private WebElement filter;
 
-    public static final String PRICE_HIGH_TO_LOW = "//android.widget.TextView[@text='Price - High to Low']";
+    public static final String BELOW2500 = "//android.widget.TextView[contains(@content-desc,'Below 2500')]";
 
-    @AndroidFindBy(xpath = PRICE_HIGH_TO_LOW)
-    private WebElement priceHighToLow;
+    @AndroidFindBy(xpath = BELOW2500)
+    private WebElement below2500;
 
-    public static final String PRICE_LOW_TO_HIGH = "//android.widget.TextView[@text='Price - Low to High']";
+    public static final String MIN = "//android.view.View[contains(@content-desc,'Min')]";
 
-    @AndroidFindBy(xpath = PRICE_LOW_TO_HIGH)
-    private WebElement priceLowToHigh;
+    @AndroidFindBy(xpath = MIN)
+    private WebElement min;
 
-    public static final String STORE_ATO_Z = "//android.widget.TextView[@text='Store - A to Z']";
+    public static final String MAX = "//android.view.View[contains(@content-desc,'Max')]";
 
-    @AndroidFindBy(xpath = STORE_ATO_Z)
-    private WebElement storeAToZ;
+    @AndroidFindBy(xpath = MAX)
+    private WebElement max;
 
-    public static final String STORE_ZTO_A = "//android.widget.TextView[@text='Store - Z to A']";
+    public static final String PLEASE_ENTER_MIN_AND_MAX_AMOUNT = "//android.widget.TextView[contains(@content-desc,'Please enter Min and Max Amount')]";
 
-    @AndroidFindBy(xpath = STORE_ZTO_A)
-    private WebElement storeZToA;
+    @AndroidFindBy(xpath = PLEASE_ENTER_MIN_AND_MAX_AMOUNT)
+    private WebElement pleaseEnterMinAndMaxAmount;
 
     public static final String APPLY = "//android.widget.TextView[@text='Apply']";
 

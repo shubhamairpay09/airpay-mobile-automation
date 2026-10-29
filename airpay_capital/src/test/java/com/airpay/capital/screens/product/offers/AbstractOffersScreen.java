@@ -29,11 +29,17 @@ public abstract class AbstractOffersScreen extends BaseScreen {
     protected boolean tapFirstLenderApply(String... xpaths) {
         for (String xpath : xpaths) {
             if (tapFirst(Duration.ofSeconds(4), MobileWaits.xpath(xpath))) {
-                sleep(2500);
+                waitUntilSourceContains(Duration.ofSeconds(15),
+                        "partner", "lender", "chrome", "WebView", "Apply");
                 return true;
             }
         }
-        return tapAny(java.util.List.of("Apply now for", "Apply now"));
+        boolean tapped = tapAny(java.util.List.of("Apply now for", "Apply now"));
+        if (tapped) {
+            waitUntilSourceContains(Duration.ofSeconds(15),
+                    "partner", "lender", "chrome", "WebView", "Apply");
+        }
+        return tapped;
     }
 
     public boolean lenderPageOpened(String beforeSource) {

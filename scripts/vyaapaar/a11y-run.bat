@@ -180,6 +180,14 @@ if errorlevel 1 (
   goto :fail
 )
 echo Password login secret is present ^(value not printed^).
+%SystemRoot%\System32\findstr /r /c:"^vyaapaar.device.pin=[0-9][0-9][0-9][0-9]" "%SECRETS%" 1>nul
+if errorlevel 1 (
+  echo WARNING: vyaapaar.device.pin is not set in secrets.properties.
+  echo For a fully unattended run add: vyaapaar.device.pin=YOUR_PHONE_LOCK_PIN
+  echo Without it fingerprint/face unlock will block the scan.
+) else (
+  echo Device unlock PIN secret is present ^(value not printed^).
+)
 
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server
 "%ADB%" -s %UDID% shell am force-stop io.appium.uiautomator2.server.test
@@ -196,9 +204,9 @@ if /i not "%FRESH_REPORT%"=="No" (
 )
 
 if defined CLASSWORLDS_JAR (
-  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%CLASSWORLDS_JAR%" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true" "-Da11y.skip.fill=true"
+  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%CLASSWORLDS_JAR%" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true"
 ) else (
-  call mvn test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true" "-Da11y.skip.fill=true"
+  call mvn test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true"
 )
 set "EXIT_CODE=%ERRORLEVEL%"
 call :log Maven exit=%EXIT_CODE%

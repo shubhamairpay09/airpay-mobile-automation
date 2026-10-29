@@ -176,6 +176,33 @@ public abstract class BaseScreen {
         return "concat('" + value.replace("'", "',\"'\",'") + "')";
     }
 
+    /**
+     * Polls page source until any fragment appears, or timeout elapses.
+     * Prefer this over Thread.sleep for screen transitions.
+     */
+    public boolean waitUntilSourceContains(Duration timeout, String... fragments) {
+        long end = System.currentTimeMillis() + timeout.toMillis();
+        while (System.currentTimeMillis() < end) {
+            if (sourceContains(fragments)) {
+                return true;
+            }
+            sleep(200);
+        }
+        return sourceContains(fragments);
+    }
+
+    /** Wait until none of the fragments are present (e.g. OTP screen gone). */
+    public boolean waitUntilSourceGone(Duration timeout, String... fragments) {
+        long end = System.currentTimeMillis() + timeout.toMillis();
+        while (System.currentTimeMillis() < end) {
+            if (!sourceContains(fragments)) {
+                return true;
+            }
+            sleep(200);
+        }
+        return !sourceContains(fragments);
+    }
+
     protected static void sleep(long ms) {
         try {
             Thread.sleep(ms);

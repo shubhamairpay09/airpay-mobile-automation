@@ -1,5 +1,6 @@
 package com.airpay.capital.screens.apply;
 
+import com.airpay.capital.data.CapitalExcel;
 import com.airpay.capital.screens.base.BaseScreen;
 import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.waits.MobileWaits;
@@ -38,19 +39,20 @@ public class SalariedIncomeScreen extends BaseScreen {
         WebElement salary = firstPresent(Duration.ofSeconds(3),
                 MobileWaits.xpath("//android.widget.EditText[contains(@hint,'monthly salary') or contains(@hint,'Monthly In-hand')]"));
         if (salary != null) {
-            type(salary, "75000");
+            type(salary, CapitalExcel.text("MonthlySalary", CapitalExcel.text("MonthlyIncome", "75000")));
         }
         WebElement emi = firstPresent(Duration.ofSeconds(2),
                 MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Existing EMI')]"));
         if (emi != null) {
-            type(emi, "0");
+            type(emi, CapitalExcel.text("ExistingEmi", "0"));
         }
         tapContinueIfPresent();
     }
 
     public void tapContinueIfPresent() {
-        tapFirst(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Continue')]"));
-        sleep(500);
+        if (tapFirst(Duration.ofSeconds(3),
+                MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Continue')]"))) {
+            waitUntilSourceGone(Duration.ofSeconds(6), "Work Details");
+        }
     }
 }

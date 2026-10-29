@@ -205,13 +205,39 @@ public class DigitalGoldSheetSteps {
 
     @When("I leave the Airpay page without paying")
     public void leaveAirpay() {
-        payment.tapBack();
+        // Airpay is a WebView — Flutter Back does nothing. System Back leaves the gateway.
+        for (int i = 0; i < 5; i++) {
+            String src = payment.pageSource();
+            if (src.contains(FAILURE) || src.contains("Go to Dashboard") || src.contains("Go To Dashboard")) {
+                return;
+            }
+            // Language dropdown open — close it first.
+            if (src.contains("Select language") && src.contains("Assamese")) {
+                payment.pressSystemBack();
+                sleep(600);
+                continue;
+            }
+            if (!payment.tapBack()) {
+                payment.pressSystemBack();
+            }
+            sleep(1000);
+        }
+        payment.tapHeaderBack();
         sleep(1200);
     }
 
     @Then("the unpaid transaction failure screen is displayed")
     public void failureScreen() {
-        String src = payment.pageSource().replace("&#10;", " ").replaceAll("\\s+", " ");
+        String src = "";
+        long end = System.currentTimeMillis() + Duration.ofSeconds(12).toMillis();
+        while (System.currentTimeMillis() < end) {
+            src = payment.pageSource().replace("&#10;", " ").replaceAll("\\s+", " ");
+            if (src.contains(FAILURE) || src.contains("Go to Dashboard")) {
+                break;
+            }
+            payment.pressSystemBack();
+            sleep(800);
+        }
         Assertions.assertThat(src)
                 .as("Message \"" + FAILURE + "\" should be displayed")
                 .contains(FAILURE);

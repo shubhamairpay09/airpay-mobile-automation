@@ -4,7 +4,7 @@ Feature: airpay vyaapaar upi-qr screens
   Each screen was captured once during the deep scan.
 
   @UPI_QR_001
-  Scenario: UPI QR — Alert
+  Scenario: Non Channels/UPI QR
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "upi-qr" in module "upiqr" has stored xpaths
+    Then airpay vyaapaar screen "home-non-channels-upi-qr" in module "upiqr" has stored xpaths
 

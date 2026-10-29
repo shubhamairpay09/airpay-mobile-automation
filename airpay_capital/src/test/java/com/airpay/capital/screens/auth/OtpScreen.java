@@ -41,6 +41,14 @@ public class OtpScreen extends BaseScreen {
                         != null;
     }
 
+    public boolean waitUntilDisplayed(Duration timeout) {
+        return firstPresent(timeout,
+                MobileWaits.xpath("//android.widget.EditText[contains(@hint,'OTP') or contains(@hint,'password')"
+                        + " or contains(@hint,'digit code')]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Verify OTP') or contains(@content-desc,'One time password')]"))
+                != null;
+    }
+
     public int expectedLength() {
         String src = safeSource();
         if (src.contains("4 digit") || src.contains("4-digit") || src.contains("4 Digit")) {
@@ -69,11 +77,9 @@ public class OtpScreen extends BaseScreen {
             throw new IllegalStateException("OTP input field not found.");
         }
         field.click();
-        sleep(300);
         if (!typeDigits(field, digits)) {
             throw new IllegalStateException("Failed to type OTP.");
         }
-        sleep(400);
         tapVerifyIfPresent();
     }
 
@@ -81,7 +87,6 @@ public class OtpScreen extends BaseScreen {
         try {
             for (char c : digits.toCharArray()) {
                 driver.pressKey(new KeyEvent(AndroidKey.valueOf("DIGIT_" + c)));
-                sleep(120);
             }
             return true;
         } catch (Exception ignored) {
@@ -107,6 +112,36 @@ public class OtpScreen extends BaseScreen {
                 accessibility("Verify"));
     }
 
+    /** Taps Edit beside the registered mobile number on the OTP screen. */
+    public boolean tapEditMobile() {
+        return tapFirst(Duration.ofSeconds(6),
+                MobileWaits.xpath("//*[contains(@content-desc,'Edit') and (@clickable='true' or self::android.widget.Button)]"),
+                MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Edit')]"),
+                accessibility("Edit"))
+                || tapLabel("Edit");
+    }
+
+    /** Taps Resend OTP and waits until the OTP field is ready again. */
+    public boolean tapResendOtp() {
+        boolean tapped = tapFirst(Duration.ofSeconds(8),
+                MobileWaits.xpath("//*[contains(@content-desc,'Resend') and contains(@content-desc,'OTP')]"),
+                MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Resend')]"),
+                accessibility("Resend OTP"))
+                || tapAny(java.util.List.of("Resend OTP", "Resend"));
+        if (tapped) {
+            waitUntilDisplayed(Duration.ofSeconds(10));
+        }
+        return tapped;
+    }
+
+    public boolean invalidOtpMessageVisible() {
+        return sourceContains("Invalid OTP", "incorrect OTP", "Incorrect OTP", "OTP is invalid", "invalid otp");
+    }
+
+    public boolean expiredOtpMessageVisible() {
+        return sourceContains("OTP Expired", "OTP expired", "expired OTP", "OTP has expired", "Expired");
+    }
+
     public boolean waitUntilGone(Duration timeout) {
         HomeScreen home = new HomeScreen(context);
         long end = System.currentTimeMillis() + timeout.toMillis();
@@ -114,7 +149,10 @@ public class OtpScreen extends BaseScreen {
             if (!isDisplayed() && home.looksLoggedIn()) {
                 return true;
             }
-            sleep(2000);
+            if (home.looksLoggedIn()) {
+                return true;
+            }
+            sleep(250);
         }
         return home.looksLoggedIn();
     }

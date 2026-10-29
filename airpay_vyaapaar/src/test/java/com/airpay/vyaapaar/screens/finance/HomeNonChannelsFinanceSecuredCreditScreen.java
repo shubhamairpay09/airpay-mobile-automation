@@ -15,12 +15,12 @@ public class HomeNonChannelsFinanceSecuredCreditScreen extends BaseScreen {
     @AndroidFindBy(xpath = CREDILIO_CARDS_LOGO)
     private WebElement credilioCardsLogo;
 
-    public static final String CREDILIO_CARDS = "//android.widget.TextView[@text='Credilio Cards']";
+    public static final String CREDILIO_CARDS = "//android.widget.TextView[contains(@content-desc,'Credilio Cards')]";
 
     @AndroidFindBy(xpath = CREDILIO_CARDS)
     private WebElement credilioCards;
 
-    public static final String SELECT_PARTNER = "//android.widget.TextView[@text='Select Partner']";
+    public static final String SELECT_PARTNER = "//android.widget.TextView[contains(@content-desc,'Select Partner')]";
 
     @AndroidFindBy(xpath = SELECT_PARTNER)
     private WebElement selectPartner;

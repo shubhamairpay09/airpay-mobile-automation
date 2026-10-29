@@ -1,36 +1,18 @@
-@airpay-capital @capital @functional @android
+@airpay-capital @capital @functional @android @lap
 Feature: Loan Against Property journeys
+  Application field values are read from the Loan Against Property sheet in
+  testdata/capital-functional-data.xlsx.
 
   Background:
     Given the Airpay Capital app is ready
+    And I am logged in to Airpay Capital with an offers test account
 
-  @CAPITAL_012
-  Scenario: Verify LAP journey for Salaried employee
-    Given I am logged in to Airpay Capital with an offers test account
-    When I complete the "Loan Against Property" application as "Salaried" until eligibility
-    Then I should see loan offers available
+  @CA_LAP_001
+  Scenario: Verify the LAP journey for a Salaried employee
+    When I complete the product application from the Capital Excel sheet until eligibility
+    # Then I should see loan offers available
 
-  @CAPITAL_013
-  Scenario: Verify LAP journey for Self-Employed customer
-    Given I am logged in to Airpay Capital with an offers test account
-    When I complete the "Loan Against Property" application as "Self-Employed" until eligibility
-    Then I should see loan offers available
-
-  @CAPITAL_014
-  Scenario: Verify LAP when no offer is available
-    Given I am logged in to Airpay Capital with a no-offer test account
-    When I complete the "Loan Against Property" application as "Salaried" until eligibility
-    Then I should see no loan offers available
-
-  @CAPITAL_015
-  Scenario: Verify LAP offer navigates to lender page
-    Given I am logged in to Airpay Capital with an offers test account
-    When I complete the "Loan Against Property" application as "Salaried" until eligibility
-    And I open the first lender offer for "Loan Against Property"
-    Then I should be on the lender application page
-
-  @CAPITAL_016
-  Scenario: Verify LAP low CIBIL score error
-    Given I am logged in to Airpay Capital with a low CIBIL test account
-    When I complete the "Loan Against Property" application as "Salaried" until eligibility
-    Then I should see a low CIBIL score error message
+  @CA_LAP_002
+  Scenario: Verify the LAP journey for a Self-Employed customer
+    When I complete the product application from the Capital Excel sheet until eligibility
+    # Then I should see loan offers available

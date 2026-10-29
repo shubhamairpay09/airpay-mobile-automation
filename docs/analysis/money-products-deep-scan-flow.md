@@ -1,80 +1,37 @@
-# Money Products — Deep Scan Screen Flow
+# Money Products + FinSight — Deep Scan Flow
 
-Source of truth for ordered a11y deep coverage. FinSight is **out of scope** until Products completes.
+## Order (one go)
 
-## Global rules
+1. **Products** (Investments → Insurance → Loans → Tax)  
+2. **FinSight** (after Products residual / hub complete)  
+3. Calculators — later
 
-1. Unlock PIN once → keep Money in foreground (no system Back to launcher).
-2. Walk screens **in the order below**; scan each screen into the scorecard.
-3. On error / stuck: in-app Back until **Products → Investments hub**, then start the **next** module.
-4. Do **not** submit KYC, payments, or invest. Open → scan → leave.
-5. Prefer short post-tap settles (no long hard waits).
+## Hard rules
 
-## Products hub sections (top → bottom)
+1. Money stays foreground — do **not** relaunch (`am start` / system Back forbidden mid-run).
+2. Leave: **app Back** → Close/Dismiss → **swipe** → **Products/FinSight tab**. Never system Back.
+3. No other apps (Share / Twitter / browser).
+4. Loader ≤ **60s** then skip tile / next.
+5. Fast PIN (ADB digits). Focus steal → **`activateApp` only**.
+6. Resume skips `*-x-done` / existing FinSight ids.
 
-| Order | Section | Modules |
-|------:|---------|---------|
-| 1 | Investments | Mutual Funds → NPS → Digital Gold → Fixed Deposit → US Stocks → Indian Stocks |
-| 2 | Insurance | 2 Wheeler → 4 Wheeler → Health → Life |
-| 3 | Loans & Credit Cards | Gold Loan → Credit Cards → Personal Loan → Home Loan → Loan Against Property |
-| 4 | Personal Finance | Tax Filing & Planning |
+## Products sections
 
-**Entry:** Bottom tab **Products** → confirm `Investments` + tiles (not MF/NPS interior).
+| # | Section | Modules |
+|---|---------|---------|
+| 1 | Investments | MF → NPS → Gold → FD → US Stocks → Indian Stocks |
+| 2 | Insurance | 2W → 4W → Health → Life |
+| 3 | Loans | Gold Loan → Credit Cards → Personal Loan → Home Loan → LAP |
+| 4 | Tax | Tax Filing & Planning |
 
----
+## FinSight (after Products)
 
-## 1. Mutual Funds (template)
+Tab **FinSight** → hub scan → **only open labels already visible** (no scroll-hunt for missing).  
+Includes `Invest Now`, `Take Action`, `Compare and File`, `Tax Filing`, `Retirement`, etc.  
+Missing CTA → skip immediately. Inside a screen: open Invest Now / Start Now if present → scan → leave.
 
-**Entry:** Products → Investments → Mutual Funds  
-**Exit:** Back until Investments hub → next module (NPS).
+## Current residual focus
 
-| Step | Screen / action | Scorecard id prefix | Notes |
-|-----:|-----------------|---------------------|-------|
-| 0 | MF Dashboard (top) | `mf-dash` | Title Mutual Funds + Dashboard tab |
-| 1 | Header: logo / Airpay Money | `mf-hdr-logo` | Open if tappable → back |
-| 2 | Header: Bookmark | `mf-hdr-bookmark` | Open → scan → back |
-| 3 | Header: Help (?) | `mf-hdr-help` | Open → scan → back |
-| 4 | Create Mutual Fund Account | `mf-create-acct` | Scan only; no KYC submit |
-| 5 | My Goals → Add Goal | `mf-add-goal` | Create Goal sheet; back |
-| 6 | Open one existing goal | `mf-goal` | Monthly SIP / One Time / buttons; back |
-| 7 | Recommendation → View all | `mf-rec-list` | List |
-| 7a | Open one recommended fund | `mf-rec-fund` | Bookmark, Share, One Time, Monthly, 1M/3M… |
-| 7b | Fund: Returns / Peer / Holdings | `mf-rec-fund-*` | Nested links; back to fund → list → dash |
-| 8 | Curated Funds → View all Mutual Funds | `mf-curated` | Better than FD, High returns, Short term… |
-| 8a | Open one curated / category fund | `mf-curated-fund` | Scan → back |
-| 9 | Index Funds (e.g. Nifty 50) | `mf-index` | Open one → scan → back |
-| 10 | Your risk profile → Edit | `mf-risk-edit` | Scan; do not finish long questionnaire |
-| 11 | Reassess | `mf-reassess` | Open → scan → back |
-| 12 | Import Funds | `mf-import` | Open → scan → back |
-| 13 | Goal Calculator | `mf-calc-goal` | Scan → back |
-| 14 | SIP Calculator | `mf-calc-sip` | Scan → back |
-| 15 | Tab Portfolio | `mf-tab-portfolio` | Scan + light scroll → Dashboard |
-| 16 | Tab Transactions | `mf-tab-tx` | Scan → Dashboard |
-| 17 | Tab Profile | `mf-tab-profile` | Scan → Dashboard |
-| 18 | Tab Dashboard | `mf-tab-dash` | Confirm home of MF |
-
----
-
-## 2–6. Other Investments (same skeleton)
-
-For each: open tile → dashboard scan → header/help if any → primary CTAs (scan-only) → bottom tabs if present → back to Investments.
-
-| Module | Id prefix |
-|--------|-----------|
-| NPS | `nps-` |
-| Digital Gold | `gold-` |
-| Fixed Deposit | `fd-` |
-| US Stocks | `us-` |
-| Indian Stocks | `in-` |
-
----
-
-## Insurance / Loans / Personal Finance
-
-Same pattern: Products → scroll to section → open tile → deep-ish (landing + main CTAs + tabs) → hub → next.
-
----
-
-## Resume
-
-Skip scorecard ids already present. If `mf-dash` exists but children missing, MF walker continues from first missing step where practical; otherwise skip whole module only when a `mf-done` marker is written after a full pass.
+Already deep-done: MF…FD, stocks, insurance, Gold Loan, Personal Loan, Home Loan (+ CC landing).  
+Soft-skip if `*-dash` or `*-x-done` exists → residual = **LAP**, **Tax**, then **FinSight**.  
+Faster: MAX_CONTROLS=4, MAX_NEST=1; FinSight no per-sub publishReport.

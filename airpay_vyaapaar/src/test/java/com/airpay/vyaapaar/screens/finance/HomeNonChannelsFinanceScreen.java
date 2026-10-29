@@ -35,6 +35,11 @@ public class HomeNonChannelsFinanceScreen extends BaseScreen {
     @AndroidFindBy(xpath = FINANCE)
     private WebElement finance;
 
+    public static final String MESSAGE_FROM_JIOMART_OFFERS = "//android.widget.Toast[@text='Message from JioMart Offers']";
+
+    @AndroidFindBy(xpath = MESSAGE_FROM_JIOMART_OFFERS)
+    private WebElement messageFromJiomartOffers;
+
     public HomeNonChannelsFinanceScreen(TestContext context) {
         super(context);
     }

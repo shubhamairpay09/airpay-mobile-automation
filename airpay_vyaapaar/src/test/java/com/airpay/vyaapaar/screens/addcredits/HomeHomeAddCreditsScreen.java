@@ -10,7 +10,7 @@ public class HomeHomeAddCreditsScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-home-add-credits";
 
-    public static final String SELECT_PAYMENT_TYPE = "//android.widget.TextView[@text='Select Payment Type']";
+    public static final String SELECT_PAYMENT_TYPE = "//android.widget.TextView[contains(@content-desc,'Select Payment Type')]";
 
     @AndroidFindBy(xpath = SELECT_PAYMENT_TYPE)
     private WebElement selectPaymentType;
@@ -20,12 +20,12 @@ public class HomeHomeAddCreditsScreen extends BaseScreen {
     @AndroidFindBy(xpath = REQUEST_FROM_NETWORK_ICON)
     private WebElement requestFromNetworkIcon;
 
-    public static final String REQUEST_FROM_NETWORK = "//android.widget.TextView[@text='Request From Network']";
+    public static final String REQUEST_FROM_NETWORK = "//android.widget.TextView[contains(@content-desc,'Request From Network')]";
 
     @AndroidFindBy(xpath = REQUEST_FROM_NETWORK)
     private WebElement requestFromNetwork;
 
-    public static final String AMOUNT = "//android.widget.TextView[@text='Amount']";
+    public static final String AMOUNT = "//android.view.View[contains(@content-desc,'Amount')]";
 
     @AndroidFindBy(xpath = AMOUNT)
     private WebElement amount;

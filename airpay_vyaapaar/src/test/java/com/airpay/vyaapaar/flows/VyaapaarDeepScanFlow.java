@@ -74,6 +74,8 @@ public class VyaapaarDeepScanFlow {
     /** Home opens Withdrawal Limit, Prepaid Cards, and Money Transfer before the long tab crawls. */
     private boolean preferFeaturedTiles = true;
     private String homeResume = "";
+    /** Last home section already scrolled into view — skip scroll-to-top when still there. */
+    private String lastHomeSection = "";
 
     public VyaapaarDeepScanFlow(TestContext context) {
         this.context = context;
@@ -295,6 +297,10 @@ public class VyaapaarDeepScanFlow {
     private static final List<String> SETTINGS_SUPPORT_MODULES = List.of(
             "Tickets", "Customer Support", "Privacy Policy", "Terms and Conditions");
 
+    /** Product tiles on Subscription hub — each opens plan list / details. */
+    private static final List<String> SUBSCRIPTION_PRODUCTS = List.of(
+            "AEPS", "HATM", "DIGIKHATA", "DMT");
+
     private final List<String> notOpened = new ArrayList<>();
 
     /**
@@ -362,13 +368,13 @@ public class VyaapaarDeepScanFlow {
             notOpened.add(section);
             return;
         }
-        scrollToTop();
         String header = revealSection(section);
         if (header == null) {
             LOG.warn("Section {} was not on home", section);
             notOpened.add(section);
             return;
         }
+        lastHomeSection = section;
         List<String> names = sectionModules(section, header);
         LOG.info("Section {} modules: {}", section, names);
         for (String name : names) {
@@ -388,9 +394,11 @@ public class VyaapaarDeepScanFlow {
                 names.add(known);
             }
         }
-        scrollToTop();
-        revealHeader(header);
-        for (int pass = 0; pass < 4; pass++) {
+        // Known list is enough for most sections — one short pass for extras, not four.
+        if (!pageHasHeader(header)) {
+            revealHeader(header);
+        }
+        for (int pass = 0; pass < 2; pass++) {
             for (String found : tilesUnder(header)) {
                 if (seen.add(normalize(found))) {
                     names.add(found);
@@ -398,7 +406,7 @@ public class VyaapaarDeepScanFlow {
             }
             String before = fingerprint();
             swipeUp();
-            sleep(300);
+            sleep(180);
             if (fingerprint().equals(before) || !pageHasHeader(header)) {
                 break;
             }
@@ -476,7 +484,18 @@ public class VyaapaarDeepScanFlow {
             aliases.add("Non Channel");
         }
         for (String alias : aliases) {
-            scrollToTop();
+            if (pageHasHeader(alias)) {
+                return alias;
+            }
+        }
+        // Scroll from the current place first; only jump to top when the header is above.
+        for (String alias : aliases) {
+            if (revealHeader(alias)) {
+                return alias;
+            }
+        }
+        scrollToTop();
+        for (String alias : aliases) {
             if (revealHeader(alias)) {
                 return alias;
             }
@@ -490,16 +509,21 @@ public class VyaapaarDeepScanFlow {
             notOpened.add(path);
             return;
         }
+        String srcLower = source().toLowerCase(Locale.ROOT);
+        boolean alreadyVisible = srcLower.contains(name.toLowerCase(Locale.ROOT));
         if (section != null) {
-            scrollToTop();
-            if (revealSection(section) == null) {
-                notOpened.add(path);
-                return;
+            boolean sameSection = section.equalsIgnoreCase(lastHomeSection) && pageHasHeader(section);
+            if (!sameSection && !alreadyVisible) {
+                if (revealSection(section) == null) {
+                    notOpened.add(path);
+                    return;
+                }
+                lastHomeSection = section;
             }
-        } else {
-            scrollToTop();
         }
-        bringLabelIntoView(name);
+        if (!alreadyVisible) {
+            bringLabelIntoView(name);
+        }
         LOG.info("Opening {}", path);
         String before = fingerprint();
         if (!tapHomeModule(name)) {
@@ -507,7 +531,7 @@ public class VyaapaarDeepScanFlow {
             notOpened.add(path);
             return;
         }
-        sleep(700);
+        sleep(450);
         allowDialogs();
         if (needsBiometric(source())) {
             waitForUserUnlock();
@@ -525,6 +549,13 @@ public class VyaapaarDeepScanFlow {
         String tile = homeTileKey(name);
         if (tile != null) {
             finishedHomeTiles.add(tile);
+        }
+        if (screenAlreadyScanned(fingerprint())) {
+            LOG.info("{} already scanned — not crawling again", path);
+            if (!prepareHome()) {
+                returnToSignedInHome();
+            }
+            return;
         }
         try {
             crawl("home-" + slug(path), path, slug(name), 1);
@@ -568,7 +599,9 @@ public class VyaapaarDeepScanFlow {
                 notOpened.add("Profile/" + row);
                 continue;
             }
-            bringLabelIntoView(row);
+            if (!source().toLowerCase(Locale.ROOT).contains(row.toLowerCase(Locale.ROOT))) {
+                bringLabelIntoView(row);
+            }
             LOG.info("Opening Profile/{}", row);
             String before = fingerprint();
             if (!tapHomeModule(row)) {
@@ -576,7 +609,7 @@ public class VyaapaarDeepScanFlow {
                 notOpened.add("Profile/" + row);
                 continue;
             }
-            sleep(700);
+            sleep(450);
             allowDialogs();
             if (needsBiometric(source())) {
                 waitForUserUnlock();
@@ -2553,14 +2586,14 @@ public class VyaapaarDeepScanFlow {
 
     private void bringLabelIntoView(String label) {
         String want = label.toLowerCase(Locale.ROOT);
-        for (int i = 0; i < 4; i++) {
-            if (source().toLowerCase(Locale.ROOT).contains(want)) {
-                return;
-            }
+        if (source().toLowerCase(Locale.ROOT).contains(want)) {
+            return;
+        }
+        for (int i = 0; i < 3; i++) {
             String before = fingerprint();
             swipeUp();
-            sleep(300);
-            if (fingerprint().equals(before)) {
+            sleep(180);
+            if (source().toLowerCase(Locale.ROOT).contains(want) || fingerprint().equals(before)) {
                 return;
             }
         }
@@ -2627,7 +2660,10 @@ public class VyaapaarDeepScanFlow {
     }
 
     private boolean revealHeader(String header) {
-        for (int i = 0; i < 8; i++) {
+        if (pageHasHeader(header)) {
+            return true;
+        }
+        for (int i = 0; i < 5; i++) {
             if (!inApp() || needsBiometric(source())) {
                 return false;
             }
@@ -2635,12 +2671,12 @@ public class VyaapaarDeepScanFlow {
                 LOG.warn("Left the home list while looking for {}", header);
                 return false;
             }
+            String before = fingerprint();
+            swipeUp();
+            sleep(180);
             if (pageHasHeader(header)) {
                 return true;
             }
-            String before = fingerprint();
-            swipeUp();
-            sleep(350);
             if (fingerprint().equals(before)) {
                 break;
             }
@@ -2764,52 +2800,59 @@ public class VyaapaarDeepScanFlow {
     }
 
     /**
-     * Fingerprint, face, or PIN has to be done by the person holding the phone.
-     * The scan does not tap it, press back, or reopen the app while it waits.
+     * Unlocks fingerprint/face/PIN without a person at the phone when
+     * {@code vyaapaar.device.pin} is set in config/secrets.properties.
+     * Without that PIN the scan cannot continue unattended.
      */
     private void waitForUserUnlock() {
         if (!needsBiometric(source())) {
             return;
         }
-        LOG.warn("Fingerprint, face, or PIN is on screen. Unlock it on the phone — the scan will wait and will not leave the app.");
-        enterOwnerDevicePin();
-        long until = System.currentTimeMillis() + 10 * 60_000L;
-        long nextLog = System.currentTimeMillis() + 30_000L;
+        LOG.warn("Fingerprint, face, or PIN is on screen — trying configured device PIN for unattended run");
+        boolean pinTried = enterConfiguredDevicePin();
+        long waitMs = pinTried ? 45_000L : 20_000L;
+        long until = System.currentTimeMillis() + waitMs;
+        long nextLog = System.currentTimeMillis() + 10_000L;
         boolean retriedPin = false;
         while (System.currentTimeMillis() < until) {
-            sleep(3000);
+            sleep(2000);
             if (!needsBiometric(source()) && inApp()) {
                 LOG.info("Unlock done — scan continues");
                 return;
             }
             if (!retriedPin) {
                 retriedPin = true;
-                enterOwnerDevicePin();
+                enterConfiguredDevicePin();
             }
             if (System.currentTimeMillis() >= nextLog) {
-                LOG.warn("Still waiting for fingerprint, face, or PIN on the phone");
-                nextLog = System.currentTimeMillis() + 30_000L;
+                LOG.warn("Still on fingerprint/face/PIN unlock");
+                nextLog = System.currentTimeMillis() + 10_000L;
             }
         }
-        LOG.warn("Fingerprint, face, or PIN was still on screen after waiting");
+        if (needsBiometric(source())) {
+            LOG.error("Unlock still showing after wait. For unattended runs set vyaapaar.device.pin=#### "
+                    + "in config/secrets.properties (gitignored). Scan cannot continue without unlock.");
+        }
     }
 
     /**
-     * Types the unlock PIN only for this phone. The digits come from the git-ignored
-     * secrets file and are never written to the log.
+     * Types the device unlock PIN from secrets. Works on any connected phone when the PIN
+     * is configured. Digits are never logged.
      */
-    private void enterOwnerDevicePin() {
+    private boolean enterConfiguredDevicePin() {
         String udid = context.config().get("android.udid", "").trim();
-        if (!OWNER_PHONE_UDID.equals(udid)) {
-            return;
-        }
         String pin = context.config().get("vyaapaar.device.pin", "").trim();
         if (!pin.matches("\\d{4,8}")) {
-            return;
+            if (OWNER_PHONE_UDID.equals(udid)) {
+                LOG.warn("vyaapaar.device.pin is missing in secrets.properties — unlock cannot be automated");
+            } else {
+                LOG.warn("Set vyaapaar.device.pin in config/secrets.properties for unattended unlock on this phone");
+            }
+            return false;
         }
         tapLabel("Use PIN", "PIN", "Enter PIN", "Use pin");
         sleep(400);
-        LOG.info("Entering the device PIN for this phone");
+        LOG.info("Entering the configured device PIN (value not logged)");
         String[] keys = new String[pin.length() + 1];
         for (int i = 0; i < pin.length(); i++) {
             keys[i] = Integer.toString(7 + (pin.charAt(i) - '0'));
@@ -2821,6 +2864,7 @@ public class VyaapaarDeepScanFlow {
         System.arraycopy(keys, 0, command, 2, keys.length);
         AdbCommands.shell(udid, command);
         sleep(800);
+        return true;
     }
 
     /** Stores the open list, selects one option, then stores the page that follows. */
@@ -3514,32 +3558,26 @@ public class VyaapaarDeepScanFlow {
             }
             previous = fp;
             LOG.info("{} step: {}", module, action);
-            sleep(1100);
+            sleep(700);
         }
     }
 
     private void openDropdowns(String module, String label) {
-        List<Action> dropdowns = new ArrayList<>();
-        for (Action action : visibleActions()) {
-            String n = normalize(action.label);
-            if (n.contains("select") || n.contains("choose") || n.contains("dropdown") || n.equals("dropdown")) {
-                dropdowns.add(action);
-            }
-        }
+        List<Action> dropdowns = collectFilterAndDropdownActions(0);
         int opened = 0;
         for (Action dropdown : dropdowns) {
-            if (opened >= 4 || !revealAndTap(dropdown)) {
+            if (opened >= 6 || !revealAndTap(dropdown)) {
                 continue;
             }
             opened++;
-            sleep(500);
+            sleep(350);
             capture(module, module + "-" + slug(label) + "-" + slug(dropdown.label), label + " / " + dropdown.label);
             for (Action option : visibleActions()) {
                 if (option.label.equalsIgnoreCase(dropdown.label) || shouldSkip(option.label, source())) {
                     continue;
                 }
                 tap(option.x, option.y);
-                sleep(400);
+                sleep(280);
                 break;
             }
         }
@@ -3834,21 +3872,18 @@ public class VyaapaarDeepScanFlow {
             sleep(400);
         }
         String fp = fingerprint();
-        boolean known = finished.contains(fp) || explored.contains(fp);
-        if (fp.isBlank() || known) {
+        if (fp.isBlank() || screenAlreadyScanned(fp)) {
             return;
         }
-        explored.add(fp);
-        if (known) {
-            LOG.info("Login screen was already stored — walking it again for registration and OTP");
-        }
+        rememberScreen(fp);
         try {
             String screenId = trimId(id);
             capture(module, screenId, label);
             if (needsManualDocument(source())) {
                 waitForYourUpload();
             }
-            fillIdentityIfSafe();
+            coverEditFields(module, screenId, label);
+            rememberScreen(fingerprint());
             if (isOtp(source())) {
                 enterOtp(context.config().require("vyaapaar.test.mobile"));
                 capture(module, screenId, label);
@@ -3856,15 +3891,13 @@ public class VyaapaarDeepScanFlow {
             if (isDateSheet(source())) {
                 LOG.info("Date picker is open — storing it, then closing the sheet");
                 dismissDateSheet();
-                finished.add(fp);
-                saveFinished();
+                markScreenFinished(fp);
                 return;
             }
             if (isAlert(source())) {
                 LOG.info("Alert is open — storing it, then dismissing it");
                 dismissAlerts();
-                finished.add(fp);
-                saveFinished();
+                markScreenFinished(fp);
                 return;
             }
             if (isPicker(source())) {
@@ -3873,13 +3906,33 @@ public class VyaapaarDeepScanFlow {
                 if (preferred != null) {
                     chooseOneOption(module, screenId, label);
                 }
-                finished.add(fp);
-                saveFinished();
+                markScreenFinished(fp);
                 return;
             }
             Set<String> done = new LinkedHashSet<>();
-            openEachDropdown(module, screenId, label, done);
+            int dropdownBudget = dropdownBudgetFor(label);
+            openEachDropdown(module, screenId, label, done, dropdownBudget);
+            // Loan Lead has many selects below the fold — second pass after a short scroll.
+            if (label.toLowerCase(Locale.ROOT).contains("loan lead")) {
+                swipeUp();
+                sleep(200);
+                openEachDropdown(module, screenId, label, done, dropdownBudget);
+                swipeUp();
+                sleep(200);
+                openEachDropdown(module, screenId, label, done, dropdownBudget);
+            }
+            openFilterControls(module, screenId, label, done);
+            coverDateFilterControls(module, screenId, label, done);
+            boolean subscriptionHubDone = false;
+            if (isSubscriptionHub(source())) {
+                coverSubscriptionDeep(module, screenId, label, done);
+                subscriptionHubDone = true;
+            } else if (isSubscriptionPlanList(source())) {
+                coverSubscriptionPlans(module, screenId, label, done);
+                done.add("down arrow");
+            }
             int clicks = 0;
+            int idleScrolls = 0;
             while (!timedOut() && clicks < maxClicks && captures < maxScreens) {
                 if (depth > 0 && onSignedInHome(source())) {
                     LOG.info("Home is open inside {} — stopping so the next home module is scanned", label);
@@ -3893,6 +3946,11 @@ public class VyaapaarDeepScanFlow {
                     LOG.info("Settings is open inside {} — stopping so the next Support row is scanned", label);
                     break;
                 }
+                // Products + one plan detail already covered — do not reloop hub tiles.
+                if (subscriptionHubDone && isSubscriptionHub(source())) {
+                    LOG.info("Subscription hub products already covered — not relooping");
+                    break;
+                }
                 Action action = nextVisibleModule(done, depth == 0);
                 if (action == null) {
                     String beforeScroll = fingerprint();
@@ -3902,17 +3960,23 @@ public class VyaapaarDeepScanFlow {
                         if (depth == 0 && preferFeaturedTiles && featuredTilesRemain()) {
                             LOG.info("Featured tiles still left — scanning the other controls on this home");
                             preferFeaturedTiles = false;
+                            idleScrolls = 0;
                             continue;
                         }
                         break;
                     }
+                    if (++idleScrolls >= 3) {
+                        LOG.info("No new controls after {} scrolls on {} — stopping", idleScrolls, label);
+                        break;
+                    }
                     continue;
                 }
+                idleScrolls = 0;
                 try {
                     String before = fingerprint();
                     String beforeTitle = screenTitle(source());
                     if (!tap(action.x, action.y) && !tapLabel(action.label)) {
-                        done.add(normalize(action.label));
+                        done.add(controlKey(action.label));
                         continue;
                     }
                     clicks++;
@@ -3920,6 +3984,7 @@ public class VyaapaarDeepScanFlow {
                     allowDialogs();
                     if (needsBiometric(source())) {
                         waitForUserUnlock();
+                        done.add(controlKey(action.label));
                         continue;
                     }
                     if (!inApp() && !reopenAfterCrash()) {
@@ -3944,10 +4009,19 @@ public class VyaapaarDeepScanFlow {
                         break;
                     }
                     if (fingerprint().equals(before)) {
-                        done.add(normalize(action.label));
+                        done.add(controlKey(action.label));
                         continue;
                     }
-                    done.add(normalize(action.label));
+                    done.add(controlKey(action.label));
+                    if (screenAlreadyScanned(fingerprint()) && !isToggle(action.label)) {
+                        LOG.info("Opened {} but screen already scanned — not crawling it again", action.label);
+                        if (!backUntil(before, beforeTitle)) {
+                            if (onSignedInHome(source()) && depth > 0) {
+                                break;
+                            }
+                        }
+                        continue;
+                    }
                     String openedTile = homeTileKey(action.label);
                     if (depth == 0 && openedTile != null) {
                         finishedHomeTiles.add(openedTile);
@@ -3979,47 +4053,52 @@ public class VyaapaarDeepScanFlow {
                             LOG.info("Back on home after {} — leaving this module for the next home tile", action.label);
                             break;
                         }
-                        LOG.warn("Did not return after {} — continuing from the screen that stayed open", action.label);
+                        LOG.warn("Did not return after {} — stopping this screen to avoid a reloop", action.label);
+                        break;
                     }
                 } catch (Exception e) {
-                    done.add(normalize(action.label));
+                    done.add(controlKey(action.label));
                     LOG.warn("Could not finish {} — continuing with the next control: {}", action.label, e.toString());
                     if (sessionDropped(e)) {
                         break;
                     }
                 }
             }
-            finished.add(fp);
-            saveFinished();
+            markScreenFinished(fp);
+            markScreenFinished(fingerprint());
         } catch (Exception e) {
             LOG.warn("Crawl {} failed: {}", label, e.toString());
         }
     }
 
-    /** Opens dropdowns that are already on screen. Does not scroll to find more. */
+    /** Opens dropdowns / select fields. Loan Lead and similar forms get a higher budget. */
     private void openEachDropdown(String module, String screenId, String label, Set<String> done) {
-        List<Action> dropdowns = new ArrayList<>();
-        Set<String> seen = new LinkedHashSet<>();
-        for (Action action : visibleActions()) {
-            if (!isDropdownLabel(normalize(action.label)) && !action.label.equalsIgnoreCase("dropdown")) {
+        openEachDropdown(module, screenId, label, done, dropdownBudgetFor(label));
+    }
+
+    private void openEachDropdown(String module, String screenId, String label, Set<String> done, int budget) {
+        int scrolls = label.toLowerCase(Locale.ROOT).contains("loan lead") ? 3 : 1;
+        List<Action> dropdowns = collectFilterAndDropdownActions(scrolls);
+        int opened = 0;
+        for (Action drop : dropdowns) {
+            String key = controlKey(drop.label);
+            if (done.contains(key) || isFilterControl(normalize(drop.label)) || isDateFilterLabel(normalize(drop.label))) {
                 continue;
             }
-            if (seen.add(normalize(action.label))) {
-                dropdowns.add(action);
-            }
-        }
-        for (Action drop : dropdowns) {
-            done.add(normalize(drop.label));
-            if (timedOut() || captures >= maxScreens) {
+            done.add(key);
+            if (opened >= budget || timedOut() || captures >= maxScreens) {
                 return;
             }
             String before = fingerprint();
+            if (screenAlreadyScanned(before) && isPicker(source())) {
+                continue;
+            }
             String beforeTitle = screenTitle(source());
             LOG.info("Opening dropdown {}", drop.label);
             if (!revealAndTap(drop)) {
                 continue;
             }
-            sleep(500);
+            sleep(350);
             if (needsBiometric(source())) {
                 waitForUserUnlock();
                 continue;
@@ -4031,10 +4110,26 @@ public class VyaapaarDeepScanFlow {
             if (fingerprint().equals(before) && !isPicker(source())) {
                 continue;
             }
+            opened++;
             String childId = trimId(screenId + "-dropdown-" + slug(drop.label));
+            String childFp = fingerprint();
+            if (screenAlreadyScanned(childFp)) {
+                if (!backUntil(before, beforeTitle) && !tapLabel("Close", "Cancel", "OK", "Done")) {
+                    LOG.warn("Dropdown {} already scanned — could not close it", drop.label);
+                }
+                continue;
+            }
             crawl(childId, joinPath(label, drop.label), module, 1);
             if (!fingerprint().equals(before) && !backUntil(before, beforeTitle)) {
-                LOG.warn("Did not return after dropdown {} — continuing with the screen that stayed open", drop.label);
+                LOG.warn("Did not return after dropdown {} — closing sheet before next control", drop.label);
+                if (!tapLabel("Close", "Cancel", "OK", "Done", "Apply") && !tapInAppBack()) {
+                    guardedSystemBack();
+                }
+                sleep(250);
+                if (!returnedTo(before, beforeTitle) && !onSignedInHome(source())) {
+                    LOG.warn("Still not back after dropdown {} — stopping dropdown pass", drop.label);
+                    break;
+                }
                 if (!inApp() && !bringAppForward()) {
                     break;
                 }
@@ -4042,8 +4137,228 @@ public class VyaapaarDeepScanFlow {
         }
     }
 
+    /** Filter / Sort icons — opened once per screen; date edits inside the sheet are covered next. */
+    private void openFilterControls(String module, String screenId, String label, Set<String> done) {
+        List<Action> filters = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (Action action : collectFilterAndDropdownActions(1)) {
+            String key = controlKey(action.label);
+            if (!isFilterControl(normalize(action.label)) || done.contains(key) || !seen.add(key)) {
+                continue;
+            }
+            filters.add(action);
+        }
+        for (Action filter : filters) {
+            done.add(controlKey(filter.label));
+            if (timedOut() || captures >= maxScreens) {
+                return;
+            }
+            String before = fingerprint();
+            String beforeTitle = screenTitle(source());
+            LOG.info("Opening filter {}", filter.label);
+            if (!revealAndTap(filter) && !tapVisibleIcon("Filter") && !tapLabel("Filter", "Filter Icon", "Sort")) {
+                continue;
+            }
+            sleep(350);
+            if (needsBiometric(source()) || (!inApp() && !reopenAfterCrash())) {
+                break;
+            }
+            if (fingerprint().equals(before) && !isPicker(source())
+                    && !source().toLowerCase(Locale.ROOT).contains("filter")) {
+                continue;
+            }
+            String filterPath = joinPath(label, filter.label);
+            String filterId = trimId(screenId + "-filter-" + slug(filter.label));
+            String filterFp = fingerprint();
+            if (!screenAlreadyScanned(filterFp)) {
+                capture(module, filterId, filterPath);
+                coverEditFields(module, filterId, filterPath);
+                coverDateFilterControls(module, filterId, filterPath, done);
+                openEachDropdown(module, filterId, filterPath, done, 8);
+                markScreenFinished(filterFp);
+                markScreenFinished(fingerprint());
+            } else {
+                LOG.info("Filter sheet already scanned — not opening it again");
+            }
+            if (!fingerprint().equals(before) && !backUntil(before, beforeTitle)) {
+                LOG.warn("Did not return after filter {} — closing before next control", filter.label);
+                if (!tapLabel("Apply", "Close", "Cancel", "Done", "Clear") && !tapInAppBack()) {
+                    guardedSystemBack();
+                }
+                sleep(300);
+            }
+        }
+    }
+
+    /**
+     * Inside a filter sheet: open calendar / date edits (Select date range, Start/End date,
+     * Switch to calendar input mode, Switch to text/edit input mode).
+     */
+    private void coverDateFilterControls(String module, String screenId, String label, Set<String> done) {
+        String src = source().toLowerCase(Locale.ROOT);
+        // Require a real date/filter cue — bare "from"/"to" matches too much noise.
+        if (!src.contains("filter") && !src.contains("date") && !src.contains("calendar")
+                && !src.contains("date range") && !src.contains("dd/mm")) {
+            return;
+        }
+        List<String> dateControls = List.of(
+                "Select date range",
+                "Switch to calendar input mode",
+                "Switch to text input mode",
+                "Switch to edit",
+                "Start date",
+                "End date",
+                "From date",
+                "To date",
+                "Start date, DD/MM/YYYY",
+                "End date, DD/MM/YYYY");
+        for (String control : dateControls) {
+            String key = controlKey(control);
+            if (done.contains(key) || timedOut() || captures >= maxScreens) {
+                continue;
+            }
+            if (!source().toLowerCase(Locale.ROOT).contains(control.toLowerCase(Locale.ROOT).split(",")[0])) {
+                continue;
+            }
+            String before = fingerprint();
+            String beforeTitle = screenTitle(source());
+            boolean tapped = tapLabel(control) || tapContaining(control) || tapVisibleIcon(control)
+                    || tapTextContaining(control.split(",")[0]);
+            if (!tapped) {
+                continue;
+            }
+            done.add(key);
+            sleep(400);
+            if (fingerprint().equals(before) && !isDateSheet(source()) && !isPicker(source())) {
+                continue;
+            }
+            String dateId = trimId(screenId + "-date-" + slug(control));
+            String datePath = joinPath(label, control);
+            String dateFp = fingerprint();
+            if (!screenAlreadyScanned(dateFp)) {
+                capture(module, dateId, datePath);
+                // Prefer edit/text mode when calendar offers it, then capture that too.
+                if (tapLabel("Switch to text input mode", "Switch to edit", "Edit")
+                        || tapContaining("text input") || tapContaining("Switch to edit")) {
+                    sleep(350);
+                    rememberScreen(fingerprint());
+                    capture(module, trimId(dateId + "-edit"), datePath + " / edit");
+                    coverEditFields(module, trimId(dateId + "-edit"), datePath + " / edit");
+                } else if (tapLabel("Switch to calendar input mode") || tapContaining("calendar input")) {
+                    sleep(350);
+                    rememberScreen(fingerprint());
+                    capture(module, trimId(dateId + "-calendar"), datePath + " / calendar");
+                }
+                markScreenFinished(dateFp);
+                markScreenFinished(fingerprint());
+            }
+            if (!tapLabel("Cancel", "Close sheet", "Close", "OK", "Done") && !fingerprint().equals(before)) {
+                if (!backUntil(before, beforeTitle) && !tapInAppBack()) {
+                    guardedSystemBack();
+                }
+            }
+            sleep(250);
+        }
+        // Also tap any visible Start/End date EditTexts so the calendar/edit sheet opens.
+        try {
+            for (WebElement field : driver.findElements(By.xpath("//android.widget.EditText"))) {
+                if (!field.isDisplayed()) {
+                    continue;
+                }
+                String blob = (field.getAttribute("hint") + " " + field.getAttribute("text") + " "
+                        + field.getAttribute("content-desc")).toLowerCase(Locale.ROOT);
+                if (!blob.contains("date") && !blob.contains("dd/mm") && !blob.contains("from")
+                        && !blob.contains("to")) {
+                    continue;
+                }
+                String before = fingerprint();
+                String beforeTitle = screenTitle(source());
+                field.click();
+                sleep(400);
+                if (fingerprint().equals(before) && !isDateSheet(source())) {
+                    continue;
+                }
+                String dateFp = fingerprint();
+                if (!screenAlreadyScanned(dateFp)) {
+                    capture(module, trimId(screenId + "-date-field"), joinPath(label, "Date field"));
+                    if (tapLabel("Switch to text input mode", "Switch to edit", "Edit")
+                            || tapContaining("text input")) {
+                        sleep(300);
+                        capture(module, trimId(screenId + "-date-field-edit"), joinPath(label, "Date field / edit"));
+                        coverEditFields(module, trimId(screenId + "-date-field-edit"),
+                                joinPath(label, "Date field / edit"));
+                    }
+                    markScreenFinished(dateFp);
+                    markScreenFinished(fingerprint());
+                }
+                if (!tapLabel("Cancel", "Close sheet", "Close", "OK") && !backUntil(before, beforeTitle)) {
+                    tapInAppBack();
+                }
+                sleep(200);
+            }
+        } catch (Exception e) {
+            LOG.debug("Date edit fields skipped: {}", e.toString());
+        }
+    }
+
+    private List<Action> collectFilterAndDropdownActions(int extraScrolls) {
+        List<Action> found = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (int pass = 0; pass <= Math.max(0, extraScrolls); pass++) {
+            for (Action action : visibleActions()) {
+                String n = normalize(action.label);
+                if (!isDropdownLabel(n) && !action.label.equalsIgnoreCase("dropdown") && !isFilterControl(n)
+                        && !isLoanLeadSelect(n)) {
+                    continue;
+                }
+                String key = controlKey(action.label);
+                if (seen.add(key)) {
+                    found.add(action);
+                }
+            }
+            if (pass == extraScrolls) {
+                break;
+            }
+            String before = fingerprint();
+            swipeUp();
+            sleep(160);
+            if (fingerprint().equals(before)) {
+                break;
+            }
+        }
+        // Prefer filters first so History/Services filter sheets are not skipped.
+        found.sort((a, b) -> Boolean.compare(isFilterControl(normalize(b.label)), isFilterControl(normalize(a.label))));
+        return found;
+    }
+
+    private static boolean isFilterControl(String n) {
+        return n.equals("filter") || n.equals("filter icon") || n.startsWith("filter ")
+                || n.contains("filter icon") || n.equals("sort") || n.equals("sort icon")
+                || n.contains("sort by") || n.contains("filter by");
+    }
+
+    private static boolean isDateFilterLabel(String n) {
+        return n.contains("select date") || n.contains("date range") || n.contains("start date")
+                || n.contains("end date") || n.contains("from date") || n.contains("to date")
+                || n.contains("calendar input") || n.contains("text input")
+                || n.equals("dob") || n.contains("close sheet");
+    }
+
+    private static boolean isLoanLeadSelect(String n) {
+        return n.contains("loan type") || n.contains("loan product") || n.contains("loan amount")
+                || n.contains("employment") || n.contains("occupation") || n.contains("income")
+                || n.contains("marital") || n.contains("purpose") || n.contains("partner")
+                || n.contains("salutation") || n.equals("title") || n.contains("gender")
+                || n.contains("bank name") || n.contains("product type") || n.contains("lead type")
+                || n.contains("company type") || n.contains("residence") || n.contains("qualification");
+    }
+
     private static boolean isDropdownLabel(String n) {
-        if (n.equals("select date") || n.equals("dob") || n.contains("calendar") || n.equals("close sheet")) {
+        // Date/calendar sheets are opened by coverDateFilterControls, not as generic dropdowns.
+        if (isDateFilterLabel(n) && !n.contains("date range") && !n.startsWith("select ")) {
+            return false;
+        }
+        if (n.contains("close sheet")) {
             return false;
         }
         return n.equals("city") || n.equals("district") || n.equals("state")
@@ -4053,7 +4368,324 @@ public class VyaapaarDeepScanFlow {
                 || n.contains("filter") || n.contains("sort")
                 || n.equals("status") || n.contains("date range")
                 || n.contains("transaction type") || n.contains("service type")
-                || n.startsWith("select ") || n.contains("dropdown");
+                || n.contains("partner") || n.contains("search by")
+                || n.startsWith("select ") || n.contains("dropdown") || n.contains("choose ")
+                || isLoanLeadSelect(n);
+    }
+
+    private int dropdownBudgetFor(String label) {
+        String n = label == null ? "" : label.toLowerCase(Locale.ROOT);
+        if (n.contains("loan lead")) {
+            return 14;
+        }
+        if (n.contains("subscription")) {
+            return 10;
+        }
+        if (n.contains("filter") || n.contains("history") || n.contains("credit ledger")) {
+            return 8;
+        }
+        return 6;
+    }
+
+    private boolean isSubscriptionHub(String src) {
+        if (src == null || src.isBlank()) {
+            return false;
+        }
+        String n = src.toLowerCase(Locale.ROOT);
+        return n.contains("power up your earnings") || n.contains("select the product you want to subscribe")
+                || (n.contains("subscription") && n.contains("digikhata") && n.contains("hatm") && n.contains("dmt"));
+    }
+
+    private boolean isSubscriptionPlanList(String src) {
+        if (src == null || src.isBlank()) {
+            return false;
+        }
+        String n = src.toLowerCase(Locale.ROOT);
+        return n.contains("choose the plan that works for you") || n.contains("subscription plan")
+                || (n.contains("month") && (n.contains("₹") || n.contains("rs") || n.contains("plan")));
+    }
+
+    /**
+     * Subscription hub only: each product once → one Down-arrow / plan detail → back to hub.
+     * Never taps Buy / Pay / Subscribe. Plan-list screens use {@link #coverSubscriptionPlans} only.
+     */
+    private void coverSubscriptionDeep(String module, String screenId, String label, Set<String> done) {
+        if (!isSubscriptionHub(source())) {
+            if (isSubscriptionPlanList(source())) {
+                coverSubscriptionPlans(module, screenId, label, done);
+                done.add("down arrow");
+            }
+            return;
+        }
+        LOG.info("Subscription deep scan — one detail per product {}", SUBSCRIPTION_PRODUCTS);
+        for (String product : SUBSCRIPTION_PRODUCTS) {
+            if (timedOut() || captures >= maxScreens) {
+                return;
+            }
+            String key = controlKey(product);
+            if (done.contains(key)) {
+                continue;
+            }
+            if (!isSubscriptionHub(source()) && !backToSubscriptionHub(label)) {
+                LOG.warn("Could not return to Subscription hub before {}", product);
+                break;
+            }
+            String before = fingerprint();
+            String beforeTitle = screenTitle(source());
+            LOG.info("Opening Subscription/{}", product);
+            boolean opened = tapVisibleIcon(product) || tapNamed(product) || tapLabel(product, product + " icon")
+                    || tapTextContaining(product);
+            if (!opened) {
+                LOG.warn("Subscription product {} was not on screen", product);
+                notOpened.add(joinPath(label, product));
+                done.add(key);
+                continue;
+            }
+            done.add(key);
+            sleep(500);
+            if (fingerprint().equals(before)) {
+                LOG.warn("Subscription/{} stayed on the hub", product);
+                continue;
+            }
+            String productPath = joinPath(label, product);
+            String productId = trimId(screenId + "-" + slug(product));
+            String productFp = fingerprint();
+            if (!screenAlreadyScanned(productFp)) {
+                capture(module, productId, productPath);
+                coverSubscriptionPlans(module, productId, productPath, done);
+                markScreenFinished(productFp);
+                markScreenFinished(fingerprint());
+            } else {
+                LOG.info("Subscription/{} already scanned — one plan detail only if still open", product);
+                coverSubscriptionPlans(module, productId, productPath, done);
+            }
+            done.add("down arrow");
+            if (!fingerprint().equals(before) && !backUntil(before, beforeTitle)) {
+                if (!tapInAppBack() && !guardedSystemBack()) {
+                    LOG.warn("Could not leave Subscription/{}", product);
+                }
+                sleep(300);
+            }
+        }
+        done.add("down arrow");
+        for (String product : SUBSCRIPTION_PRODUCTS) {
+            done.add(controlKey(product));
+        }
+        backToSubscriptionHub(label);
+    }
+
+    /**
+     * One plan detail only per product: Down arrow (or first plan / View Details), capture, then back.
+     * Does not walk every plan card.
+     */
+    private void coverSubscriptionPlans(String module, String screenId, String label, Set<String> done) {
+        if (!isSubscriptionPlanList(source()) && !source().toLowerCase(Locale.ROOT).contains("month")
+                && !source().toLowerCase(Locale.ROOT).contains("plan")) {
+            return;
+        }
+        String listFp = fingerprint();
+        String listTitle = screenTitle(source());
+        String detailKey = controlKey(label + "/plan-detail");
+        if (done.contains(detailKey)) {
+            return;
+        }
+        String before = fingerprint();
+        LOG.info("Subscription {} — opening one plan detail via Down arrow, then back", label);
+        boolean opened = tapVisibleIcon("Down arrow") || tapLabel("Down arrow", "Down Arrow");
+        if (!opened) {
+            // Fallback: first visible plan row, then View Details if needed.
+            for (Action action : visibleActions()) {
+                if (!isSubscriptionPlanAction(action.label)) {
+                    continue;
+                }
+                String n = normalize(action.label);
+                if (shouldSkip(action.label, source()) && !n.matches("\\d+")) {
+                    continue;
+                }
+                if (!revealAndTap(action) && !tapLabel(action.label)) {
+                    continue;
+                }
+                sleep(350);
+                if (fingerprint().equals(before)) {
+                    tapLabel("View Details", "View Detail", "View details", "Know More", "See Details");
+                    sleep(350);
+                }
+                opened = !fingerprint().equals(before);
+                break;
+            }
+        } else {
+            sleep(400);
+            // Inline expand may keep the same page; only tap View Details if nothing changed.
+            if (fingerprint().equals(before)) {
+                tapLabel("View Details", "View Detail", "View details", "Know More", "See Details");
+                sleep(350);
+            }
+            String after = source().toLowerCase(Locale.ROOT);
+            opened = !fingerprint().equals(before) || after.contains("incentive")
+                    || after.contains("commission") || after.contains("detail")
+                    || after.contains("auto renewal");
+        }
+        if (!opened && fingerprint().equals(before)) {
+            LOG.warn("No plan detail opened on {}", label);
+            return;
+        }
+        done.add(detailKey);
+        String detailPath = joinPath(label, "Plan detail");
+        String detailId = trimId(screenId + "-plan-detail");
+        String detailFp = fingerprint();
+        if (!screenAlreadyScanned(detailFp)) {
+            capture(module, detailId, detailPath);
+            markScreenFinished(detailFp);
+        }
+        done.add("down arrow");
+        done.add(controlKey("View Details"));
+        if (!fingerprint().equals(listFp) && !backUntil(listFp, listTitle)) {
+            if (!tapLabel("Close", "Cancel", "OK", "Done", "Back") && !tapInAppBack()) {
+                guardedSystemBack();
+            }
+            sleep(250);
+        }
+        LOG.info("Back from one plan detail on {}", label);
+    }
+
+    private boolean isSubscriptionPlanAction(String label) {
+        String n = normalize(label);
+        if (n.isBlank() || isFilterControl(n) || isChrome(n) || n.equals("subscription")
+                || n.equals("aeps") || n.equals("hatm") || n.equals("digikhata") || n.equals("dmt")
+                || n.equals("down arrow") || n.startsWith("power up")) {
+            return false;
+        }
+        if (n.contains("view detail") || n.contains("know more") || n.contains("see detail")) {
+            return true;
+        }
+        if (n.contains("month") || n.contains("year") || n.contains("plan") || n.contains("incentive")
+                || n.contains("commission") || n.contains("renewal") || n.contains("exclusive")
+                || n.contains("subscription plan") || n.startsWith("dmt_") || n.startsWith("hatm")
+                || n.contains("rtaeps") || n.contains("incr")) {
+            return true;
+        }
+        // Price chips normalize to digits (₹ is stripped) — opening them selects the plan.
+        return n.matches("\\d{1,5}");
+    }
+
+    private boolean backToSubscriptionHub(String fromLabel) {
+        for (int i = 0; i < 5; i++) {
+            if (isSubscriptionHub(source())) {
+                return true;
+            }
+            if (onSignedInHome(source()) || onMainShell(source())) {
+                return false;
+            }
+            if (!tapInAppBack() && !guardedSystemBack()) {
+                return isSubscriptionHub(source());
+            }
+            sleep(350);
+        }
+        return isSubscriptionHub(source());
+    }
+
+    /** Treat Filter / Filter Icon (and Sort variants) as one control so they are not opened twice. */
+    private static String controlKey(String label) {
+        String n = normalize(label);
+        if (n.equals("filter") || n.equals("filter icon") || n.startsWith("filter ")) {
+            return "filter";
+        }
+        if (n.equals("sort") || n.equals("sort icon") || n.startsWith("sort ")) {
+            return "sort";
+        }
+        if (n.endsWith(" icon")) {
+            return n.substring(0, n.length() - 5).trim();
+        }
+        return n;
+    }
+
+    private boolean screenAlreadyScanned(String fp) {
+        return fp != null && !fp.isBlank() && (finished.contains(fp) || explored.contains(fp));
+    }
+
+    private void rememberScreen(String fp) {
+        if (fp != null && !fp.isBlank()) {
+            explored.add(fp);
+        }
+    }
+
+    private void markScreenFinished(String fp) {
+        if (fp == null || fp.isBlank()) {
+            return;
+        }
+        explored.add(fp);
+        finished.add(fp);
+        saveFinished();
+    }
+
+    /**
+     * Types into visible EditTexts for a11y coverage (does not submit).
+     * Works even when {@code a11y.skip.fill} is set — that flag only blocks auto-login fills.
+     */
+    private void coverEditFields(String module, String screenId, String label) {
+        if (Boolean.getBoolean("a11y.skip.edits")) {
+            return;
+        }
+        String mobile = context.config().get("vyaapaar.test.mobile", "");
+        String name = context.config().get("vyaapaar.test.name", "");
+        String email = context.config().get("vyaapaar.test.email", "");
+        String upi = context.config().get("vyaapaar.test.upi", "");
+        String pan = context.config().get("vyaapaar.test.pan", "");
+        String pin = context.config().get("vyaapaar.test.pin", "");
+        String city = context.config().get("vyaapaar.test.city", "");
+        String src = source();
+        List<Element> nodes = UiAutomatorXml.elements(src);
+        int filled = 0;
+        String before = fingerprint();
+        try {
+            for (WebElement field : driver.findElements(By.xpath("//android.widget.EditText"))) {
+                if (filled >= 6) {
+                    break;
+                }
+                try {
+                    if (!field.isDisplayed()) {
+                        continue;
+                    }
+                    String blob = (field.getAttribute("hint") + " " + field.getAttribute("text") + " "
+                            + field.getAttribute("content-desc") + " " + labelAbove(field, nodes))
+                            .toLowerCase(Locale.ROOT);
+                    if (blob.contains("password") || blob.contains("otp") || blob.contains("mpin")
+                            || (blob.contains("pin") && blob.contains("login"))) {
+                        continue;
+                    }
+                    String value = valueFor(blob, mobile, name, email, upi, pan, pin, city);
+                    if (value == null || value.isBlank()) {
+                        value = blob.contains("amount") || blob.contains("rupee") ? "1"
+                                : blob.contains("search") ? (city.isBlank() ? "a" : city) : "1";
+                    }
+                    if (blob.contains(value.toLowerCase(Locale.ROOT))) {
+                        continue;
+                    }
+                    field.click();
+                    try {
+                        field.clear();
+                    } catch (Exception ignored) {
+                        // some Compose fields reject clear
+                    }
+                    field.sendKeys(value);
+                    filled++;
+                    sleep(120);
+                } catch (Exception e) {
+                    LOG.debug("Edit field skipped: {}", e.toString());
+                }
+            }
+        } catch (Exception e) {
+            LOG.debug("Edit field pass failed: {}", e.toString());
+        }
+        hideKeyboard();
+        if (filled > 0 && !fingerprint().equals(before)) {
+            capture(module, trimId(screenId + "-filled"), label + " (filled)");
+        } else if (filled > 0) {
+            LOG.info("Filled {} edit field(s) on {}", filled, label);
+        }
+        if (!Boolean.getBoolean("a11y.skip.fill")) {
+            fillIdentity();
+        }
     }
 
     /** Calendar bottom sheet. "Close sheet" is the control on that picker, not a new screen. */
@@ -4082,7 +4714,9 @@ public class VyaapaarDeepScanFlow {
     private boolean isPicker(String src) {
         String title = screenTitle(src).toLowerCase(Locale.ROOT);
         return title.startsWith("select ") || title.startsWith("choose ")
-                || src.contains("Select City") || src.contains("Select State");
+                || src.contains("Select City") || src.contains("Select State")
+                || src.contains("Select date range") || src.contains("Select Partner")
+                || src.contains("Select Loan") || src.contains("Select Product");
     }
 
     private void chooseOneOption(String module, String screenId, String label) {
@@ -4199,11 +4833,12 @@ public class VyaapaarDeepScanFlow {
                 continue;
             }
             String tile = homeTileKey(action.label);
-            if (tile != null && finishedHomeTiles.contains(tile)) {
+            // Only on the signed-in Home pass — Subscription still needs AEPS/DMT/etc product tiles.
+            if (homePass && tile != null && finishedHomeTiles.contains(tile)) {
                 continue;
             }
-            String key = normalize(action.label);
-            if (done.contains(key)) {
+            String key = controlKey(action.label);
+            if (done.contains(key) || done.contains(normalize(action.label))) {
                 continue;
             }
             if (homePass && preferFeaturedTiles && tile == null && featuredTilesRemain()) {
@@ -4223,9 +4858,17 @@ public class VyaapaarDeepScanFlow {
             return;
         }
         String id = trimId(screenId);
+        String fp = fingerprint();
+        boolean fpKnown = screenAlreadyScanned(fp);
         boolean fresh = storedIds.add(id);
         inventory.add(module, id, label, PageXpathStore.namedXpaths(xml));
+        if (fpKnown) {
+            LOG.info("Skip a11y rescan for {} ({}) — screen fingerprint already stored", id, label);
+            markScreenFinished(fp);
+            return;
+        }
         if (!fresh || captures >= maxScreens) {
+            rememberScreen(fp);
             return;
         }
         A11yPageRef ref = A11yPageRef.screen(id, module, label, id);
@@ -4233,6 +4876,7 @@ public class VyaapaarDeepScanFlow {
         A11yScanSession.add(result);
         savePageScore(result);
         captures++;
+        markScreenFinished(fp);
         LOG.info("Stored {} / {} ({}) score={}", module, id, label, result.score());
         publish(false);
     }
@@ -4270,8 +4914,14 @@ public class VyaapaarDeepScanFlow {
         if (n.matches("\\d+") || n.startsWith("digit ")) {
             return true;
         }
-        if (n.contains("resend") || n.contains("pay now") || n.equals("pay")
-                || n.contains("confirm payment") || n.contains("send money")
+        // Subscription: allow View Details / plan rows; never buy or pay.
+        if (n.contains("view detail") || n.contains("view plan") || n.contains("plan detail")
+                || n.contains("down arrow") || n.equals("know more") || n.equals("see details")) {
+            return false;
+        }
+        if (n.contains("resend") || n.contains("pay now") || n.equals("pay") || n.contains("buy now")
+                || n.equals("buy") || n.contains("subscribe now") || n.equals("subscribe")
+                || n.contains("purchase") || n.contains("confirm payment") || n.contains("send money")
                 || n.contains("withdraw") || n.contains("transfer now") || n.contains("place order")
                 || n.contains("camera") || n.contains("gallery") || n.contains("whatsapp")
                 || n.contains("share") || n.contains("play store") || n.equals("call")
@@ -5243,7 +5893,7 @@ public class VyaapaarDeepScanFlow {
 
     private void scrollToTop() {
         String previous = "";
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2; i++) {
             String fp = fingerprint();
             if (fp.equals(previous)) {
                 return;
@@ -5251,7 +5901,7 @@ public class VyaapaarDeepScanFlow {
             previous = fp;
             Dimension size = driver.manage().window().getSize();
             swipe(size.width / 2, (int) (size.height * 0.32), size.width / 2, (int) (size.height * 0.78));
-            sleep(200);
+            sleep(140);
         }
     }
 

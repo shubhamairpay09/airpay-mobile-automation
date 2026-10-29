@@ -9,7 +9,7 @@ Feature: airpay vyaapaar services screens
     Then airpay vyaapaar screen "services" in module "services" has stored xpaths
 
   @SERVICES_002
-  Scenario: Services/Link MIDs
+  Scenario: Services/UPI QR
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "services-link-mids" in module "services" has stored xpaths
+    Then airpay vyaapaar screen "services-upi-qr" in module "services" has stored xpaths
 

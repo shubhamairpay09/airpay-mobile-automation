@@ -13,8 +13,3 @@ Feature: airpay vyaapaar pan-application screens
     Given the airpay vyaapaar app is installed on the device
     Then airpay vyaapaar screen "home-featured-services-pan-application-dob" in module "panapplication" has stored xpaths
 
-  @PAN_APPLICATION_003
-  Scenario: Featured Services/PAN Application/dropdown
-    Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-pan-application-dropdown" in module "panapplication" has stored xpaths
-

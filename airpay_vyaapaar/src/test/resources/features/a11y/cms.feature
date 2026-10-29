@@ -34,47 +34,17 @@ Feature: airpay vyaapaar cms screens
     Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-bf" in module "cms" has stored xpaths
 
   @CMS_007
-  Scenario: Featured Services/CMS/Cash Drop/Others
+  Scenario: Featured Services/CMS/Cash Drop/BF/Bajaj Finance
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-others" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-bf-bajaj-finance" in module "cms" has stored xpaths
 
   @CMS_008
-  Scenario: Featured Services/CMS/Cash Drop/TW
+  Scenario: Featured Services/CMS/Cash Drop/BF/Bajaj Finance/Bajaj Account Mobile Number
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-tw" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-bf-bajaj-finance-bajaj-account-mobile-number" in module "cms" has stored xpaths
 
   @CMS_009
-  Scenario: Featured Services/CMS/Cash Drop/SI
+  Scenario: Featured Services/CMS/Cash Drop/BF/Bajaj Finance/TW
     Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-si" in module "cms" has stored xpaths
-
-  @CMS_010
-  Scenario: Featured Services/CMS/Cash Drop/PM
-    Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-pm" in module "cms" has stored xpaths
-
-  @CMS_011
-  Scenario: Featured Services/CMS/Cash Drop/Swiggy
-    Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-swiggy" in module "cms" has stored xpaths
-
-  @CMS_012
-  Scenario: Featured Services/CMS/Cash Pickup
-    Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-pickup" in module "cms" has stored xpaths
-
-  @CMS_013
-  Scenario: Featured Services/CMS/Cash Pickup/IS
-    Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-pickup-is" in module "cms" has stored xpaths
-
-  @CMS_014
-  Scenario: Featured Services/CMS/Cash Burial
-    Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-burial" in module "cms" has stored xpaths
-
-  @CMS_015
-  Scenario: Featured Services/CMS/Cash Burial/BN
-    Given the airpay vyaapaar app is installed on the device
-    Then airpay vyaapaar screen "home-featured-services-cms-cash-burial-bn" in module "cms" has stored xpaths
+    Then airpay vyaapaar screen "home-featured-services-cms-cash-drop-bf-bajaj-finance-tw" in module "cms" has stored xpaths
 

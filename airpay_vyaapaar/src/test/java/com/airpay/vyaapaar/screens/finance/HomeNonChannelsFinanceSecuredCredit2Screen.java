@@ -15,27 +15,27 @@ public class HomeNonChannelsFinanceSecuredCredit2Screen extends BaseScreen {
     @AndroidFindBy(xpath = START_YOUR_CREDIT_JOURNEY_SECURELY_LOGO)
     private WebElement startYourCreditJourneySecurelyLogo;
 
-    public static final String START_YOUR_CREDIT_JOURNEY_SECURELY = "//android.widget.TextView[@text='Start Your Credit Journey Securely!']";
+    public static final String START_YOUR_CREDIT_JOURNEY_SECURELY = "//android.widget.TextView[contains(@content-desc,'Start Your Credit Journey Securely!')]";
 
     @AndroidFindBy(xpath = START_YOUR_CREDIT_JOURNEY_SECURELY)
     private WebElement startYourCreditJourneySecurely;
 
-    public static final String EL3QUICK_FIELDS_WE_LL_TAKE_YOU_TO = "//android.widget.TextView[@text=concat('3 quick fields - we',\"'\",'ll take you to Credilio to finish instantly.')]";
+    public static final String EL3QUICK_FIELDS_WE_LL_TAKE_YOU_TO = "//android.widget.TextView[contains(@content-desc,concat('3 quick fields - we',\"'\",'ll take you to Credilio to finish instantly.'))]";
 
     @AndroidFindBy(xpath = EL3QUICK_FIELDS_WE_LL_TAKE_YOU_TO)
     private WebElement el3QuickFieldsWeLlTakeYouTo;
 
-    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
+    public static final String MOBILE_NUMBER = "//android.view.View[contains(@content-desc,'Mobile Number')]";
 
     @AndroidFindBy(xpath = MOBILE_NUMBER)
     private WebElement mobileNumber;
 
-    public static final String NAME_AS_PER_PAN = "//android.widget.TextView[@text='Name as Per PAN']";
+    public static final String NAME_AS_PER_PAN = "//android.view.View[contains(@content-desc,'Name as Per PAN')]";
 
     @AndroidFindBy(xpath = NAME_AS_PER_PAN)
     private WebElement nameAsPerPan;
 
-    public static final String PINCODE = "//android.widget.TextView[@text='Pincode']";
+    public static final String PINCODE = "//android.view.View[contains(@content-desc,'Pincode')]";
 
     @AndroidFindBy(xpath = PINCODE)
     private WebElement pincode;

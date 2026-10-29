@@ -36,6 +36,7 @@ import org.apache.logging.log4j.Logger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -63,6 +64,8 @@ public class MoneyDeepScanFlow {
     private final InvestHubScreen invest;
     private final LoanApplyScreen loanApply;
     private final Set<String> scannedIds = new LinkedHashSet<>();
+    /** Screen fingerprints already a11y-scanned — blocks same UI under a new page id. */
+    private final Set<String> scannedFingerprints = new LinkedHashSet<>();
     private boolean holding;
     private boolean fastResume;
     private int manualGates;
@@ -90,18 +93,28 @@ public class MoneyDeepScanFlow {
     public void scanCurrentOnly(String id, String label) {
         A11yScanSession.clear();
         scannedIds.clear();
+        scannedFingerprints.clear();
         scanNoTap(id, label, id);
         writeScreenList();
         LOG.info("Captured current screen {} — {} pages", id, scannedIds.size());
     }
 
     private void scanNoTap(String id, String label, String route) {
-        String unique = id;
-        int n = 2;
-        while (!scannedIds.add(unique)) {
-            unique = id + "-" + n++;
+        if (scannedIds.contains(id)) {
+            LOG.info("Skip rescan id={}", id);
+            return;
         }
-        A11yPageRef ref = A11yPageRef.screen(unique, "money", label, route);
+        String fp = screenFingerprint();
+        if (!fp.isBlank() && scannedFingerprints.contains(fp)) {
+            LOG.info("Skip rescan fingerprint for {} ({})", id, label);
+            scannedIds.add(id);
+            return;
+        }
+        scannedIds.add(id);
+        if (!fp.isBlank()) {
+            scannedFingerprints.add(fp);
+        }
+        A11yPageRef ref = A11yPageRef.screen(id, "money", label, route);
         A11yPageScanResult result = AndroidA11yScanner.scan(context.driver(), context.config(), ref);
         A11yScanSession.add(result);
     }
@@ -111,6 +124,7 @@ public class MoneyDeepScanFlow {
         try {
             if (A11yScanSession.results().isEmpty()) {
                 scannedIds.clear();
+                scannedFingerprints.clear();
             }
             String src = Files.readString(xml);
             A11yPageRef ref = A11yPageRef.screen(id, "money", label, id);
@@ -126,6 +140,7 @@ public class MoneyDeepScanFlow {
     public void scanFromLoginThroughAllModules() {
         A11yScanSession.clear();
         scannedIds.clear();
+        scannedFingerprints.clear();
         allowDialogs(Duration.ofSeconds(12));
         bringMoneyToForeground();
         googlePicker.dismissIfShown();
@@ -498,7 +513,7 @@ public class MoneyDeepScanFlow {
                 return;
             }
             scan("post-setup-" + (i + 1), "After account setup", "setup/next");
-            sleep(1200);
+            sleep(500);
         }
         throw new IllegalStateException("Home not visible after account setup. Page head: " + head(safeSource()));
     }
@@ -541,30 +556,37 @@ public class MoneyDeepScanFlow {
         if (timeLeft()) {
             coverProductsDeepOrdered();
         }
-        // FinSight only after Products deep is stable (paused by design).
+        if (timeLeft()) {
+            coverFinSight(loadExistingPageIds());
+        }
         publishReport();
         writeScreenList();
         LOG.info("Coverage done — {} screens this run", scannedIds.size());
     }
 
     /**
-     * Bat / resume: PIN → Products deep (Investments → Insurance → Loans → Tax) in order.
-     * Mutual Funds is full depth; other modules landing+CTAs+tabs. FinSight deferred.
-     * Flow: docs/analysis/money-products-deep-scan-flow.md
+     * Bat / resume: Products deep residual → FinSight (plan order).
+     * In-app leave only (no system Back / no am start). Flow doc:
+     * docs/analysis/money-products-deep-scan-flow.md
      */
     private void resumeRemainingModules() {
         fastResume = true;
         coverageDeadline = System.currentTimeMillis() + Duration.ofMinutes(90).toMillis();
         Set<String> coveredIds = loadExistingPageIds();
-        LOG.info("Products DEEP residual — scorecard has {} pages (FinSight deferred)",
+        LOG.info("Products DEEP residual — scorecard has {} pages, then FinSight",
                 coveredIds.size());
         keepMoneyForeground();
         unlockPinIfPresent();
         leaveInnerScreen();
         coverProductsDeepOrdered();
         publishReport();
+        if (timeLeft()) {
+            LOG.info("Products residual complete — starting FinSight deep");
+            coverFinSight(loadExistingPageIds());
+        }
+        publishReport();
         writeScreenList();
-        LOG.info("Products DEEP residual done — {} screens this run", scannedIds.size());
+        LOG.info("Products + FinSight residual done — {} screens this run", scannedIds.size());
     }
 
     /** Ordered Products deep walk — see MoneyProductsDeepWalker + flow doc. */
@@ -591,24 +613,21 @@ public class MoneyDeepScanFlow {
             "Loan Against Property", "Tax Filing & Planning", "Tax Filing"
     };
 
-    /** Prefer activateApp over Home/Back so the PIN gate does not reappear. */
+    /**
+     * Keep Money foreground. Use activateApp only — never am start MainActivity
+     * (that relaunches Flutter and looks like a crash to the user).
+     */
     private void keepMoneyForeground() {
         try {
             String pkg = safePackage();
             if (!PKG.equals(pkg)) {
-                LOG.info("Money was not in foreground (pkg={}) — bringing Money back", pkg);
+                LOG.info("Money was not in foreground (pkg={}) — activateApp (no relaunch)", pkg);
                 try {
                     context.driver().activateApp(PKG);
-                } catch (Exception ignored) {
-                    // fall through to am start
+                } catch (Exception e) {
+                    LOG.warn("activateApp failed: {}", e.toString());
                 }
-                sleep(fastResume ? 250 : 500);
-                if (!PKG.equals(safePackage())) {
-                    String udid = context.config().get("android.udid", "");
-                    AdbCommands.shell(udid, "am", "start", "-n",
-                            PKG + "/com.finmapp.fininfinity.MainActivity");
-                    sleep(fastResume ? 400 : 700);
-                }
+                sleep(fastResume ? 150 : 300);
             }
             unlockPinIfPresent();
         } catch (Exception e) {
@@ -616,21 +635,17 @@ public class MoneyDeepScanFlow {
         }
     }
 
-    /**
-     * Fast PIN unlock: one page-source parse of the pad, then quick taps.
-     * Avoids the old per-digit pageSource + 280ms sleeps that took 1–2+ minutes.
-     */
+    /** Fast PIN: ADB digit taps preferred; tiny settles only. */
     private void unlockPinIfPresent() {
         if (!isPinPad()) {
             return;
         }
-        LOG.info("PIN screen — auto-entering configured PIN (app stays in foreground)");
+        LOG.info("PIN screen — fast auto-enter");
         typeConfiguredPin();
-        sleep(fastResume ? 250 : 400);
+        sleep(fastResume ? 80 : 200);
         if (isPinPad()) {
-            // One quick retry only — do not burn 15s of pageSource polls.
             typeConfiguredPin();
-            sleep(fastResume ? 250 : 400);
+            sleep(fastResume ? 80 : 200);
         }
         if (!isPinPad()) {
             try {
@@ -638,7 +653,9 @@ public class MoneyDeepScanFlow {
             } catch (Exception ignored) {
                 // optional
             }
-            captureSkipThenOk();
+            if (!fastResume) {
+                captureSkipThenOk();
+            }
         }
     }
 
@@ -676,8 +693,11 @@ public class MoneyDeepScanFlow {
 
     private void leaveInnerScreen() {
         keepMoneyForeground();
-        for (int i = 0; i < 8; i++) {
-            if (onTabBar()) {
+        String udid = context.config().get("android.udid", "");
+        // Fast residual: system Back + ADB Products — never 5s Appium openProductsTab loops.
+        int attempts = fastResume ? 3 : 8;
+        for (int i = 0; i < attempts; i++) {
+            if (onTabBar() || softProductsHub()) {
                 return;
             }
             if (isPinPad()) {
@@ -685,36 +705,52 @@ public class MoneyDeepScanFlow {
                 continue;
             }
             dismissOverlayIfAny();
+            if (fastResume) {
+                // In-app only — never system Back / never am start (crashes Money)
+                if (!home.tapBack()) {
+                    try {
+                        home.swipeDown();
+                    } catch (Exception ignored) {
+                        // ignore
+                    }
+                    home.tapLabelFast("Close");
+                }
+                sleep(60);
+                keepMoneyForeground();
+                if (PKG.equals(safePackage())) {
+                    AdbCommands.shell(udid, "input", "tap", "180", "2200");
+                }
+                sleep(80);
+                keepMoneyForeground();
+                if (onTabBar() || softProductsHub()) {
+                    return;
+                }
+                continue;
+            }
             if (home.tapBack()) {
-                sleep(fastResume ? 150 : 280);
+                sleep(280);
                 if (!PKG.equals(safePackage())) {
                     keepMoneyForeground();
                 }
                 continue;
             }
-            // Prefer close affordances — system Back often lands on the launcher → PIN gate.
             if (home.tapLabel("Close") || home.tapLabel("Dismiss") || home.tapLabel("Cancel")
                     || home.tapLabel("Not now") || home.tapLabel("Skip for now")) {
-                sleep(fastResume ? 150 : 280);
+                sleep(280);
                 continue;
             }
-            // Jump to Products tab instead of system Back.
-            try {
-                home.openProductsTab();
-            } catch (Exception ignored) {
-                AdbCommands.shell(context.config().get("android.udid", ""), "input", "tap", "180", "2200");
-            }
-            sleep(fastResume ? 200 : 350);
+            AdbCommands.shell(udid, "input", "tap", "180", "2200");
+            sleep(200);
             keepMoneyForeground();
             if (onTabBar() || softProductsHub()) {
                 return;
             }
         }
         if (!onTabBar()) {
-            LOG.warn("Still not on tab bar after leave — activating Money + Products tab");
+            LOG.warn("Still not on tab bar after leave — activate Money + ADB Products");
             keepMoneyForeground();
-            home.openProductsTab();
-            sleep(fastResume ? 300 : 500);
+            AdbCommands.shell(udid, "input", "tap", "180", "2200");
+            sleep(fastResume ? 120 : 300);
         }
     }
 
@@ -777,26 +813,36 @@ public class MoneyDeepScanFlow {
     }
 
     private void scrollToTop() {
+        String prev = "";
         for (int i = 0; i < 3; i++) {
+            String now = screenFingerprint();
+            if (!now.isBlank() && now.equals(prev)) {
+                break;
+            }
+            prev = now;
             adbSwipe(540, 700, 540, 1750);
-            sleep(200);
+            sleep(150);
         }
     }
 
     private void scrollDown() {
         adbSwipe(540, 1750, 540, 700);
-        sleep(250);
+        sleep(180);
     }
 
     private List<String> collectLabels() {
         List<String> labels = new java.util.ArrayList<>(home.allClickableLabels());
-        int scrolls = fastResume ? 1 : 4;
+        int scrolls = fastResume ? 1 : 3;
         for (int i = 0; i < scrolls; i++) {
+            int before = labels.size();
             scrollDown();
             for (String extra : home.allClickableLabels()) {
                 if (!labels.contains(extra)) {
                     labels.add(extra);
                 }
+            }
+            if (labels.size() == before) {
+                break;
             }
         }
         scrollToTop();
@@ -874,11 +920,12 @@ public class MoneyDeepScanFlow {
                 LOG.info("Profile row not opened: {}", row);
                 continue;
             }
-            sleep(500);
+            sleep(350);
             String id = "profile-" + slug(row);
             scan(id, "Profile / " + row, id);
+            coverEditFieldsOnScreen(id, "Profile / " + row);
             home.swipeUp();
-            sleep(200);
+            sleep(150);
             scan(id + "-s", "Profile / " + row + " scroll", id);
             if ("Transaction history".equals(row)) {
                 for (String tab : List.of("Mutual Funds", "Digital Gold", "NPS", "All", "One Time", "SIP", "Redemption")) {
@@ -997,38 +1044,99 @@ public class MoneyDeepScanFlow {
                 || n.equals("back") || n.contains("open settings");
     }
 
-    /** Open the filter sheet on the current product and scan each filter section. Does not tap Apply. */
+    /** Open every filter/sort sheet on the current product and scan sections. Does not tap Apply. */
     private void scanProductFilters(String parentId, String parentLabel) {
-        String[] entries = {"Filters", "Filter", "Filter By", "Sort", "Sort by", "Sort By"};
+        String[] entries = {"Filters", "Filter", "Filter By", "Sort", "Sort by", "Sort By", "Filter icon"};
+        Set<String> openedEntries = new LinkedHashSet<>();
         for (String entry : entries) {
-            if (!timeLeft() || !home.tapLabel(entry)) {
+            if (!timeLeft()) {
+                return;
+            }
+            String key = entry.toLowerCase(Locale.ROOT).contains("filter") ? "filter"
+                    : entry.toLowerCase(Locale.ROOT).contains("sort") ? "sort" : entry;
+            if (!openedEntries.add(key)) {
                 continue;
             }
-            sleep(500);
-            String fid = parentId + "-" + slug(entry);
+            if (!home.tapLabel(entry)) {
+                continue;
+            }
+            sleep(280);
+            String fid = parentId + "-" + slug(key);
             LOG.info("Opened {} on {}", entry, parentLabel);
             scan(fid, parentLabel + " / " + entry, fid);
+            coverEditFieldsOnScreen(fid, parentLabel + " / " + entry);
             String[] sections = {
                     "Category", "AMC", "Risk", "Returns", "Rating",
                     "Select Categories", "Select AMCs", "Select Risk",
-                    "Metal Weight", "Price Range", "Equity", "Balanced",
-                    "Less than 2g", "2-4 gms", "4-6 gms", "6-8 gms", "8+ gms"
+                    "Metal Weight", "Price Range", "Equity", "Balanced", "Debt", "Hybrid",
+                    "Less than 2g", "2-4 gms", "4-6 gms", "6-8 gms", "8+ gms",
+                    "Select date range", "Start date", "End date", "Date"
             };
             for (String section : sections) {
-                if (!safeSource().contains(section)) {
+                if (!timeLeft() || !safeSource().contains(section)) {
                     continue;
                 }
                 if (!home.tapLabel(section)) {
                     continue;
                 }
-                sleep(350);
+                sleep(220);
                 scan(fid + "-" + slug(section), parentLabel + " / " + entry + " / " + section, fid);
+                coverEditFieldsOnScreen(fid + "-" + slug(section), parentLabel + " / " + section);
+                if (!home.tapBack()) {
+                    home.tapLabelFast("Close");
+                    home.tapLabelFast("Cancel");
+                }
+                sleep(180);
             }
-            home.tapBack();
-            sleep(300);
-            return;
+            if (!home.tapBack()) {
+                home.tapLabelFast("Close");
+                home.tapLabelFast("Cancel");
+            }
+            sleep(200);
         }
-        LOG.info("No filter sheet on {}", parentLabel);
+    }
+
+    /** Type into visible EditTexts for a11y (no submit). */
+    private void coverEditFieldsOnScreen(String parentId, String parentLabel) {
+        try {
+            var fields = context.driver().findElements(org.openqa.selenium.By.xpath("//android.widget.EditText"));
+            int filled = 0;
+            String before = screenFingerprint();
+            for (var field : fields) {
+                if (filled >= 6 || !field.isDisplayed()) {
+                    continue;
+                }
+                String blob = (String.valueOf(field.getAttribute("hint")) + " "
+                        + String.valueOf(field.getAttribute("text")) + " "
+                        + String.valueOf(field.getAttribute("content-desc"))).toLowerCase(Locale.ROOT);
+                if (blob.contains("password") || blob.contains("otp") || blob.contains("pin")) {
+                    continue;
+                }
+                String value = blob.contains("search") ? "a"
+                        : blob.contains("amount") || blob.contains("rupee") ? "1" : "1";
+                field.click();
+                try {
+                    field.clear();
+                } catch (Exception ignored) {
+                    // compose fields may reject clear
+                }
+                field.sendKeys(value);
+                filled++;
+                sleep(80);
+            }
+            if (filled > 0 && !screenFingerprint().equals(before)) {
+                scan(parentId + "-filled", parentLabel + " (filled)", parentId);
+            } else if (filled > 0) {
+                LOG.info("Filled {} edit field(s) on {}", filled, parentLabel);
+            }
+            try {
+                context.driver().hideKeyboard();
+            } catch (Exception ignored) {
+                // already hidden
+            }
+        } catch (Exception e) {
+            LOG.debug("Edit fields skipped: {}", e.toString());
+        }
     }
 
     /** Open each product, then its filters, tabs, and fields. One visit each. Does not pay or book. */
@@ -1093,10 +1201,12 @@ public class MoneyDeepScanFlow {
                     resetToProductsHub(products);
                     continue;
                 }
-                sleep(fastResume ? 200 : 400);
+                sleep(fastResume ? 200 : 350);
                 scan(id, "Products / " + module, id);
+                scanProductFilters(id, "Products / " + module);
+                coverEditFieldsOnScreen(id, "Products / " + module);
                 home.swipeUp();
-                sleep(fastResume ? 120 : 200);
+                sleep(fastResume ? 100 : 160);
                 scan(id + "-s", "Products / " + module + " scroll", id);
                 publishReport();
                 LOG.info("<<< Products module DONE: {}", module);
@@ -1402,23 +1512,65 @@ public class MoneyDeepScanFlow {
     }
 
     private void coverFinSight(Set<String> coveredIds) {
-        LOG.info("=== FinSight one-by-one ===");
+        LOG.info("=== FinSight visible-only (no scroll-hunt) ===");
         keepMoneyForeground();
         home.openTab("FinSight");
-        sleep(400);
+        sleep(300);
         if (!productAlreadyCovered(coveredIds, "finsight-hub")) {
             scan("finsight-hub", "FinSight", "finsight");
             home.swipeUp();
-            sleep(200);
+            sleep(150);
             scan("finsight-hub-s1", "FinSight scroll 1", "finsight");
-            publishReport();
         }
-        String[] subs = {
-                "Let's start", "View Details", "Reassess",
-                "Sync Your Net Worth", "See the diagnosis",
-                "What is FHC", "How it works"
+        // Prefer these when present; also pick up Invest Now / Start Now / etc. from visible labels.
+        String[] prefer = {
+                "Invest Now", "Take Action", "Compare and File", "Tax Filing", "Retirement",
+                "View Details", "Reassess", "Sync Your Net Worth", "Let's start",
+                "See the diagnosis", "Start Now", "Start SIP", "Continue"
         };
-        for (String sub : subs) {
+        Set<String> seen = new LinkedHashSet<>();
+        List<String> toOpen = new ArrayList<>();
+        for (int pass = 0; pass < 2; pass++) {
+            String src = "";
+            try {
+                src = context.driver().getPageSource();
+            } catch (Exception ignored) {
+                // ignore
+            }
+            for (String p : prefer) {
+                if (src.contains(p) && seen.add(p)) {
+                    toOpen.add(p);
+                }
+            }
+            try {
+                for (String label : home.allClickableLabels()) {
+                    String first = label == null ? "" : label.split("\n")[0].trim();
+                    if (first.isBlank() || first.length() > 40 || !seen.add(first)) {
+                        continue;
+                    }
+                    if (isFinSightChrome(first)) {
+                        continue;
+                    }
+                    // Visible CTAs / cards only — never invent missing labels.
+                    if (first.contains("Invest") || first.contains("Action")
+                            || first.contains("Compare") || first.contains("Start")
+                            || first.contains("View") || first.contains("Sync")
+                            || first.contains("Reassess") || first.contains("diagnosis")
+                            || first.contains("Tax") || first.contains("Retirement")
+                            || first.contains("Take Action") || first.contains("File")) {
+                        toOpen.add(first);
+                    }
+                }
+            } catch (Exception ignored) {
+                // ignore
+            }
+            if (pass == 0) {
+                home.swipeUp();
+                sleep(120);
+            }
+        }
+        LOG.info("FinSight will open {} visible CTAs (skip missing)", toOpen.size());
+        for (String sub : toOpen) {
             if (!timeLeft()) {
                 return;
             }
@@ -1431,36 +1583,85 @@ public class MoneyDeepScanFlow {
             try {
                 keepMoneyForeground();
                 home.openTab("FinSight");
-                sleep(300);
-                boolean opened = safeTap(sub);
-                if (!opened) {
-                    safeSwipeUp();
-                    opened = safeTap(sub);
-                }
-                if (!opened) {
-                    LOG.info("[FinSight] {} not on screen — skip", sub);
+                sleep(150);
+                if (!tapVisibleOnly(sub)) {
+                    LOG.info("[FinSight] {} not visible — next", sub);
                     continue;
                 }
-                sleep(450);
+                sleep(fastResume ? 150 : 280);
                 scan(id, "FinSight / " + sub, id);
-                safeSwipeUp();
+                coverEditFieldsOnScreen(id, "FinSight / " + sub);
+                home.swipeUp();
+                sleep(80);
                 scan(id + "-s", "FinSight / " + sub + " scroll", id);
-                publishReport();
-                home.tapBack();
-                sleep(250);
+                // If Invest Now / more CTAs appear here — open one, scan, leave (don't stick).
+                openScanVisibleCta("Invest Now", id + "-invest", "FinSight / " + sub + " / Invest Now");
+                openScanVisibleCta("Start Now", id + "-start", "FinSight / " + sub + " / Start Now");
+                openScanVisibleCta("Start SIP", id + "-sip", "FinSight / " + sub + " / Start SIP");
+                if (!home.tapBack()) {
+                    try {
+                        home.swipeDown();
+                    } catch (Exception ignored) {
+                        // ignore
+                    }
+                }
+                sleep(100);
                 home.openTab("FinSight");
                 LOG.info("<<< FinSight DONE: {}", sub);
             } catch (Exception e) {
                 LOG.warn("[FinSight] {} failed: {}", sub, e.toString());
-                publishReport();
                 keepMoneyForeground();
+                try {
+                    home.openTab("FinSight");
+                } catch (Exception ignored) {
+                    // ignore
+                }
             }
         }
     }
 
+    private static boolean isFinSightChrome(String label) {
+        return label.equals("Products") || label.equals("FinSight") || label.equals("Calculators")
+                || label.equals("Hello") || label.equals("Notifications") || label.equals("Open settings")
+                || label.equals("Back") || label.equals("Menu option") || label.startsWith("Powered by")
+                || label.startsWith("Here's a quick") || label.startsWith("Old regime");
+    }
+
+    /** Tap only if already on screen — never scroll-hunt. */
+    private boolean tapVisibleOnly(String label) {
+        try {
+            String src = context.driver().getPageSource();
+            if (src == null || !src.contains(label)) {
+                return false;
+            }
+            return home.tapLabelFast(label);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void openScanVisibleCta(String label, String id, String title) {
+        if (scannedIds.contains(id)) {
+            return;
+        }
+        if (!tapVisibleOnly(label)) {
+            return;
+        }
+        sleep(150);
+        scan(id, title, id);
+        if (!home.tapBack()) {
+            try {
+                home.swipeDown();
+            } catch (Exception ignored) {
+                // ignore
+            }
+        }
+        sleep(80);
+    }
+
     private boolean safeTap(String label) {
         try {
-            return home.tapLabel(label) || home.tapProductTile(label);
+            return tapVisibleOnly(label);
         } catch (Exception e) {
             return false;
         }
@@ -1491,11 +1692,12 @@ public class MoneyDeepScanFlow {
                 LOG.info("Calculator not opened: {}", tile);
                 continue;
             }
-            sleep(500);
+            sleep(350);
             String id = "calc-" + slug(tile);
             scan(id, "Calculator / " + tile, id);
+            coverEditFieldsOnScreen(id, "Calculator / " + tile);
             home.swipeUp();
-            sleep(200);
+            sleep(150);
             scan(id + "-s", "Calculator / " + tile + " scroll", id);
             returnToTabs();
         }
@@ -1504,13 +1706,19 @@ public class MoneyDeepScanFlow {
     private void openTabAndScan(MoneyModuleInventory.Module tab, int maxScreens) {
         try {
             home.openTab(tab.entryLabels());
-            sleep(800);
+            sleep(450);
             allowDialogs(Duration.ofSeconds(2));
             scan(tab.id(), tab.label(), tab.id());
-            int swipes = context.config().getInt("a11y.info.scroll.swipes", 10);
+            int swipes = Math.min(context.config().getInt("a11y.info.scroll.swipes", 10), 4);
+            String prevFp = screenFingerprint();
             for (int i = 1; i <= swipes && scannedIds.size() < maxScreens; i++) {
                 home.swipeUp();
-                sleep(300);
+                sleep(200);
+                String nowFp = screenFingerprint();
+                if (!nowFp.isBlank() && nowFp.equals(prevFp)) {
+                    break;
+                }
+                prevFp = nowFp;
                 scan(tab.id() + "-scroll-" + i, tab.label() + " scroll " + i, tab.id() + ":scroll:" + i);
             }
             crawlCurrentBranch(tab.id());
@@ -1706,7 +1914,9 @@ public class MoneyDeepScanFlow {
             MobileScreenCrawler crawler = new MobileScreenCrawler(
                     context.driver(), context.config(),
                     (id, label) -> scan(prefix + "-" + id, label, prefix + "/" + id));
-            if (context.config().getBoolean("a11y.crawl.exhaustive", true)) {
+            // Default shallow — exhaustive crawl re-taps the same interactive tree and looks like a loop.
+            // Opt in with a11y.crawl.exhaustive=true only when needed.
+            if (!fastResume && context.config().getBoolean("a11y.crawl.exhaustive", false)) {
                 crawler.crawlAllInteractive(prefix, prefix);
             } else {
                 crawler.crawlFromHere(prefix, prefix);
@@ -1758,16 +1968,35 @@ public class MoneyDeepScanFlow {
         if (isPinPad()) {
             unlockPinIfPresent();
         }
-        String unique = id;
-        int n = 2;
-        while (!scannedIds.add(unique)) {
-            unique = id + "-" + n++;
+        if (scannedIds.contains(id)) {
+            LOG.info("Skip rescan id={}", id);
+            return;
         }
-        // Deep scan: do not burn 2s permission polls on every screen.
+        String fp = screenFingerprint();
+        if (!fp.isBlank() && scannedFingerprints.contains(fp)) {
+            LOG.info("Skip a11y rescan for {} ({}) — screen already stored", id, label);
+            scannedIds.add(id);
+            return;
+        }
+        scannedIds.add(id);
+        if (!fp.isBlank()) {
+            scannedFingerprints.add(fp);
+        }
         if (!fastResume) {
-            allowDialogs(Duration.ofSeconds(2));
+            allowDialogs(Duration.ofMillis(400));
         }
-        recordScreen(unique, label, route);
+        recordScreen(id, label, route);
+    }
+
+    private String screenFingerprint() {
+        String src = safeSource();
+        if (src == null || src.isBlank()) {
+            return "";
+        }
+        if (src.length() <= 240) {
+            return src;
+        }
+        return src.substring(0, 120) + "|" + src.substring(src.length() - 120);
     }
 
     /** Capture an OTP or PIN screen; auto-enter PIN so the app never needs a manual pause. */
@@ -1851,31 +2080,33 @@ public class MoneyDeepScanFlow {
             LOG.warn("No PIN configured in Excel/config — cannot auto-unlock");
             return;
         }
-        // Prefer Appium digit taps (no pageSource between keys).
-        try {
-            PinUnlockScreen pad = new PinUnlockScreen(context);
-            if (pad.isDisplayed() || pad.waitUntilDisplayed(Duration.ofSeconds(2))) {
-                pad.enterPin(pin);
-                return;
-            }
-        } catch (Exception e) {
-            LOG.warn("Appium PIN entry failed — falling back to ADB pad: {}", e.toString());
-        }
-        // ADB fallback: parse pad once, tap all digits. Never refresh pageSource mid-PIN.
+        // ADB pad first (fastest): parse once, tap all digits with minimal settle.
         String udid = context.config().get("android.udid", "");
         String src = safeSource();
         int[][] centers = new int[pin.length()][];
+        boolean allFound = true;
         for (int i = 0; i < pin.length(); i++) {
             centers[i] = digitCenter(src, pin.charAt(i));
             if (centers[i] == null) {
-                LOG.warn("PIN key {} was not on screen", pin.charAt(i));
-                return;
+                allFound = false;
+                break;
             }
         }
-        for (int[] center : centers) {
-            AdbCommands.shell(udid, "input", "tap",
-                    Integer.toString(center[0]), Integer.toString(center[1]));
-            sleep(50);
+        if (allFound) {
+            for (int[] center : centers) {
+                AdbCommands.shell(udid, "input", "tap",
+                        Integer.toString(center[0]), Integer.toString(center[1]));
+                sleep(30);
+            }
+            return;
+        }
+        try {
+            PinUnlockScreen pad = new PinUnlockScreen(context);
+            if (pad.isDisplayed()) {
+                pad.enterPin(pin);
+            }
+        } catch (Exception e) {
+            LOG.warn("PIN entry failed: {}", e.toString());
         }
     }
 

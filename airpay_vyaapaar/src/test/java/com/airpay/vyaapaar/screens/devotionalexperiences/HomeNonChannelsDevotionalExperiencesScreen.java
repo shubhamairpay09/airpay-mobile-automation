@@ -20,7 +20,7 @@ public class HomeNonChannelsDevotionalExperiencesScreen extends BaseScreen {
     @AndroidFindBy(xpath = DEVOTIONAL_EXPERIENCES_ICON)
     private WebElement devotionalExperiencesIcon;
 
-    public static final String CLICK_ON_ASERVICE_PROVIDER_TO_PROCEED_WITH = "//android.widget.TextView[@text='Click on a service provider to proceed with booking']";
+    public static final String CLICK_ON_ASERVICE_PROVIDER_TO_PROCEED_WITH = "//android.widget.TextView[contains(@content-desc,'Click on a service provider to proceed with booking')]";
 
     @AndroidFindBy(xpath = CLICK_ON_ASERVICE_PROVIDER_TO_PROCEED_WITH)
     private WebElement clickOnAServiceProviderToProceedWith;

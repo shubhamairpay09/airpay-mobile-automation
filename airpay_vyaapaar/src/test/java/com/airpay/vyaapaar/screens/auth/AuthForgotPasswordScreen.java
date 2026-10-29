@@ -15,12 +15,12 @@ public class AuthForgotPasswordScreen extends BaseScreen {
     @AndroidFindBy(xpath = FORGOT_PASSWORD_ILLUSTRATION)
     private WebElement forgotPasswordIllustration;
 
-    public static final String FORGOT_PASSWORD = "//android.widget.TextView[@text='Forgot Password']";
+    public static final String FORGOT_PASSWORD = "//android.widget.TextView[contains(@content-desc,'Forgot Password')]";
 
     @AndroidFindBy(xpath = FORGOT_PASSWORD)
     private WebElement forgotPassword;
 
-    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
+    public static final String MOBILE_NUMBER = "//android.view.View[contains(@content-desc,'Mobile Number')]";
 
     @AndroidFindBy(xpath = MOBILE_NUMBER)
     private WebElement mobileNumber;
@@ -30,7 +30,7 @@ public class AuthForgotPasswordScreen extends BaseScreen {
     @AndroidFindBy(xpath = SUBMIT)
     private WebElement submit;
 
-    public static final String BACK_TO_LOGIN = "//android.widget.TextView[@text='Back to Login']";
+    public static final String BACK_TO_LOGIN = "//android.widget.TextView[contains(@content-desc,'Back to Login')]";
 
     @AndroidFindBy(xpath = BACK_TO_LOGIN)
     private WebElement backToLogin;

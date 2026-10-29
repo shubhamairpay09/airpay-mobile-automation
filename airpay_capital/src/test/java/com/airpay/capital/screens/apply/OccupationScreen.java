@@ -37,13 +37,17 @@ public class OccupationScreen extends BaseScreen {
                 || isDisplayed(heading);
     }
 
+    public boolean waitUntilDisplayed(Duration timeout) {
+        return waitUntilSourceContains(timeout, ScreenMessages.OCCUPATION_HEADING, ScreenMessages.SALARIED, "Self-Employed")
+                || isDisplayed();
+    }
+
     public OccupationScreen selectSalaried() {
         if (!tapFirst(Duration.ofSeconds(4),
                 MobileWaits.xpath("//android.widget.RadioButton[contains(@content-desc,'Salaried')]"),
                 MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc,'Salaried')]"))) {
             tapLabel(ScreenMessages.SALARIED);
         }
-        sleep(400);
         return this;
     }
 
@@ -53,7 +57,6 @@ public class OccupationScreen extends BaseScreen {
                         + " or contains(@content-desc,'Self Employed')]"))) {
             tapAny(java.util.List.of("Self-Employed", "Self Employed"));
         }
-        sleep(400);
         return this;
     }
 
@@ -62,6 +65,6 @@ public class OccupationScreen extends BaseScreen {
                 MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Continue')]"))) {
             tapLabel("Continue");
         }
-        sleep(500);
+        waitUntilSourceGone(Duration.ofSeconds(8), ScreenMessages.OCCUPATION_HEADING);
     }
 }

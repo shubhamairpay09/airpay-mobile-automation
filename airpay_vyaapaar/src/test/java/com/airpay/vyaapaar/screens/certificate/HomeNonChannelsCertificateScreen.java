@@ -20,7 +20,7 @@ public class HomeNonChannelsCertificateScreen extends BaseScreen {
     @AndroidFindBy(xpath = BACK_ICON)
     private WebElement backIcon;
 
-    public static final String CERTIFICATE = "//android.widget.TextView[@text='Certificate']";
+    public static final String CERTIFICATE = "//android.widget.TextView[contains(@content-desc,'Certificate')]";
 
     @AndroidFindBy(xpath = CERTIFICATE)
     private WebElement certificate;

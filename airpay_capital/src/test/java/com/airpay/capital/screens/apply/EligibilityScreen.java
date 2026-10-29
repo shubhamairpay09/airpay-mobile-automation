@@ -44,7 +44,10 @@ public class EligibilityScreen extends BaseScreen {
                 MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Check Eligib')]"))) {
             tapAny(java.util.List.of("Check Eligibility", "Check Eligiblity"));
         }
-        sleep(3000);
+        waitUntilSourceContains(Duration.ofSeconds(30),
+                ScreenMessages.OFFERS_AVAILABLE, ScreenMessages.OFFER_AVAILABLE,
+                ScreenMessages.NO_OFFERS_AVAILABLE, ScreenMessages.NO_LOAN_OFFERS,
+                ScreenMessages.CIBIL_FRAGMENT, "Apply now", "CIBIL", "credit score");
     }
 
     public boolean offersAreVisible() {

@@ -20,7 +20,7 @@ public class ProfileMyCommercialsScreen extends BaseScreen {
     @AndroidFindBy(xpath = BACK_ICON)
     private WebElement backIcon;
 
-    public static final String MY_COMMERCIALS = "//android.widget.TextView[@text='My Commercials']";
+    public static final String MY_COMMERCIALS = "//android.widget.TextView[contains(@content-desc,'My Commercials')]";
 
     @AndroidFindBy(xpath = MY_COMMERCIALS)
     private WebElement myCommercials;

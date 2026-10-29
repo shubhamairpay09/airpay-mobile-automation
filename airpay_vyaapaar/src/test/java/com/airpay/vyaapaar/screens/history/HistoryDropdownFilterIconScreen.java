@@ -15,47 +15,47 @@ public class HistoryDropdownFilterIconScreen extends BaseScreen {
     @AndroidFindBy(xpath = FILTER)
     private WebElement filter;
 
-    public static final String CLEAR_ALL = "//android.widget.TextView[@text='Clear All']";
+    public static final String CLEAR_ALL = "//android.widget.TextView[contains(@content-desc,'Clear All')]";
 
     @AndroidFindBy(xpath = CLEAR_ALL)
     private WebElement clearAll;
 
-    public static final String SELECT_DATE = "//android.widget.TextView[@text='Select Date']";
+    public static final String SELECT_DATE = "//android.widget.TextView[contains(@content-desc,'Select Date')]";
 
     @AndroidFindBy(xpath = SELECT_DATE)
     private WebElement selectDate;
 
-    public static final String TRANSACTION_DETAILS = "//android.widget.TextView[@text='Transaction Details']";
+    public static final String TRANSACTION_DETAILS = "//android.widget.TextView[contains(@content-desc,'Transaction Details')]";
 
     @AndroidFindBy(xpath = TRANSACTION_DETAILS)
     private WebElement transactionDetails;
 
-    public static final String TRANSACTION_ID = "//android.widget.TextView[@text='Transaction ID']";
+    public static final String TRANSACTION_ID = "//android.view.View[contains(@content-desc,'Transaction ID')]";
 
     @AndroidFindBy(xpath = TRANSACTION_ID)
     private WebElement transactionId;
 
-    public static final String MOBILE_NUMBER = "//android.widget.TextView[@text='Mobile Number']";
+    public static final String MOBILE_NUMBER = "//android.view.View[contains(@content-desc,'Mobile Number')]";
 
     @AndroidFindBy(xpath = MOBILE_NUMBER)
     private WebElement mobileNumber;
 
-    public static final String BENEFICIARY_NAME = "//android.widget.TextView[@text='Beneficiary Name']";
+    public static final String BENEFICIARY_NAME = "//android.view.View[contains(@content-desc,'Beneficiary Name')]";
 
     @AndroidFindBy(xpath = BENEFICIARY_NAME)
     private WebElement beneficiaryName;
 
-    public static final String BENEFICIARY_ACCOUNT = "//android.widget.TextView[@text='Beneficiary Account']";
+    public static final String BENEFICIARY_ACCOUNT = "//android.view.View[contains(@content-desc,'Beneficiary Account')]";
 
     @AndroidFindBy(xpath = BENEFICIARY_ACCOUNT)
     private WebElement beneficiaryAccount;
 
-    public static final String TRANSACTION_MODE = "//android.widget.TextView[@text='Transaction Mode']";
+    public static final String TRANSACTION_MODE = "//android.widget.TextView[contains(@content-desc,'Transaction Mode')]";
 
     @AndroidFindBy(xpath = TRANSACTION_MODE)
     private WebElement transactionMode;
 
-    public static final String SHOW_MORE = "//android.widget.TextView[@text='Show More']";
+    public static final String SHOW_MORE = "//android.widget.TextView[contains(@content-desc,'Show More')]";
 
     @AndroidFindBy(xpath = SHOW_MORE)
     private WebElement showMore;
@@ -65,47 +65,47 @@ public class HistoryDropdownFilterIconScreen extends BaseScreen {
     @AndroidFindBy(xpath = ICON)
     private WebElement icon;
 
-    public static final String NPS = "//android.widget.TextView[@text='NPS']";
+    public static final String NPS = "//android.widget.TextView[contains(@content-desc,'NPS')]";
 
     @AndroidFindBy(xpath = NPS)
     private WebElement nps;
 
-    public static final String AEPS = "//android.widget.TextView[@text='AEPS']";
+    public static final String AEPS = "//android.widget.TextView[contains(@content-desc,'AEPS')]";
 
     @AndroidFindBy(xpath = AEPS)
     private WebElement aeps;
 
-    public static final String BBPS = "//android.widget.TextView[@text='BBPS']";
+    public static final String BBPS = "//android.widget.TextView[contains(@content-desc,'BBPS')]";
 
     @AndroidFindBy(xpath = BBPS)
     private WebElement bbps;
 
-    public static final String GOLD = "//android.widget.TextView[@text='GOLD']";
+    public static final String GOLD = "//android.widget.TextView[contains(@content-desc,'GOLD')]";
 
     @AndroidFindBy(xpath = GOLD)
     private WebElement gold;
 
-    public static final String ONDC = "//android.widget.TextView[@text='ONDC']";
+    public static final String ONDC = "//android.widget.TextView[contains(@content-desc,'ONDC')]";
 
     @AndroidFindBy(xpath = ONDC)
     private WebElement ondc;
 
-    public static final String TOPUP = "//android.widget.TextView[@text='TOPUP']";
+    public static final String TOPUP = "//android.widget.TextView[contains(@content-desc,'TOPUP')]";
 
     @AndroidFindBy(xpath = TOPUP)
     private WebElement topup;
 
-    public static final String FASTAG = "//android.widget.TextView[@text='FASTAG']";
+    public static final String FASTAG = "//android.widget.TextView[contains(@content-desc,'FASTAG')]";
 
     @AndroidFindBy(xpath = FASTAG)
     private WebElement fastag;
 
-    public static final String BAAZAAR = "//android.widget.TextView[@text='BAAZAAR']";
+    public static final String BAAZAAR = "//android.widget.TextView[contains(@content-desc,'BAAZAAR')]";
 
     @AndroidFindBy(xpath = BAAZAAR)
     private WebElement baazaar;
 
-    public static final String GIFTCARD = "//android.widget.TextView[@text='GIFTCARD']";
+    public static final String GIFTCARD = "//android.widget.TextView[contains(@content-desc,'GIFTCARD')]";
 
     @AndroidFindBy(xpath = GIFTCARD)
     private WebElement giftcard;

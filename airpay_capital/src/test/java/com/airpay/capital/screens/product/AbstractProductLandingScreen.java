@@ -81,11 +81,11 @@ public abstract class AbstractProductLandingScreen extends BaseScreen {
         HomeScreen home = new HomeScreen(context);
         for (int i = 0; i < 4; i++) {
             if (tapAny(java.util.List.of("Apply Now", "Apply now", "Apply", "Get Started", "Check Eligibility"))) {
-                sleep(550);
+                waitUntilSourceContains(java.time.Duration.ofSeconds(8),
+                        "Tell us about your work", "Enter PAN", "Check Eligib", "offers available");
                 return true;
             }
             home.swipeUp();
-            sleep(300);
         }
         return false;
     }
@@ -103,7 +103,8 @@ public abstract class AbstractProductLandingScreen extends BaseScreen {
             filler.fillVisibleFields(3);
             details.tapContinue();
             tapAny(java.util.List.of("Continue", "Next", "Proceed", "Save & Continue"));
-            sleep(900);
+            waitUntilSourceContains(java.time.Duration.ofSeconds(6),
+                    "Check Eligib", "offers available", "No Offers", "Continue", "Work Details");
         }
     }
 }

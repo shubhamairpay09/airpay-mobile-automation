@@ -15,7 +15,7 @@ public class AuthLoginWithPasswordScreen extends BaseScreen {
     @AndroidFindBy(xpath = LOGIN_ICON)
     private WebElement loginIcon;
 
-    public static final String USERNAME_OR_MOBILE_NUMBER = "//android.widget.TextView[@text='Username or Mobile number']";
+    public static final String USERNAME_OR_MOBILE_NUMBER = "//android.view.View[contains(@content-desc,'Username or Mobile number')]";
 
     @AndroidFindBy(xpath = USERNAME_OR_MOBILE_NUMBER)
     private WebElement usernameOrMobileNumber;
@@ -25,12 +25,12 @@ public class AuthLoginWithPasswordScreen extends BaseScreen {
     @AndroidFindBy(xpath = ELEMENT)
     private WebElement element;
 
-    public static final String PASSWORD = "//android.widget.TextView[@text='Password']";
+    public static final String PASSWORD = "//android.view.View[contains(@content-desc,'Password')]";
 
     @AndroidFindBy(xpath = PASSWORD)
     private WebElement password;
 
-    public static final String FORGOT_PASSWORD = "//android.widget.TextView[@text='Forgot Password?']";
+    public static final String FORGOT_PASSWORD = "//android.widget.TextView[contains(@content-desc,'Forgot Password?')]";
 
     @AndroidFindBy(xpath = FORGOT_PASSWORD)
     private WebElement forgotPassword;
@@ -40,12 +40,12 @@ public class AuthLoginWithPasswordScreen extends BaseScreen {
     @AndroidFindBy(xpath = LOGIN)
     private WebElement login;
 
-    public static final String OR = "//android.widget.TextView[@text='-OR-']";
+    public static final String OR = "//android.widget.TextView[contains(@content-desc,'-OR-')]";
 
     @AndroidFindBy(xpath = OR)
     private WebElement or;
 
-    public static final String LOGIN_WITH_OTP = "//android.widget.TextView[@text='Login with OTP']";
+    public static final String LOGIN_WITH_OTP = "//android.widget.TextView[contains(@content-desc,'Login with OTP')]";
 
     @AndroidFindBy(xpath = LOGIN_WITH_OTP)
     private WebElement loginWithOtp;
@@ -55,7 +55,7 @@ public class AuthLoginWithPasswordScreen extends BaseScreen {
     @AndroidFindBy(xpath = DON_THAVE_AN_ACCOUNT_REGISTER_HERE)
     private WebElement donTHaveAnAccountRegisterHere;
 
-    public static final String EL3020STAGING_ACCESSIBILITY = "//android.widget.TextView[@text='3.0.20-staging-accessibility']";
+    public static final String EL3020STAGING_ACCESSIBILITY = "//android.widget.TextView[contains(@content-desc,'3.0.20-staging-accessibility')]";
 
     @AndroidFindBy(xpath = EL3020STAGING_ACCESSIBILITY)
     private WebElement el3020StagingAccessibility;

@@ -15,7 +15,7 @@ public class HomeNonChannelsCreditLedgerHistory2Screen extends BaseScreen {
     @AndroidFindBy(xpath = FILTER)
     private WebElement filter;
 
-    public static final String CLEAR_ALL = "//android.widget.TextView[@text='Clear All']";
+    public static final String CLEAR_ALL = "//android.widget.TextView[contains(@content-desc,'Clear All')]";
 
     @AndroidFindBy(xpath = CLEAR_ALL)
     private WebElement clearAll;
@@ -35,17 +35,17 @@ public class HomeNonChannelsCreditLedgerHistory2Screen extends BaseScreen {
     @AndroidFindBy(xpath = SELECT_DATE_RANGE)
     private WebElement selectDateRange;
 
-    public static final String TRANSACTION_ID = "//android.widget.TextView[@text='Transaction ID']";
+    public static final String TRANSACTION_ID = "//android.view.View[contains(@content-desc,'Transaction ID')]";
 
     @AndroidFindBy(xpath = TRANSACTION_ID)
     private WebElement transactionId;
 
-    public static final String SELECT_TRANSACTION_TYPE = "//android.widget.TextView[@text='Select Transaction Type']";
+    public static final String SELECT_TRANSACTION_TYPE = "//android.widget.TextView[contains(@content-desc,'Select Transaction Type')]";
 
     @AndroidFindBy(xpath = SELECT_TRANSACTION_TYPE)
     private WebElement selectTransactionType;
 
-    public static final String SHOW_MORE = "//android.widget.TextView[@text='Show More']";
+    public static final String SHOW_MORE = "//android.widget.TextView[contains(@content-desc,'Show More')]";
 
     @AndroidFindBy(xpath = SHOW_MORE)
     private WebElement showMore;
@@ -55,97 +55,97 @@ public class HomeNonChannelsCreditLedgerHistory2Screen extends BaseScreen {
     @AndroidFindBy(xpath = SHOW_MORE_ICON)
     private WebElement showMoreIcon;
 
-    public static final String GST = "//android.widget.TextView[@text='GST']";
+    public static final String GST = "//android.widget.TextView[contains(@content-desc,'GST')]";
 
     @AndroidFindBy(xpath = GST)
     private WebElement gst;
 
-    public static final String NPS = "//android.widget.TextView[@text='NPS']";
+    public static final String NPS = "//android.widget.TextView[contains(@content-desc,'NPS')]";
 
     @AndroidFindBy(xpath = NPS)
     private WebElement nps;
 
-    public static final String POS = "//android.widget.TextView[@text='POS']";
+    public static final String POS = "//android.widget.TextView[contains(@content-desc,'POS')]";
 
     @AndroidFindBy(xpath = POS)
     private WebElement pos;
 
-    public static final String TDS = "//android.widget.TextView[@text='TDS']";
+    public static final String TDS = "//android.widget.TextView[contains(@content-desc,'TDS')]";
 
     @AndroidFindBy(xpath = TDS)
     private WebElement tds;
 
-    public static final String AEPS = "//android.widget.TextView[@text='AEPS']";
+    public static final String AEPS = "//android.widget.TextView[contains(@content-desc,'AEPS')]";
 
     @AndroidFindBy(xpath = AEPS)
     private WebElement aeps;
 
-    public static final String BBPS = "//android.widget.TextView[@text='BBPS']";
+    public static final String BBPS = "//android.widget.TextView[contains(@content-desc,'BBPS')]";
 
     @AndroidFindBy(xpath = BBPS)
     private WebElement bbps;
 
-    public static final String GOLD = "//android.widget.TextView[@text='GOLD']";
+    public static final String GOLD = "//android.widget.TextView[contains(@content-desc,'GOLD')]";
 
     @AndroidFindBy(xpath = GOLD)
     private WebElement gold;
 
-    public static final String ONDC = "//android.widget.TextView[@text='ONDC']";
+    public static final String ONDC = "//android.widget.TextView[contains(@content-desc,'ONDC')]";
 
     @AndroidFindBy(xpath = ONDC)
     private WebElement ondc;
 
-    public static final String ADHOC = "//android.widget.TextView[@text='ADHOC']";
+    public static final String ADHOC = "//android.widget.TextView[contains(@content-desc,'ADHOC')]";
 
     @AndroidFindBy(xpath = ADHOC)
     private WebElement adhoc;
 
-    public static final String TOPUP = "//android.widget.TextView[@text='TOPUP']";
+    public static final String TOPUP = "//android.widget.TextView[contains(@content-desc,'TOPUP')]";
 
     @AndroidFindBy(xpath = TOPUP)
     private WebElement topup;
 
-    public static final String FASTAG = "//android.widget.TextView[@text='FASTAG']";
+    public static final String FASTAG = "//android.widget.TextView[contains(@content-desc,'FASTAG')]";
 
     @AndroidFindBy(xpath = FASTAG)
     private WebElement fastag;
 
-    public static final String BAAZAAR = "//android.widget.TextView[@text='BAAZAAR']";
+    public static final String BAAZAAR = "//android.widget.TextView[contains(@content-desc,'BAAZAAR')]";
 
     @AndroidFindBy(xpath = BAAZAAR)
     private WebElement baazaar;
 
-    public static final String GIFTCARD = "//android.widget.TextView[@text='GIFTCARD']";
+    public static final String GIFTCARD = "//android.widget.TextView[contains(@content-desc,'GIFTCARD')]";
 
     @AndroidFindBy(xpath = GIFTCARD)
     private WebElement giftcard;
 
-    public static final String RECHARGE = "//android.widget.TextView[@text='RECHARGE']";
+    public static final String RECHARGE = "//android.widget.TextView[contains(@content-desc,'RECHARGE')]";
 
     @AndroidFindBy(xpath = RECHARGE)
     private WebElement recharge;
 
-    public static final String REFUNDED = "//android.widget.TextView[@text='REFUNDED']";
+    public static final String REFUNDED = "//android.widget.TextView[contains(@content-desc,'REFUNDED')]";
 
     @AndroidFindBy(xpath = REFUNDED)
     private WebElement refunded;
 
-    public static final String TRANSFER = "//android.widget.TextView[@text='TRANSFER']";
+    public static final String TRANSFER = "//android.widget.TextView[contains(@content-desc,'TRANSFER')]";
 
     @AndroidFindBy(xpath = TRANSFER)
     private WebElement transfer;
 
-    public static final String HUMAN_ATM = "//android.widget.TextView[@text='HUMAN ATM']";
+    public static final String HUMAN_ATM = "//android.widget.TextView[contains(@content-desc,'HUMAN ATM')]";
 
     @AndroidFindBy(xpath = HUMAN_ATM)
     private WebElement humanAtm;
 
-    public static final String INSURANCE = "//android.widget.TextView[@text='INSURANCE']";
+    public static final String INSURANCE = "//android.widget.TextView[contains(@content-desc,'INSURANCE')]";
 
     @AndroidFindBy(xpath = INSURANCE)
     private WebElement insurance;
 
-    public static final String CHARGEBACK = "//android.widget.TextView[@text='CHARGEBACK']";
+    public static final String CHARGEBACK = "//android.widget.TextView[contains(@content-desc,'CHARGEBACK')]";
 
     @AndroidFindBy(xpath = CHARGEBACK)
     private WebElement chargeback;

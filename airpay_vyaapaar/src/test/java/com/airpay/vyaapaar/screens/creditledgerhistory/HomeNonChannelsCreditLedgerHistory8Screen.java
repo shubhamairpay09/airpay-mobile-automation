@@ -5,17 +5,17 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Non Channels/Credit Ledger History/Filter Icon/Show More/Filter/Below 2500/2500 - 5000/5000 - 7500/7500 - 10000. Module credit-ledger-history. */
+/** Non Channels/Credit Ledger History/Filter Icon/Show More/Sort/2500 - 5000. Module credit-ledger-history. */
 public class HomeNonChannelsCreditLedgerHistory8Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-non-channels-credit-ledger-history-dropdown-filter-icon-show-more-filter-below-2500-2";
+    public static final String PAGE_ID = "home-non-channels-credit-ledger-history-dropdown-filter-icon-show-more-sort-2500-5000";
 
     public static final String FILTER = "//android.widget.TextView[@text='Filter']";
 
     @AndroidFindBy(xpath = FILTER)
     private WebElement filter;
 
-    public static final String BELOW2500 = "//android.widget.TextView[@text='Below 2500']";
+    public static final String BELOW2500 = "//android.widget.TextView[contains(@content-desc,'Below 2500')]";
 
     @AndroidFindBy(xpath = BELOW2500)
     private WebElement below2500;
@@ -25,7 +25,7 @@ public class HomeNonChannelsCreditLedgerHistory8Screen extends BaseScreen {
     @AndroidFindBy(xpath = EL2500)
     private WebElement el2500;
 
-    public static final String MIN = "//android.widget.TextView[@text='Min']";
+    public static final String MIN = "//android.view.View[contains(@content-desc,'Min')]";
 
     @AndroidFindBy(xpath = MIN)
     private WebElement min;
@@ -35,7 +35,7 @@ public class HomeNonChannelsCreditLedgerHistory8Screen extends BaseScreen {
     @AndroidFindBy(xpath = EL5000)
     private WebElement el5000;
 
-    public static final String MAX = "//android.widget.TextView[@text='Max']";
+    public static final String MAX = "//android.view.View[contains(@content-desc,'Max')]";
 
     @AndroidFindBy(xpath = MAX)
     private WebElement max;
@@ -45,15 +45,10 @@ public class HomeNonChannelsCreditLedgerHistory8Screen extends BaseScreen {
     @AndroidFindBy(xpath = APPLY)
     private WebElement apply;
 
-    public static final String EL7500 = "//android.widget.EditText[@text='7500']";
+    public static final String YOU_HAVE_ANEW_MESSAGE = "//android.widget.Toast[@text='You have a new message']";
 
-    @AndroidFindBy(xpath = EL7500)
-    private WebElement el7500;
-
-    public static final String EL10000 = "//android.widget.EditText[@text='10000']";
-
-    @AndroidFindBy(xpath = EL10000)
-    private WebElement el10000;
+    @AndroidFindBy(xpath = YOU_HAVE_ANEW_MESSAGE)
+    private WebElement youHaveANewMessage;
 
     public HomeNonChannelsCreditLedgerHistory8Screen(TestContext context) {
         super(context);

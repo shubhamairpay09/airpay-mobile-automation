@@ -15,7 +15,7 @@ public class HomeNonChannelsFinanceUnsecuredCreditScreen extends BaseScreen {
     @AndroidFindBy(xpath = HDFC_LOGO)
     private WebElement hdfcLogo;
 
-    public static final String HDFC = "//android.widget.TextView[@text='HDFC']";
+    public static final String HDFC = "//android.widget.TextView[contains(@content-desc,'HDFC')]";
 
     @AndroidFindBy(xpath = HDFC)
     private WebElement hdfc;
@@ -25,12 +25,12 @@ public class HomeNonChannelsFinanceUnsecuredCreditScreen extends BaseScreen {
     @AndroidFindBy(xpath = CREDILIO_LOGO)
     private WebElement credilioLogo;
 
-    public static final String CREDILIO = "//android.widget.TextView[@text='Credilio']";
+    public static final String CREDILIO = "//android.widget.TextView[contains(@content-desc,'Credilio')]";
 
     @AndroidFindBy(xpath = CREDILIO)
     private WebElement credilio;
 
-    public static final String SELECT_PARTNER = "//android.widget.TextView[@text='Select Partner']";
+    public static final String SELECT_PARTNER = "//android.widget.TextView[contains(@content-desc,'Select Partner')]";
 
     @AndroidFindBy(xpath = SELECT_PARTNER)
     private WebElement selectPartner;

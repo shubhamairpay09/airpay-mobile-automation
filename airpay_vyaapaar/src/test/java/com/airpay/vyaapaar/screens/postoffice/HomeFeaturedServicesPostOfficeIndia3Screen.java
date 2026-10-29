@@ -10,7 +10,7 @@ public class HomeFeaturedServicesPostOfficeIndia3Screen extends BaseScreen {
 
     public static final String PAGE_ID = "home-featured-services-post-office-india-post-office-track";
 
-    public static final String SEARCH = "//android.widget.TextView[@text='Search']";
+    public static final String SEARCH = "//android.view.View[contains(@content-desc,'Search')]";
 
     @AndroidFindBy(xpath = SEARCH)
     private WebElement search;

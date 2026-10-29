@@ -15,12 +15,12 @@ public class HomeFeaturedServicesPostOfficeScreen extends BaseScreen {
     @AndroidFindBy(xpath = INDIA_POST_OFFICE_ICON)
     private WebElement indiaPostOfficeIcon;
 
-    public static final String INDIA_POST_OFFICE = "//android.widget.TextView[@text='India Post Office']";
+    public static final String INDIA_POST_OFFICE = "//android.widget.TextView[contains(@content-desc,'India Post Office')]";
 
     @AndroidFindBy(xpath = INDIA_POST_OFFICE)
     private WebElement indiaPostOffice;
 
-    public static final String SPEED_POST_BUSINESS_PARCEL_AND_OTHER_INDIA_POST = "//android.widget.TextView[@text='Speed Post, Business Parcel and other India Post shipping services']";
+    public static final String SPEED_POST_BUSINESS_PARCEL_AND_OTHER_INDIA_POST = "//android.widget.TextView[contains(@content-desc,'Speed Post, Business Parcel and other India Post shipping services')]";
 
     @AndroidFindBy(xpath = SPEED_POST_BUSINESS_PARCEL_AND_OTHER_INDIA_POST)
     private WebElement speedPostBusinessParcelAndOtherIndiaPost;

@@ -20,10 +20,10 @@ public class HomeFeaturedServicesPanApplicationDobScreen extends BaseScreen {
     @AndroidFindBy(xpath = SELECT_DATE)
     private WebElement selectDate;
 
-    public static final String CURRENT_SELECTION_TUESDAY27OCTOBER2026 = "//android.widget.TextView[contains(@content-desc,'Current selection: Tuesday, 27 October 2026')]";
+    public static final String CURRENT_SELECTION_THURSDAY29OCTOBER2026 = "//android.widget.TextView[contains(@content-desc,'Current selection: Thursday, 29 October 2026')]";
 
-    @AndroidFindBy(xpath = CURRENT_SELECTION_TUESDAY27OCTOBER2026)
-    private WebElement currentSelectionTuesday27October2026;
+    @AndroidFindBy(xpath = CURRENT_SELECTION_THURSDAY29OCTOBER2026)
+    private WebElement currentSelectionThursday29October2026;
 
     public static final String SWITCH_TO_TEXT_INPUT_MODE = "//android.view.View[contains(@content-desc,'Switch to text input mode')]";
 
@@ -215,20 +215,20 @@ public class HomeFeaturedServicesPanApplicationDobScreen extends BaseScreen {
     @AndroidFindBy(xpath = MONDAY26OCTOBER2026)
     private WebElement monday26October2026;
 
-    public static final String TODAY_TUESDAY27OCTOBER2026 = "//android.widget.TextView[@text='Today, Tuesday, 27 October 2026']";
+    public static final String TUESDAY27OCTOBER2026 = "//android.widget.TextView[@text='Tuesday, 27 October 2026']";
 
-    @AndroidFindBy(xpath = TODAY_TUESDAY27OCTOBER2026)
-    private WebElement todayTuesday27October2026;
+    @AndroidFindBy(xpath = TUESDAY27OCTOBER2026)
+    private WebElement tuesday27October2026;
 
     public static final String WEDNESDAY28OCTOBER2026 = "//android.widget.TextView[@text='Wednesday, 28 October 2026']";
 
     @AndroidFindBy(xpath = WEDNESDAY28OCTOBER2026)
     private WebElement wednesday28October2026;
 
-    public static final String THURSDAY29OCTOBER2026 = "//android.widget.TextView[@text='Thursday, 29 October 2026']";
+    public static final String TODAY_THURSDAY29OCTOBER2026 = "//android.widget.TextView[@text='Today, Thursday, 29 October 2026']";
 
-    @AndroidFindBy(xpath = THURSDAY29OCTOBER2026)
-    private WebElement thursday29October2026;
+    @AndroidFindBy(xpath = TODAY_THURSDAY29OCTOBER2026)
+    private WebElement todayThursday29October2026;
 
     public static final String FRIDAY30OCTOBER2026 = "//android.widget.TextView[@text='Friday, 30 October 2026']";
 

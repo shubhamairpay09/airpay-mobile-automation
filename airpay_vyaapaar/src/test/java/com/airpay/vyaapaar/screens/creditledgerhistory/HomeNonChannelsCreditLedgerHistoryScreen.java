@@ -10,7 +10,7 @@ public class HomeNonChannelsCreditLedgerHistoryScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-non-channels-credit-ledger-history";
 
-    public static final String CREDIT_BALANCE = "//android.widget.TextView[@text='Credit Balance']";
+    public static final String CREDIT_BALANCE = "//android.widget.TextView[contains(@content-desc,'Credit Balance')]";
 
     @AndroidFindBy(xpath = CREDIT_BALANCE)
     private WebElement creditBalance;
@@ -30,7 +30,7 @@ public class HomeNonChannelsCreditLedgerHistoryScreen extends BaseScreen {
     @AndroidFindBy(xpath = BACK_ICON)
     private WebElement backIcon;
 
-    public static final String CREDIT_LEDGER_HISTORY = "//android.widget.TextView[@text='Credit Ledger History']";
+    public static final String CREDIT_LEDGER_HISTORY = "//android.widget.TextView[contains(@content-desc,'Credit Ledger History')]";
 
     @AndroidFindBy(xpath = CREDIT_LEDGER_HISTORY)
     private WebElement creditLedgerHistory;

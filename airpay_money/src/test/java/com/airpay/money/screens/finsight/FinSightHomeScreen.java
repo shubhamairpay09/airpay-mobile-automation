@@ -45,9 +45,12 @@ public class FinSightHomeScreen extends BaseScreen {
         String lower = src.toLowerCase();
         boolean body = src.contains("Your Financial Health Score")
                 || src.contains("Financial Health Check")
+                || src.contains("Take Action")
+                || src.contains("Compare and File")
                 || lower.contains("sync your networth")
                 || lower.contains("sync your net worth")
-                || lower.contains("view net worth");
+                || lower.contains("view net worth")
+                || lower.contains("key gaps");
         return tabs && body;
     }
 

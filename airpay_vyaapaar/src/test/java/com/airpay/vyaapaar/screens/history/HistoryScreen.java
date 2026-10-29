@@ -15,17 +15,17 @@ public class HistoryScreen extends BaseScreen {
     @AndroidFindBy(xpath = FILTER_ICON)
     private WebElement filterIcon;
 
-    public static final String INITIATED = "//android.view.View[contains(@content-desc,'INITIATED')]";
+    public static final String FAILED = "//android.view.View[contains(@content-desc,'FAILED')]";
 
-    @AndroidFindBy(xpath = INITIATED)
-    private WebElement initiated;
+    @AndroidFindBy(xpath = FAILED)
+    private WebElement failed;
 
-    public static final String OTHERS = "//android.widget.TextView[@text='Others']";
+    public static final String OTHERS = "//android.widget.TextView[contains(@content-desc,'Others')]";
 
     @AndroidFindBy(xpath = OTHERS)
     private WebElement others;
 
-    public static final String CMS = "//android.widget.TextView[@text='Cms']";
+    public static final String CMS = "//android.widget.TextView[contains(@content-desc,'Cms')]";
 
     @AndroidFindBy(xpath = CMS)
     private WebElement cms;
@@ -35,7 +35,7 @@ public class HistoryScreen extends BaseScreen {
     @AndroidFindBy(xpath = COPY_ICON)
     private WebElement copyIcon;
 
-    public static final String EL100 = "//android.widget.TextView[@text='₹1.00']";
+    public static final String EL100 = "//android.widget.TextView[contains(@content-desc,'₹1.00')]";
 
     @AndroidFindBy(xpath = EL100)
     private WebElement el100;
@@ -45,32 +45,27 @@ public class HistoryScreen extends BaseScreen {
     @AndroidFindBy(xpath = DOWN_ARROW)
     private WebElement downArrow;
 
-    public static final String FAILED = "//android.view.View[contains(@content-desc,'FAILED')]";
-
-    @AndroidFindBy(xpath = FAILED)
-    private WebElement failed;
-
     public static final String DOWNLOAD = "//android.view.View[contains(@content-desc,'Download')]";
 
     @AndroidFindBy(xpath = DOWNLOAD)
     private WebElement download;
 
-    public static final String HOME = "//android.widget.TextView[@text='Home']";
+    public static final String HOME = "//android.widget.TextView[contains(@content-desc,'Home')]";
 
     @AndroidFindBy(xpath = HOME)
     private WebElement home;
 
-    public static final String SERVICES = "//android.widget.TextView[@text='Services']";
+    public static final String SERVICES = "//android.widget.TextView[contains(@content-desc,'Services')]";
 
     @AndroidFindBy(xpath = SERVICES)
     private WebElement services;
 
-    public static final String HISTORY = "//android.widget.TextView[@text='History']";
+    public static final String HISTORY = "//android.widget.TextView[contains(@content-desc,'History')]";
 
     @AndroidFindBy(xpath = HISTORY)
     private WebElement history;
 
-    public static final String PROFILE = "//android.widget.TextView[@text='Profile']";
+    public static final String PROFILE = "//android.widget.TextView[contains(@content-desc,'Profile')]";
 
     @AndroidFindBy(xpath = PROFILE)
     private WebElement profile;

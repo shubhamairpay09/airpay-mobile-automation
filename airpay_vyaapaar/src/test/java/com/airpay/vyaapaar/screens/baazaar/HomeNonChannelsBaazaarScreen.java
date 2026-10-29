@@ -10,12 +10,12 @@ public class HomeNonChannelsBaazaarScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-non-channels-baazaar";
 
-    public static final String SEARCH_OIL_ALMONDS_EARPHONES_HERE = "//android.widget.TextView[@text='Search oil, almonds, earphones here']";
+    public static final String SEARCH_OIL_ALMONDS_EARPHONES_HERE = "//android.widget.TextView[contains(@content-desc,'Search oil, almonds, earphones here')]";
 
     @AndroidFindBy(xpath = SEARCH_OIL_ALMONDS_EARPHONES_HERE)
     private WebElement searchOilAlmondsEarphonesHere;
 
-    public static final String CATEGORIES = "//android.widget.TextView[@text='Categories']";
+    public static final String CATEGORIES = "//android.widget.TextView[contains(@content-desc,'Categories')]";
 
     @AndroidFindBy(xpath = CATEGORIES)
     private WebElement categories;
@@ -25,42 +25,42 @@ public class HomeNonChannelsBaazaarScreen extends BaseScreen {
     @AndroidFindBy(xpath = ICON)
     private WebElement icon;
 
-    public static final String GROCERY = "//android.widget.TextView[@text='Grocery']";
+    public static final String GROCERY = "//android.widget.TextView[contains(@content-desc,'Grocery')]";
 
     @AndroidFindBy(xpath = GROCERY)
     private WebElement grocery;
 
-    public static final String FASHION = "//android.widget.TextView[@text='Fashion']";
+    public static final String FASHION = "//android.widget.TextView[contains(@content-desc,'Fashion')]";
 
     @AndroidFindBy(xpath = FASHION)
     private WebElement fashion;
 
-    public static final String ELECTRONICS = "//android.widget.TextView[@text='Electronics']";
+    public static final String ELECTRONICS = "//android.widget.TextView[contains(@content-desc,'Electronics')]";
 
     @AndroidFindBy(xpath = ELECTRONICS)
     private WebElement electronics;
 
-    public static final String HEALTH_WELLNESS = "//android.widget.TextView[@text='Health & Wellness']";
+    public static final String HEALTH_WELLNESS = "//android.widget.TextView[contains(@content-desc,'Health & Wellness')]";
 
     @AndroidFindBy(xpath = HEALTH_WELLNESS)
     private WebElement healthWellness;
 
-    public static final String BEAUTY_PERSONAL_CARE = "//android.widget.TextView[@text='Beauty & Personal care']";
+    public static final String BEAUTY_PERSONAL_CARE = "//android.widget.TextView[contains(@content-desc,'Beauty & Personal care')]";
 
     @AndroidFindBy(xpath = BEAUTY_PERSONAL_CARE)
     private WebElement beautyPersonalCare;
 
-    public static final String TEST = "//android.widget.TextView[@text='test']";
+    public static final String TEST = "//android.widget.TextView[contains(@content-desc,'test')]";
 
     @AndroidFindBy(xpath = TEST)
     private WebElement test;
 
-    public static final String GROCERY_HIGHLIGHTS = "//android.widget.TextView[@text='Grocery Highlights']";
+    public static final String PREMIUM_PICKS = "//android.widget.TextView[contains(@content-desc,'Premium Picks')]";
 
-    @AndroidFindBy(xpath = GROCERY_HIGHLIGHTS)
-    private WebElement groceryHighlights;
+    @AndroidFindBy(xpath = PREMIUM_PICKS)
+    private WebElement premiumPicks;
 
-    public static final String VIEW_ALL = "//android.widget.TextView[@text='View All']";
+    public static final String VIEW_ALL = "//android.widget.TextView[contains(@content-desc,'View All')]";
 
     @AndroidFindBy(xpath = VIEW_ALL)
     private WebElement viewAll;
@@ -70,25 +70,45 @@ public class HomeNonChannelsBaazaarScreen extends BaseScreen {
     @AndroidFindBy(xpath = FORWARD_ARROW_ICON)
     private WebElement forwardArrowIcon;
 
-    public static final String SEREA_IMAGE = "//android.view.View[contains(@content-desc,'Serea image')]";
+    public static final String BRAINGYMJR_IMAGE = "//android.view.View[contains(@content-desc,'BrainGymJr image')]";
 
-    @AndroidFindBy(xpath = SEREA_IMAGE)
-    private WebElement sereaImage;
+    @AndroidFindBy(xpath = BRAINGYMJR_IMAGE)
+    private WebElement braingymjrImage;
 
-    public static final String MANCU_STORE_IMAGE = "//android.view.View[contains(@content-desc,'Mancu Store image')]";
+    public static final String BRAINGYMJR = "//android.widget.TextView[contains(@content-desc,'BrainGymJr')]";
 
-    @AndroidFindBy(xpath = MANCU_STORE_IMAGE)
-    private WebElement mancuStoreImage;
+    @AndroidFindBy(xpath = BRAINGYMJR)
+    private WebElement braingymjr;
 
-    public static final String FROMNEAR_MAIN_STORE_IMAGE = "//android.view.View[contains(@content-desc,'FromNear Main Store image')]";
+    public static final String PLAY_SOLVE_LEARN_WIN = "//android.widget.TextView[contains(@content-desc,'Play. Solve. Learn. Win')]";
 
-    @AndroidFindBy(xpath = FROMNEAR_MAIN_STORE_IMAGE)
-    private WebElement fromnearMainStoreImage;
+    @AndroidFindBy(xpath = PLAY_SOLVE_LEARN_WIN)
+    private WebElement playSolveLearnWin;
 
-    public static final String GLYDIO_DEMO_STORE_IMAGE = "//android.view.View[contains(@content-desc,'Glydio Demo Store image')]";
+    public static final String BUY_NOW_ICON = "//android.view.View[contains(@content-desc,'Buy Now icon')]";
 
-    @AndroidFindBy(xpath = GLYDIO_DEMO_STORE_IMAGE)
-    private WebElement glydioDemoStoreImage;
+    @AndroidFindBy(xpath = BUY_NOW_ICON)
+    private WebElement buyNowIcon;
+
+    public static final String BUY_NOW = "//android.widget.TextView[contains(@content-desc,'Buy Now')]";
+
+    @AndroidFindBy(xpath = BUY_NOW)
+    private WebElement buyNow;
+
+    public static final String MOBILE_IMAGE = "//android.view.View[contains(@content-desc,'mobile image')]";
+
+    @AndroidFindBy(xpath = MOBILE_IMAGE)
+    private WebElement mobileImage;
+
+    public static final String MOBILE = "//android.widget.TextView[contains(@content-desc,'mobile')]";
+
+    @AndroidFindBy(xpath = MOBILE)
+    private WebElement mobile;
+
+    public static final String MOBILE_PHONE = "//android.widget.TextView[contains(@content-desc,'Mobile phone')]";
+
+    @AndroidFindBy(xpath = MOBILE_PHONE)
+    private WebElement mobilePhone;
 
     public static final String BACK_ICON = "//android.view.View[contains(@content-desc,'Back Icon')]";
 
@@ -100,12 +120,12 @@ public class HomeNonChannelsBaazaarScreen extends BaseScreen {
     @AndroidFindBy(xpath = LOCATION_ON)
     private WebElement locationOn;
 
-    public static final String LOCATION = "//android.widget.TextView[@text='Location']";
+    public static final String LOCATION = "//android.widget.TextView[contains(@content-desc,'Location')]";
 
     @AndroidFindBy(xpath = LOCATION)
     private WebElement location;
 
-    public static final String ORDERS = "//android.widget.TextView[@text='Orders']";
+    public static final String ORDERS = "//android.widget.TextView[contains(@content-desc,'Orders')]";
 
     @AndroidFindBy(xpath = ORDERS)
     private WebElement orders;

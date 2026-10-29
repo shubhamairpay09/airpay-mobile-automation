@@ -5,25 +5,30 @@ import com.airpay.mobile.utilities.context.TestContext;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
-/** Non Channels/Credit Ledger History/Filter Icon/Apply. Module credit-ledger-history. */
+/** Non Channels/Credit Ledger History/Filter Icon/Show More/Sort/Filter Icon. Module credit-ledger-history. */
 public class HomeNonChannelsCreditLedgerHistory10Screen extends BaseScreen {
 
-    public static final String PAGE_ID = "home-non-channels-credit-ledger-history-dropdown-filter-icon-filter-icon-apply";
+    public static final String PAGE_ID = "home-non-channels-credit-ledger-history-dropdown-filter-icon-show-more-sort-filter-icon";
 
-    public static final String FILTER_ICON = "//android.view.View[contains(@content-desc,'Filter Icon')]";
+    public static final String FILTER = "//android.widget.TextView[@text='Filter']";
 
-    @AndroidFindBy(xpath = FILTER_ICON)
-    private WebElement filterIcon;
+    @AndroidFindBy(xpath = FILTER)
+    private WebElement filter;
 
-    public static final String NO_RECORDS_FOUND = "//android.widget.TextView[@text='No records found']";
+    public static final String CLEAR_ALL = "//android.widget.TextView[contains(@content-desc,'Clear All')]";
 
-    @AndroidFindBy(xpath = NO_RECORDS_FOUND)
-    private WebElement noRecordsFound;
+    @AndroidFindBy(xpath = CLEAR_ALL)
+    private WebElement clearAll;
 
-    public static final String RETAILER_HISTORY = "//android.widget.TextView[@text='Retailer History']";
+    public static final String SELECT_DATE = "//android.widget.TextView[@text='Select Date']";
 
-    @AndroidFindBy(xpath = RETAILER_HISTORY)
-    private WebElement retailerHistory;
+    @AndroidFindBy(xpath = SELECT_DATE)
+    private WebElement selectDate;
+
+    public static final String APPLY = "//android.widget.TextView[@text='Apply']";
+
+    @AndroidFindBy(xpath = APPLY)
+    private WebElement apply;
 
     public HomeNonChannelsCreditLedgerHistory10Screen(TestContext context) {
         super(context);

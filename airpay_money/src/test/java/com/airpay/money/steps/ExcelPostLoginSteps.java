@@ -64,6 +64,8 @@ public class ExcelPostLoginSteps {
         if (insideHealthCheck()) {
             return;
         }
+        // Prior scenario may end on Airpay / Order Summary / Buy — leave before asserting home.
+        leaveProductNestedScreens();
         ensureProductsHub();
         if (!products.isDisplayed()) {
             openFinsight();
@@ -490,8 +492,45 @@ public class ExcelPostLoginSteps {
                 .isTrue();
     }
 
+    /**
+     * Leave payment gateway / order / buy-sell so Background can reach Products.
+     * Avoid repeated full pageSource on WebView (hangs Appium). Use short taps + limited system Back.
+     */
+    private void leaveProductNestedScreens() {
+        for (int i = 0; i < 6; i++) {
+            if (onMainChrome()) {
+                return;
+            }
+            if (home.tapLabelFast("Go to Dashboard")) {
+                sleepQuiet(700);
+                unlockPinAndSkipBiometric();
+                continue;
+            }
+            if (home.tapBack() || home.tapLabelFast("Close") || home.tapLabelFast("Cancel")) {
+                sleepQuiet(500);
+                unlockPinAndSkipBiometric();
+                continue;
+            }
+            home.tapHeaderBack();
+            sleepQuiet(500);
+            // Airpay WebView often has no in-app Back — one system Back leaves gateway only.
+            if (i >= 1 && !onMainChrome()) {
+                home.pressSystemBack();
+                sleepQuiet(700);
+                unlockPinAndSkipBiometric();
+            }
+        }
+    }
+
+    /** Tab bar present — cheap check, no full Products hub content match. */
+    private boolean onMainChrome() {
+        return home.sourceContains("Products")
+                && home.sourceContains("FinSight")
+                && home.sourceContains("Calculators");
+    }
+
     private void ensureProductsHub() {
-        for (int i = 0; i < 4 && !products.isDisplayed(); i++) {
+        for (int i = 0; i < 5 && !products.isDisplayed(); i++) {
             if (home.sourceContains("PROFILE SETTINGS", "Log Out")) {
                 home.pressSystemBack();
                 sleepQuiet(400);
@@ -499,6 +538,9 @@ public class ExcelPostLoginSteps {
             }
             if (home.sourceContains("Your Risk Profile")) {
                 return;
+            }
+            if (i > 0) {
+                leaveProductNestedScreens();
             }
             if (products.open()) {
                 return;

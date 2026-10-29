@@ -93,7 +93,7 @@ public class PinUnlockScreen extends BaseScreen {
             if (digit < '0' || digit > '9') {
                 throw new IllegalArgumentException("PIN must be digits: " + pin);
             }
-            if (!tapFirst(Duration.ofMillis(1500),
+            if (!tapFirst(Duration.ofMillis(400),
                     MobileWaits.xpath("//*[starts-with(@content-desc,'Digit " + digit + "')]"),
                     MobileWaits.xpath("//android.view.View[@content-desc='" + digit + "' and @clickable='true']"),
                     MobileWaits.xpath("//android.widget.Button[@content-desc='" + digit + "']"),

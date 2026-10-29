@@ -10,7 +10,7 @@ public class HistoryDropdownFilterIconApplyScreen extends BaseScreen {
 
     public static final String PAGE_ID = "history-dropdown-filter-icon-apply";
 
-    public static final String GIFTCARD = "//android.widget.TextView[@text='GIFTCARD']";
+    public static final String GIFTCARD = "//android.widget.TextView[contains(@content-desc,'GIFTCARD')]";
 
     @AndroidFindBy(xpath = GIFTCARD)
     private WebElement giftcard;
@@ -25,22 +25,22 @@ public class HistoryDropdownFilterIconApplyScreen extends BaseScreen {
     @AndroidFindBy(xpath = NO_RECORDS_FOUND)
     private WebElement noRecordsFound;
 
-    public static final String HOME = "//android.widget.TextView[@text='Home']";
+    public static final String HOME = "//android.widget.TextView[contains(@content-desc,'Home')]";
 
     @AndroidFindBy(xpath = HOME)
     private WebElement home;
 
-    public static final String SERVICES = "//android.widget.TextView[@text='Services']";
+    public static final String SERVICES = "//android.widget.TextView[contains(@content-desc,'Services')]";
 
     @AndroidFindBy(xpath = SERVICES)
     private WebElement services;
 
-    public static final String HISTORY = "//android.widget.TextView[@text='History']";
+    public static final String HISTORY = "//android.widget.TextView[contains(@content-desc,'History')]";
 
     @AndroidFindBy(xpath = HISTORY)
     private WebElement history;
 
-    public static final String PROFILE = "//android.widget.TextView[@text='Profile']";
+    public static final String PROFILE = "//android.widget.TextView[contains(@content-desc,'Profile')]";
 
     @AndroidFindBy(xpath = PROFILE)
     private WebElement profile;

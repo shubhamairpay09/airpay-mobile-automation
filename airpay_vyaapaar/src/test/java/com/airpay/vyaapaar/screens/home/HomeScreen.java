@@ -10,7 +10,7 @@ public class HomeScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home";
 
-    public static final String CREDIT_BALANCE = "//android.widget.TextView[@text='Credit Balance']";
+    public static final String CREDIT_BALANCE = "//android.widget.TextView[contains(@content-desc,'Credit Balance')]";
 
     @AndroidFindBy(xpath = CREDIT_BALANCE)
     private WebElement creditBalance;
@@ -20,17 +20,17 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = VISIBILITY_OFF_ICON)
     private WebElement visibilityOffIcon;
 
-    public static final String ELEMENT = "//android.widget.TextView[@text='#####']";
+    public static final String ELEMENT = "//android.widget.TextView[contains(@content-desc,'#####')]";
 
     @AndroidFindBy(xpath = ELEMENT)
     private WebElement element;
 
-    public static final String ADD_CREDITS = "//android.widget.TextView[@text='Add Credits']";
+    public static final String ADD_CREDITS = "//android.widget.TextView[contains(@content-desc,'Add Credits')]";
 
     @AndroidFindBy(xpath = ADD_CREDITS)
     private WebElement addCredits;
 
-    public static final String FEATURED_SERVICES = "//android.widget.TextView[@text='Featured Services']";
+    public static final String FEATURED_SERVICES = "//android.widget.TextView[contains(@content-desc,'Featured Services')]";
 
     @AndroidFindBy(xpath = FEATURED_SERVICES)
     private WebElement featuredServices;
@@ -40,7 +40,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = PAN_APPLICATION_ICON)
     private WebElement panApplicationIcon;
 
-    public static final String PAN_APPLICATION = "//android.widget.TextView[@text='PAN Application']";
+    public static final String PAN_APPLICATION = "//android.widget.TextView[contains(@content-desc,'PAN Application')]";
 
     @AndroidFindBy(xpath = PAN_APPLICATION)
     private WebElement panApplication;
@@ -50,7 +50,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = POST_OFFICE_ICON)
     private WebElement postOfficeIcon;
 
-    public static final String POST_OFFICE = "//android.widget.TextView[@text='Post Office']";
+    public static final String POST_OFFICE = "//android.widget.TextView[contains(@content-desc,'Post Office')]";
 
     @AndroidFindBy(xpath = POST_OFFICE)
     private WebElement postOffice;
@@ -60,7 +60,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = AEPS_ICON)
     private WebElement aepsIcon;
 
-    public static final String AEPS = "//android.widget.TextView[@text='AEPS']";
+    public static final String AEPS = "//android.widget.TextView[contains(@content-desc,'AEPS')]";
 
     @AndroidFindBy(xpath = AEPS)
     private WebElement aeps;
@@ -70,7 +70,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = AADHAAR_PAY_ICON)
     private WebElement aadhaarPayIcon;
 
-    public static final String AADHAAR_PAY = "//android.widget.TextView[@text='Aadhaar Pay']";
+    public static final String AADHAAR_PAY = "//android.widget.TextView[contains(@content-desc,'Aadhaar Pay')]";
 
     @AndroidFindBy(xpath = AADHAAR_PAY)
     private WebElement aadhaarPay;
@@ -80,7 +80,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = CMS_ICON)
     private WebElement cmsIcon;
 
-    public static final String CMS = "//android.widget.TextView[@text='CMS']";
+    public static final String CMS = "//android.widget.TextView[contains(@content-desc,'CMS')]";
 
     @AndroidFindBy(xpath = CMS)
     private WebElement cms;
@@ -90,7 +90,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = KHATA_ICON)
     private WebElement khataIcon;
 
-    public static final String KHATA = "//android.widget.TextView[@text='Khata']";
+    public static final String KHATA = "//android.widget.TextView[contains(@content-desc,'Khata')]";
 
     @AndroidFindBy(xpath = KHATA)
     private WebElement khata;
@@ -100,7 +100,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = DASHBOARD_ICON)
     private WebElement dashboardIcon;
 
-    public static final String DASHBOARD = "//android.widget.TextView[@text='Dashboard']";
+    public static final String DASHBOARD = "//android.widget.TextView[contains(@content-desc,'Dashboard')]";
 
     @AndroidFindBy(xpath = DASHBOARD)
     private WebElement dashboard;
@@ -110,7 +110,7 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = WITHDRAWAL_LIMIT_ICON)
     private WebElement withdrawalLimitIcon;
 
-    public static final String WITHDRAWAL_LIMIT = "//android.widget.TextView[@text='Withdrawal Limit']";
+    public static final String WITHDRAWAL_LIMIT = "//android.widget.TextView[contains(@content-desc,'Withdrawal Limit')]";
 
     @AndroidFindBy(xpath = WITHDRAWAL_LIMIT)
     private WebElement withdrawalLimit;
@@ -120,12 +120,12 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = PREPAID_CARDS_ICON)
     private WebElement prepaidCardsIcon;
 
-    public static final String PREPAID_CARDS = "//android.widget.TextView[@text='Prepaid Cards']";
+    public static final String PREPAID_CARDS = "//android.widget.TextView[contains(@content-desc,'Prepaid Cards')]";
 
     @AndroidFindBy(xpath = PREPAID_CARDS)
     private WebElement prepaidCards;
 
-    public static final String MONEY_TRANSFER = "//android.widget.TextView[@text='Money Transfer']";
+    public static final String MONEY_TRANSFER = "//android.widget.TextView[contains(@content-desc,'Money Transfer')]";
 
     @AndroidFindBy(xpath = MONEY_TRANSFER)
     private WebElement moneyTransfer;
@@ -135,22 +135,22 @@ public class HomeScreen extends BaseScreen {
     @AndroidFindBy(xpath = NOTIFICATIONS)
     private WebElement notifications;
 
-    public static final String HOME = "//android.widget.TextView[@text='Home']";
+    public static final String HOME = "//android.widget.TextView[contains(@content-desc,'Home')]";
 
     @AndroidFindBy(xpath = HOME)
     private WebElement home;
 
-    public static final String SERVICES = "//android.widget.TextView[@text='Services']";
+    public static final String SERVICES = "//android.widget.TextView[contains(@content-desc,'Services')]";
 
     @AndroidFindBy(xpath = SERVICES)
     private WebElement services;
 
-    public static final String HISTORY = "//android.widget.TextView[@text='History']";
+    public static final String HISTORY = "//android.widget.TextView[contains(@content-desc,'History')]";
 
     @AndroidFindBy(xpath = HISTORY)
     private WebElement history;
 
-    public static final String PROFILE = "//android.widget.TextView[@text='Profile']";
+    public static final String PROFILE = "//android.widget.TextView[contains(@content-desc,'Profile')]";
 
     @AndroidFindBy(xpath = PROFILE)
     private WebElement profile;

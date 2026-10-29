@@ -15,7 +15,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = COLLECT_MONEY_ICON)
     private WebElement collectMoneyIcon;
 
-    public static final String COLLECT_MONEY = "//android.widget.TextView[@text='Collect Money']";
+    public static final String COLLECT_MONEY = "//android.widget.TextView[contains(@content-desc,'Collect Money')]";
 
     @AndroidFindBy(xpath = COLLECT_MONEY)
     private WebElement collectMoney;
@@ -25,7 +25,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = UPI_QR_ICON)
     private WebElement upiQrIcon;
 
-    public static final String UPI_QR = "//android.widget.TextView[@text='UPI QR']";
+    public static final String UPI_QR = "//android.widget.TextView[contains(@content-desc,'UPI QR')]";
 
     @AndroidFindBy(xpath = UPI_QR)
     private WebElement upiQr;
@@ -35,7 +35,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = POS_ACTIVATION_ICON)
     private WebElement posActivationIcon;
 
-    public static final String POS_ACTIVATION = "//android.widget.TextView[@text='POS Activation']";
+    public static final String POS_ACTIVATION = "//android.widget.TextView[contains(@content-desc,'POS Activation')]";
 
     @AndroidFindBy(xpath = POS_ACTIVATION)
     private WebElement posActivation;
@@ -45,7 +45,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = CERTIFICATE_ICON)
     private WebElement certificateIcon;
 
-    public static final String CERTIFICATE = "//android.widget.TextView[@text='Certificate']";
+    public static final String CERTIFICATE = "//android.widget.TextView[contains(@content-desc,'Certificate')]";
 
     @AndroidFindBy(xpath = CERTIFICATE)
     private WebElement certificate;
@@ -55,7 +55,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = CREDIT_LEDGER_HISTORY_ICON)
     private WebElement creditLedgerHistoryIcon;
 
-    public static final String CREDIT_LEDGER_HISTORY = "//android.widget.TextView[@text='Credit Ledger History']";
+    public static final String CREDIT_LEDGER_HISTORY = "//android.widget.TextView[contains(@content-desc,'Credit Ledger History')]";
 
     @AndroidFindBy(xpath = CREDIT_LEDGER_HISTORY)
     private WebElement creditLedgerHistory;
@@ -65,7 +65,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = LOAN_LEAD_GENERATION_ICON)
     private WebElement loanLeadGenerationIcon;
 
-    public static final String LOAN_LEAD_GENERATION = "//android.widget.TextView[@text='Loan Lead Generation']";
+    public static final String LOAN_LEAD_GENERATION = "//android.widget.TextView[contains(@content-desc,'Loan Lead Generation')]";
 
     @AndroidFindBy(xpath = LOAN_LEAD_GENERATION)
     private WebElement loanLeadGeneration;
@@ -75,7 +75,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = SUBSCRIPTION_ICON)
     private WebElement subscriptionIcon;
 
-    public static final String SUBSCRIPTION = "//android.widget.TextView[@text='Subscription']";
+    public static final String SUBSCRIPTION = "//android.widget.TextView[contains(@content-desc,'Subscription')]";
 
     @AndroidFindBy(xpath = SUBSCRIPTION)
     private WebElement subscription;
@@ -85,7 +85,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = FINANCE_ICON)
     private WebElement financeIcon;
 
-    public static final String FINANCE = "//android.widget.TextView[@text='Finance']";
+    public static final String FINANCE = "//android.widget.TextView[contains(@content-desc,'Finance')]";
 
     @AndroidFindBy(xpath = FINANCE)
     private WebElement finance;
@@ -95,7 +95,7 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = LINK_MIDS_ICON)
     private WebElement linkMidsIcon;
 
-    public static final String LINK_MIDS = "//android.widget.TextView[@text='Link MIDs']";
+    public static final String LINK_MIDS = "//android.widget.TextView[contains(@content-desc,'Link MIDs')]";
 
     @AndroidFindBy(xpath = LINK_MIDS)
     private WebElement linkMids;
@@ -105,32 +105,32 @@ public class ServicesScreen extends BaseScreen {
     @AndroidFindBy(xpath = DEVOTIONAL_EXPERIENCES_ICON)
     private WebElement devotionalExperiencesIcon;
 
-    public static final String DEVOTIONAL_EXPERIENCES = "//android.widget.TextView[@text='Devotional Experiences']";
+    public static final String DEVOTIONAL_EXPERIENCES = "//android.widget.TextView[contains(@content-desc,'Devotional Experiences')]";
 
     @AndroidFindBy(xpath = DEVOTIONAL_EXPERIENCES)
     private WebElement devotionalExperiences;
 
-    public static final String SEARCH = "//android.widget.TextView[@text='Search']";
+    public static final String SEARCH = "//android.view.View[contains(@content-desc,'Search')]";
 
     @AndroidFindBy(xpath = SEARCH)
     private WebElement search;
 
-    public static final String HOME = "//android.widget.TextView[@text='Home']";
+    public static final String HOME = "//android.widget.TextView[contains(@content-desc,'Home')]";
 
     @AndroidFindBy(xpath = HOME)
     private WebElement home;
 
-    public static final String SERVICES = "//android.widget.TextView[@text='Services']";
+    public static final String SERVICES = "//android.widget.TextView[contains(@content-desc,'Services')]";
 
     @AndroidFindBy(xpath = SERVICES)
     private WebElement services;
 
-    public static final String HISTORY = "//android.widget.TextView[@text='History']";
+    public static final String HISTORY = "//android.widget.TextView[contains(@content-desc,'History')]";
 
     @AndroidFindBy(xpath = HISTORY)
     private WebElement history;
 
-    public static final String PROFILE = "//android.widget.TextView[@text='Profile']";
+    public static final String PROFILE = "//android.widget.TextView[contains(@content-desc,'Profile')]";
 
     @AndroidFindBy(xpath = PROFILE)
     private WebElement profile;

@@ -10,32 +10,32 @@ public class HomeFeaturedServicesAadhaarPayScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-featured-services-aadhaar-pay";
 
-    public static final String AMOUNT = "//android.widget.TextView[@text='Amount']";
+    public static final String AMOUNT = "//android.view.View[contains(@content-desc,'Amount')]";
 
     @AndroidFindBy(xpath = AMOUNT)
     private WebElement amount;
 
-    public static final String MINIMUM_AMOUNT100 = "//android.widget.TextView[@text='Minimum amount ₹ 100/-']";
+    public static final String MINIMUM_AMOUNT100 = "//android.widget.TextView[contains(@content-desc,'Minimum amount ₹ 100/-')]";
 
     @AndroidFindBy(xpath = MINIMUM_AMOUNT100)
     private WebElement minimumAmount100;
 
-    public static final String CUSTOMER_MOBILE = "//android.widget.TextView[@text='Customer Mobile']";
+    public static final String CUSTOMER_MOBILE = "//android.view.View[contains(@content-desc,'Customer Mobile')]";
 
     @AndroidFindBy(xpath = CUSTOMER_MOBILE)
     private WebElement customerMobile;
 
-    public static final String CUSTOMER_EMAIL = "//android.widget.TextView[@text='Customer Email']";
+    public static final String CUSTOMER_EMAIL = "//android.view.View[contains(@content-desc,'Customer Email')]";
 
     @AndroidFindBy(xpath = CUSTOMER_EMAIL)
     private WebElement customerEmail;
 
-    public static final String AADHAAR_NUMBER = "//android.widget.TextView[@text='Aadhaar Number']";
+    public static final String AADHAAR_NUMBER = "//android.view.View[contains(@content-desc,'Aadhaar Number')]";
 
     @AndroidFindBy(xpath = AADHAAR_NUMBER)
     private WebElement aadhaarNumber;
 
-    public static final String BANK_NAME = "//android.widget.TextView[@text='Bank Name']";
+    public static final String BANK_NAME = "//android.widget.TextView[contains(@content-desc,'Bank Name')]";
 
     @AndroidFindBy(xpath = BANK_NAME)
     private WebElement bankName;

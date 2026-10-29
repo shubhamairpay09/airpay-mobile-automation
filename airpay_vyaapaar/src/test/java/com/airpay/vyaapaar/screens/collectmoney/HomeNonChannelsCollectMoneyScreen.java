@@ -10,47 +10,57 @@ public class HomeNonChannelsCollectMoneyScreen extends BaseScreen {
 
     public static final String PAGE_ID = "home-non-channels-collect-money";
 
-    public static final String SELECT_PAYMENT_TYPE = "//android.widget.TextView[@text='Select Payment Type']";
+    public static final String SELECT_PAYMENT_TYPE = "//android.widget.TextView[contains(@content-desc,'Select Payment Type')]";
 
     @AndroidFindBy(xpath = SELECT_PAYMENT_TYPE)
     private WebElement selectPaymentType;
 
-    public static final String MENU_ICON = "//android.view.View[contains(@content-desc,'Menu Icon')]";
+    public static final String UPI_QR_ICON = "//android.view.View[contains(@content-desc,'UPI QR icon')]";
 
-    @AndroidFindBy(xpath = MENU_ICON)
-    private WebElement menuIcon;
+    @AndroidFindBy(xpath = UPI_QR_ICON)
+    private WebElement upiQrIcon;
 
-    public static final String UPI_QR = "//android.widget.TextView[@text='UPI QR']";
+    public static final String UPI_QR = "//android.widget.TextView[contains(@content-desc,'UPI QR')]";
 
     @AndroidFindBy(xpath = UPI_QR)
     private WebElement upiQr;
 
-    public static final String UPI = "//android.widget.TextView[@text='UPI']";
+    public static final String UPI_ICON = "//android.view.View[contains(@content-desc,'UPI icon')]";
+
+    @AndroidFindBy(xpath = UPI_ICON)
+    private WebElement upiIcon;
+
+    public static final String UPI = "//android.widget.TextView[contains(@content-desc,'UPI')]";
 
     @AndroidFindBy(xpath = UPI)
     private WebElement upi;
 
-    public static final String CREDIT_DEBIT_OTHERS = "//android.widget.TextView[@text='Credit/Debit/Others']";
+    public static final String CREDIT_DEBIT_OTHERS_ICON = "//android.view.View[contains(@content-desc,'Credit/Debit/Others icon')]";
+
+    @AndroidFindBy(xpath = CREDIT_DEBIT_OTHERS_ICON)
+    private WebElement creditDebitOthersIcon;
+
+    public static final String CREDIT_DEBIT_OTHERS = "//android.widget.TextView[contains(@content-desc,'Credit/Debit/Others')]";
 
     @AndroidFindBy(xpath = CREDIT_DEBIT_OTHERS)
     private WebElement creditDebitOthers;
 
-    public static final String AMOUNT = "//android.widget.TextView[@text='Amount']";
+    public static final String AMOUNT = "//android.view.View[contains(@content-desc,'Amount')]";
 
     @AndroidFindBy(xpath = AMOUNT)
     private WebElement amount;
 
-    public static final String MIN_AMOUNT100 = "//android.widget.TextView[@text='Min amount ₹100/-']";
+    public static final String MIN_AMOUNT100 = "//android.widget.TextView[contains(@content-desc,'Min amount ₹100/-')]";
 
     @AndroidFindBy(xpath = MIN_AMOUNT100)
     private WebElement minAmount100;
 
-    public static final String CUSTOMER_MOBILE_NUMBER = "//android.widget.TextView[@text='Customer Mobile Number']";
+    public static final String CUSTOMER_MOBILE_NUMBER = "//android.view.View[contains(@content-desc,'Customer Mobile Number')]";
 
     @AndroidFindBy(xpath = CUSTOMER_MOBILE_NUMBER)
     private WebElement customerMobileNumber;
 
-    public static final String CUSTOMER_EMAIL = "//android.widget.TextView[@text='Customer Email']";
+    public static final String CUSTOMER_EMAIL = "//android.view.View[contains(@content-desc,'Customer Email')]";
 
     @AndroidFindBy(xpath = CUSTOMER_EMAIL)
     private WebElement customerEmail;
