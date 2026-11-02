@@ -8,6 +8,7 @@ Feature: Calculators after login
   Buy vs Rent Calculator opens the page titled Buy Vs Rent calculator.
   Term Insurance Calculator is checked for a Term Insurance page.
   No investment, payment, or KYC is started.
+  TC_003 returns from each calculator with in-app Back; if app Back does not leave the page, system Back is used.
 
   Background:
     Given the logged-in airpay money home screen is open

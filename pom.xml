@@ -23,7 +23,8 @@
         <maven.compiler.release>21</maven.compiler.release>
 
         <appium.java.version>10.0.0</appium.java.version>
-        <selenium.version>4.27.0</selenium.version>
+        <!-- Align with Appium java-client 10 transitive Selenium (avoids LocationContext / mixed jars). -->
+        <selenium.version>4.52.0</selenium.version>
         <cucumber.version>7.20.1</cucumber.version>
         <testng.version>7.10.2</testng.version>
         <allure.version>2.29.0</allure.version>

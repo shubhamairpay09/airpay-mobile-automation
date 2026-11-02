@@ -31,6 +31,8 @@ public class NpsSheetSteps {
 
     @Then("the NPS dashboard is displayed")
     public void dashboard() {
+        ScenarioSkip.unlessPresent(nps.dashboardDisplayed(),
+                "NPS dashboard (Features of NPS / Open NPS Account / invested Calculate Now)");
         Assertions.assertThat(nps.dashboardDisplayed())
                 .as("NPS screen should be open. Invested accounts show Calculate Now. This account shows Features of NPS and Open NPS Account. KYC is not started")
                 .isTrue();

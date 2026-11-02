@@ -120,19 +120,13 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
         return false;
     }
 
-    /** Resumes the running app. Starting it through Appium was closing the session and opening it again. */
+    /**
+     * Do not force Money into the foreground mid-suite ({@code am start} / activateApp).
+     * Stay on the current screen; only unlock PIN/biometric when already on Money.
+     * Foreground restore is allowed only for cases that explicitly need it (e.g. OTP).
+     */
     public void ensureForeground() {
-        try {
-            if ("com.finmapp.fininfinity".equals(driver.getCurrentPackage())) {
-                return;
-            }
-            String udid = context.config().get("android.udid", "");
-            com.airpay.mobile.utilities.android.AdbCommands.shell(
-                    udid, "am", "start", "-n", "com.finmapp.fininfinity/com.finmapp.fininfinity.MainActivity");
-            sleep(1200);
-        } catch (Exception ignored) {
-            // The next tap reports the missing tile.
-        }
+        // intentionally empty — never am start / activateApp between calculator steps
     }
 
     public void swipeDown() {

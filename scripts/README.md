@@ -5,6 +5,7 @@ Same pattern as `airpay_automation_gitlab` — **Java + batch only** (no Python)
 | Path | Purpose |
 |------|---------|
 | `_lib/prepare-device.bat` | Start Appium if needed, record the phone, confirm app installed |
+| `_lib/resolve-java-maven.bat` | Shared Java/Maven detection (Money + Vyaapaar). Handles quoted JAVA_HOME, `\bin` mistake, Oracle javapath |
 | `_lib/run-mobile-product.bat` | Shared Maven runner (tags, env, a11y flags) |
 | `capital/run.bat` | Capital functional tests |
 | `capital/a11y-run.bat` | Capital accessibility scorecard |

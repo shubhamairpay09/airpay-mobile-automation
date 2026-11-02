@@ -6,6 +6,7 @@ import com.airpay.mobile.utilities.android.PermissionDialogHandler;
 import com.airpay.mobile.utilities.config.ConfigLoader;
 import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.driver.AppiumManager;
+import com.airpay.mobile.utilities.driver.WebBrowserManager;
 import com.airpay.mobile.utilities.reporting.ScreenshotCapture;
 import io.cucumber.java.After;
 import io.cucumber.java.AfterAll;
@@ -37,6 +38,14 @@ public class BaseHooks {
         if (scenario.getSourceTagNames().contains("@capture")
                 && !scenario.getSourceTagNames().contains("@deep")) {
             LOG.info("Saved-dump capture | {} — device session is not opened", scenario.getName());
+            return;
+        }
+        if (lmsWebScenario(scenario)) {
+            testContext.setWebDriver(WebBrowserManager.open(testContext.config()));
+            LOG.info("Scenario start | {} | env={} | product={} | mode=lms-web",
+                    scenario.getName(),
+                    testContext.config().environment(),
+                    testContext.config().product());
             return;
         }
         appiumManager = AppiumManager.open(testContext.config());
@@ -101,6 +110,17 @@ public class BaseHooks {
             return;
         }
         try {
+            if (lmsWebScenario(scenario) && testContext.hasWebDriver()) {
+                byte[] png = ((org.openqa.selenium.TakesScreenshot) testContext.webDriver())
+                        .getScreenshotAs(org.openqa.selenium.OutputType.BYTES);
+                Allure.addAttachment("failure-screenshot", "image/png", new java.io.ByteArrayInputStream(png), ".png");
+                Allure.addAttachment("page-source", "text/html", testContext.webDriver().getPageSource(), ".html");
+                testContext.setFailureScreenshotAttached(true);
+                return;
+            }
+            if (!testContext.hasDriver()) {
+                return;
+            }
             Path shot = ScreenshotCapture.capture(testContext.driver(), testContext.config(), "failure-" + scenario.getName());
             if (shot != null) {
                 LOG.info("Failure screenshot | {}", shot);
@@ -145,11 +165,18 @@ public class BaseHooks {
 
     @AfterAll
     public static void closeSession() {
+        WebBrowserManager.close();
         AppiumManager.close();
     }
 
     private static boolean accessibilityScenario(Scenario scenario) {
         var tags = scenario.getSourceTagNames();
         return tags.contains("@a11y") || tags.contains("@capture") || tags.contains("@deep");
+    }
+
+    private static boolean lmsWebScenario(Scenario scenario) {
+        var tags = scenario.getSourceTagNames();
+        String uri = scenario.getUri() == null ? "" : scenario.getUri().toString().replace('\\', '/').toLowerCase();
+        return tags.contains("@lms") || tags.contains("@dsa") || uri.contains("/lms/");
     }
 }

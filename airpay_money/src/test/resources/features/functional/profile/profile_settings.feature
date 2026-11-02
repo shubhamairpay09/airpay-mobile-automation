@@ -9,6 +9,8 @@ Feature: Profile settings after login
   TC_025 and TC_027 confirm logout with Yes. Yes is not tapped, so those two cases are not run.
   TC_026 opens the confirmation. TC_028 taps No and stays signed in.
   Follow us icons have no label. From left to right they are Instagram, Facebook, LinkedIn, and YouTube.
+  Back cases (TC_003, TC_004, TC_007, TC_010, TC_013, TC_016, TC_022): in-app Back first;
+  if the Flutter Back control does not leave the screen, system Back is used once.
 
   Background:
     Given the logged-in airpay money home screen is open

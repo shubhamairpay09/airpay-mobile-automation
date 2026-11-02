@@ -55,19 +55,49 @@ public class MobileLoginScreen extends BaseScreen {
     }
 
     public void acceptConsent() {
-        if (!tapFirst(Duration.ofSeconds(6),
+        WebElement box = firstPresent(Duration.ofSeconds(6),
                 MobileWaits.xpath("//*[contains(@content-desc,'Accept consent')]"),
-                accessibility(ScreenMessages.ACCEPT_CONSENT))) {
+                accessibility(ScreenMessages.ACCEPT_CONSENT));
+        if (box == null) {
             throw new IllegalStateException("Consent checkbox not found.");
         }
+        // Already on (e.g. after OTP Edit) — tapping again toggles off and hides Send OTP.
+        if (consentAlreadyAccepted(box)) {
+            return;
+        }
+        tap(box);
     }
 
     public void tapSendOtp() {
-        if (!tapFirst(Duration.ofSeconds(8),
+        if (!tapFirst(Duration.ofSeconds(10),
                 MobileWaits.xpath("//*[contains(@content-desc,'Send OTP')]"),
+                MobileWaits.xpath("//*[contains(@text,'Send OTP')]"),
                 accessibility(ScreenMessages.SEND_OTP))) {
             throw new IllegalStateException("Send OTP button not found.");
         }
+    }
+
+    private static boolean consentAlreadyAccepted(WebElement box) {
+        try {
+            String selected = box.getAttribute("selected");
+            String checked = box.getAttribute("checked");
+            if ("true".equalsIgnoreCase(selected) || "true".equalsIgnoreCase(checked)) {
+                return true;
+            }
+            String desc = box.getAttribute("contentDescription");
+            if (desc == null) {
+                desc = box.getAttribute("content-desc");
+            }
+            if (desc != null) {
+                String lower = desc.toLowerCase();
+                if (lower.contains("checked") || lower.contains("selected")) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through — tap once
+        }
+        return false;
     }
 
     public boolean instructionIsVisible() {

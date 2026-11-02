@@ -104,6 +104,9 @@ public class CapitalFunctionalSteps {
 
     @When("I tap Send OTP on the mobile login screen")
     public void tapSendOtpDetailed() {
+        if (otpScreen.isDisplayed()) {
+            return;
+        }
         mobileLogin.tapSendOtp();
         otpScreen.waitUntilDisplayed(Duration.ofSeconds(15));
     }

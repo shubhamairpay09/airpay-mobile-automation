@@ -693,9 +693,10 @@ public class FhcFlow extends BaseScreen {
         return true;
     }
 
+    /** In-app Back, then system Back when the FHC Back control does not leave the page. */
     public void goBack() {
-        tapHeaderBack();
-        sleep(700);
+        leaveViaBack();
+        sleep(300);
     }
 
     public boolean nextEnabled() {

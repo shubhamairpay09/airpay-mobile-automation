@@ -23,17 +23,18 @@ public final class CapitalTestData {
     private CapitalTestData() {
     }
 
-    /** Random 10-digit Indian mobile unless a scenario-specific number is configured. */
+    /**
+     * Scenario-specific mobile when configured; otherwise capital.test.mobile
+     * (8802729089). Random only when even the default is blank.
+     */
     public static String mobile(FrameworkConfig config, Account account) {
         String configured = config.get(account.configKey, "").trim();
         if (!configured.isBlank()) {
             return configured;
         }
-        if (account == Account.DEFAULT) {
-            String fallback = config.get("capital.test.mobile", "").trim();
-            if (!fallback.isBlank()) {
-                return fallback;
-            }
+        String fallback = config.get("capital.test.mobile", "").trim();
+        if (!fallback.isBlank()) {
+            return fallback;
         }
         return randomMobile();
     }

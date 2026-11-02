@@ -6,7 +6,7 @@ rem Usage:
 rem   a11y-run.bat              deep Products scan (default)
 rem   a11y-run.bat two [udid]   two live screens only
 rem   a11y-run.bat deep [udid]  same as default
-rem Java / Maven / ADB / Appium are resolved on this PC (no hard-coded paths).
+rem Java / Maven resolved the same way as Vyaapaar (scripts\_lib\resolve-java-maven.bat).
 rem =============================================================================
 
 cd /d "%~dp0..\.."
@@ -25,7 +25,6 @@ if /i "%~1"=="two" (
   set "MODE=deep"
   set "PREFERRED_UDID=%~2"
 ) else if not "%~1"=="" (
-  rem First arg can be UDID when mode is omitted.
   set "PREFERRED_UDID=%~1"
 )
 
@@ -38,15 +37,9 @@ echo Mode:   %MODE%
 echo Report: %REPORT_DIR%
 echo.
 
-call :resolveJava
+rem Same resolver as Vyaapaar — strips quoted JAVA_HOME, finds JDK via env/PATH/Program Files
+call "%~dp0..\_lib\resolve-java-maven.bat"
 if errorlevel 1 (
-  echo Java was not found. Install JDK 17+ and set JAVA_HOME, then rerun.
-  pause
-  exit /b 1
-)
-call :resolveMaven
-if errorlevel 1 (
-  echo Maven was not found. Install Apache Maven ^(M2_HOME / MAVEN_HOME / PATH^), then rerun.
   pause
   exit /b 1
 )
@@ -108,60 +101,3 @@ echo Logs:      %CD%\target\money\logs\automation.log
 echo.
 pause
 exit /b %EXIT_CODE%
-
-:resolveJava
-if defined JAVA_HOME if exist "%JAVA_HOME%\bin\java.exe" exit /b 0
-if exist "C:\Program Files\Java\jdk-21.0.11\bin\java.exe" (
-  set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.11"
-  exit /b 0
-)
-if exist "C:\Program Files\Java\jdk-21\bin\java.exe" (
-  set "JAVA_HOME=C:\Program Files\Java\jdk-21"
-  exit /b 0
-)
-if exist "C:\Program Files\Eclipse Adoptium\jdk-21.0.11-hotspot\bin\java.exe" (
-  set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-21.0.11-hotspot"
-  exit /b 0
-)
-for /f "delims=" %%J in ('where java 2^>nul') do (
-  for %%D in ("%%~dpJ..") do (
-    if exist "%%~fD\bin\java.exe" (
-      set "JAVA_HOME=%%~fD"
-      exit /b 0
-    )
-  )
-)
-exit /b 1
-
-:resolveMaven
-set "CLASSWORLDS_JAR="
-if not defined M2_HOME if defined MAVEN_HOME set "M2_HOME=%MAVEN_HOME%"
-if not defined M2_HOME if exist "C:\Tools\apache-maven-3.9.16\bin\mvn.cmd" set "M2_HOME=C:\Tools\apache-maven-3.9.16"
-if not defined M2_HOME if exist "C:\Program Files\Apache\maven\bin\mvn.cmd" set "M2_HOME=C:\Program Files\Apache\maven"
-if not defined M2_HOME (
-  for /f "delims=" %%M in ('where mvn 2^>nul') do (
-    for %%D in ("%%~dpM..") do (
-      if exist "%%~fD\bin\mvn.cmd" (
-        set "M2_HOME=%%~fD"
-        goto :mavenHomeSet
-      )
-    )
-  )
-)
-:mavenHomeSet
-if defined M2_HOME (
-  for %%F in ("%M2_HOME%\boot\plexus-classworlds-*.jar") do (
-    if exist "%%~fF" (
-      set "CLASSWORLDS_JAR=%%~fF"
-      goto :mavenOk
-    )
-  )
-)
-where mvn >nul 2>nul
-if not errorlevel 1 (
-  set "CLASSWORLDS_JAR="
-  exit /b 0
-)
-exit /b 1
-:mavenOk
-exit /b 0

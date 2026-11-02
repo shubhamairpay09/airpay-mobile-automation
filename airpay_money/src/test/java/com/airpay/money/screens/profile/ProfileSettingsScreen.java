@@ -4,6 +4,8 @@ import com.airpay.money.screens.base.BaseScreen;
 import com.airpay.mobile.utilities.android.AdbCommands;
 import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.waits.MobileWaits;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.PointerInput;
@@ -17,9 +19,11 @@ import java.util.Locale;
 
 /**
  * Profile settings from the home avatar. Update, Send Message, and Log Out Yes are not tapped.
- * Change PIN is not opened.
+ * Change PIN is not opened. When in-app Back does not leave a page, system Back is used once.
  */
 public class ProfileSettingsScreen extends BaseScreen {
+
+    private static final Logger LOG = LogManager.getLogger(ProfileSettingsScreen.class);
 
     public ProfileSettingsScreen(TestContext context) {
         super(context);
@@ -182,6 +186,10 @@ public class ProfileSettingsScreen extends BaseScreen {
         return src.contains("update") && (src.contains("father") || src.contains("mother's name") || src.contains("mothers name"));
     }
 
+    /**
+     * In-app Back first. When the Flutter Back control does not leave the screen,
+     * fall back to system Back once (same pattern as {@link com.airpay.money.screens.base.BaseScreen#leaveViaBack()}).
+     */
     public void goBack() {
         String before = shortFingerprint();
         boolean tapped = tapProfileBack();
@@ -189,8 +197,8 @@ public class ProfileSettingsScreen extends BaseScreen {
             tapHeaderBack();
         }
         sleep(700);
-        // Only use system Back when the in-app control did nothing (avoid overshooting to Products).
         if (before.equals(shortFingerprint())) {
+            LOG.info("Profile in-app Back did not leave the screen — using system Back");
             pressSystemBack();
             sleep(700);
         }

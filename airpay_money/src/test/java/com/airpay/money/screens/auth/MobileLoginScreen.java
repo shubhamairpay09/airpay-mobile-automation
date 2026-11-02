@@ -120,12 +120,15 @@ public class MobileLoginScreen extends BaseScreen {
     }
 
     public void acceptConsentIfShown() {
-        tapAny(List.of(
-                ScreenMessages.ACCEPT_CONSENT,
-                "I agree",
-                "Accept",
-                "Terms and Conditions",
-                "Privacy Policy"));
+        // Do not tap Privacy Policy / Terms — those open WebViews and break login.
+        // Only check the consent box when it is still unchecked (button stays disabled otherwise).
+        WebElement unchecked = firstPresent(Duration.ofSeconds(3),
+                MobileWaits.xpath("//android.widget.CheckBox[@checked='false']"),
+                MobileWaits.xpath("//*[@checkable='true' and @checked='false']"));
+        if (unchecked != null) {
+            unchecked.click();
+            sleep(400);
+        }
     }
 
     public void tapSendOtp() {

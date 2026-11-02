@@ -13,9 +13,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Reads an SMS OTP from the device notification shade / status bar
- * ({@code dumpsys notification}, {@code mobile: getNotifications}, Appium
- * {@code openNotifications}), then SMS inbox. Does not type on the device.
+ * Reads an SMS OTP without backgrounding the app by default:
+ * {@code dumpsys notification}, {@code mobile: getNotifications}, then SMS inbox.
+ * Appium {@code openNotifications} (shade) is opt-in via {@code otp.read.open.shade=true}
+ * only for cases that explicitly need shade UI.
  */
 public final class NotificationOtpReader {
 
@@ -65,8 +66,12 @@ public final class NotificationOtpReader {
                 LOG.info("OTP read from SMS inbox for {}", mask(mobile));
                 return otp;
             }
+            // Never open the notification shade by default — it backgrounds the app and
+            // can crash UiAutomator2 on Samsung. Opt in only via otp.read.open.shade=true
+            // for cases that explicitly require shade UI.
             long remaining = end - System.currentTimeMillis();
-            if (shadeTries < 3 && remaining < timeout.toMillis() - 8_000) {
+            boolean allowShade = config != null && config.getBoolean("otp.read.open.shade", false);
+            if (allowShade && shadeTries < 2 && remaining > 0 && remaining < 20_000) {
                 otp = fromNotificationShade(driver, mobile, expectedLength);
                 shadeTries++;
                 if (otp != null) {
@@ -170,9 +175,13 @@ public final class NotificationOtpReader {
             } catch (Exception e) {
                 LOG.debug("Could not close notification shade: {}", e.toString());
             }
+            // Restore only if shade left another package in front — never bounce a still-foreground app.
             if (pkg != null && !pkg.isBlank()) {
                 try {
-                    driver.activateApp(pkg);
+                    String now = driver.getCurrentPackage();
+                    if (!pkg.equals(now)) {
+                        driver.activateApp(pkg);
+                    }
                 } catch (Exception e) {
                     LOG.debug("activateApp after notifications skipped: {}", e.toString());
                 }

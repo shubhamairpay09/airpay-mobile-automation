@@ -11,6 +11,8 @@ import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.PointerInput;
 import org.openqa.selenium.interactions.Sequence;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.support.PageFactory;
 
 import java.time.Duration;
@@ -21,6 +23,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class BaseScreen {
+
+    private static final Logger LOG = LogManager.getLogger(BaseScreen.class);
 
     protected final TestContext context;
     protected final AndroidDriver driver;
@@ -242,7 +246,7 @@ public abstract class BaseScreen {
     }
 
     /**
-     * In-app header Back only. A system Back closes Airpay Money and the next step starts it again.
+     * In-app header Back only. Prefer {@link #leaveViaBack()} when the Flutter Back control is dead.
      */
     public boolean tapBack() {
         if (tapLabel("Back")) {
@@ -256,6 +260,67 @@ public abstract class BaseScreen {
         pressElement(back);
         sleep(400);
         return true;
+    }
+
+    /**
+     * Try in-app Back first. If the screen does not change (app Back broken / missing),
+     * fall back to Android system Back once — but never when already on a root tab
+     * (system Back would finish Money / land on the launcher).
+     * Never brings the app back to foreground after system Back.
+     */
+    public boolean leaveViaBack() {
+        String before = screenFingerprint();
+        boolean tapped = tapBack();
+        sleep(500);
+        if (tapped && !before.equals(screenFingerprint())) {
+            return true;
+        }
+        if (onRootTabScreen()) {
+            LOG.info("In-app Back did not leave, but already on a root tab — skipping system Back (would leave Money)");
+            return false;
+        }
+        LOG.info("In-app Back did not leave the screen — using system Back");
+        String pkgBefore = currentAppPackage();
+        pressSystemBack();
+        sleep(600);
+        String pkgAfter = currentAppPackage();
+        if (pkgAfter != null && !pkgAfter.contains("fininfinity")
+                && (pkgBefore == null || pkgBefore.isBlank() || !pkgAfter.equals(pkgBefore))) {
+            LOG.warn("System Back left Money (pkg={}) — not restoring foreground; stay on current screen",
+                    pkgAfter);
+        }
+        return !before.equals(screenFingerprint());
+    }
+
+    /** Home / Products / Calculators / FinSight hub — system Back finishes the activity. */
+    protected boolean onRootTabScreen() {
+        String src = safeSource();
+        boolean bottomNav = src.contains("content-desc=\"Products\"")
+                || src.contains("content-desc=\"FinSight\"")
+                || src.contains("content-desc=\"Calculators\"");
+        if (!bottomNav) {
+            return false;
+        }
+        // Nested calculator / product pages can still show the tab bar briefly — require hub chrome.
+        return src.contains("Financial Calculators")
+                || src.contains("Your Financial Health Score")
+                || src.contains("Featured Services")
+                || src.contains("Explore Products")
+                || (src.contains("content-desc=\"Hello\"") && src.contains("Open settings"));
+    }
+
+    protected String currentAppPackage() {
+        try {
+            return driver.getCurrentPackage();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    protected String screenFingerprint() {
+        String src = safeSource();
+        int max = Math.min(src.length(), 1200);
+        return src.substring(0, max);
     }
 
     protected void tapAt(int x, int y) {

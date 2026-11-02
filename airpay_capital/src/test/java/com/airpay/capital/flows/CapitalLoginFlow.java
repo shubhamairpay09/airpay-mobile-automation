@@ -81,8 +81,28 @@ public class CapitalLoginFlow {
         if (mobileLogin.waitUntilDisplayed(Duration.ofSeconds(3))) {
             return;
         }
+        // Prior scenario may have left us on OTP — Edit/Back returns to mobile entry.
+        if (otpScreen.isDisplayed()) {
+            if (!otpScreen.tapEditMobile()) {
+                home.tapBack();
+            }
+            if (mobileLogin.waitUntilDisplayed(Duration.ofSeconds(10))) {
+                return;
+            }
+        }
+        if (home.looksLoggedIn()) {
+            LOG.info("Already on Home — opening welcome path via app relaunch is not required for product steps");
+            return;
+        }
         if (!welcome.waitForLoginButton(Duration.ofSeconds(20))) {
             allowDialogs(Duration.ofSeconds(5));
+            bringCapitalToForeground();
+        }
+        if (mobileLogin.waitUntilDisplayed(Duration.ofSeconds(3))) {
+            return;
+        }
+        if (!welcome.waitForLoginButton(Duration.ofSeconds(8))) {
+            throw new IllegalStateException("Welcome Login button not found.");
         }
         welcome.tapLoginWithMobile();
         if (!mobileLogin.waitUntilDisplayed(Duration.ofSeconds(15))) {
@@ -126,10 +146,12 @@ public class CapitalLoginFlow {
         }
         long waitMs = context.config().getLong("timeout.otp.wait.ms", 120_000);
         LOG.info("Waiting up to {}s for OTP in device notifications for {}", waitMs / 1000, mask(mobile));
+        int expectedLen = otpScreen.isDisplayed() ? otpScreen.expectedLength() : 0;
         String fromDevice = NotificationOtpReader.poll(
                 context.driver(), context.config(), mobile, Duration.ofMillis(waitMs),
-                otpScreen.expectedLength(), home::looksLoggedIn);
+                expectedLen, home::looksLoggedIn);
         if (fromDevice != null && !fromDevice.isBlank()) {
+            // dumpsys/SMS OTP reads stay in-app — do not activateApp (that backgrounds/refocuses).
             return fromDevice;
         }
         if (home.looksLoggedIn()) {
@@ -166,6 +188,21 @@ public class CapitalLoginFlow {
 
     private void allowDialogs(Duration timeout) {
         PermissionDialogHandler.allowAll(context.driver(), timeout);
+    }
+
+    /** Only when Capital is not already foreground — never bounce a focused session. */
+    private void bringCapitalToForeground() {
+        String pkg = context.config().get("capital.app.package", "com.example.airpay_capital");
+        try {
+            String now = context.driver().getCurrentPackage();
+            if (pkg.equals(now)) {
+                return;
+            }
+            LOG.info("Capital not in foreground (pkg={}) — activateApp", now);
+            context.driver().activateApp(pkg);
+        } catch (Exception e) {
+            LOG.debug("activateApp skipped: {}", e.toString());
+        }
     }
 
     private static String mask(String mobile) {

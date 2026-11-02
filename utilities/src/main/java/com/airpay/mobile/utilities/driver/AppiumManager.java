@@ -37,8 +37,13 @@ public final class AppiumManager {
         if (open != null && open.alive()) {
             open.createdNow = false;
             LOG.info("Reusing Appium session | session={} | pkg={}", open.driver.getSessionId(), open.appPackage);
-            if (!open.alreadyInApp()) {
+            // keep.session: do not am start / bring to foreground between scenarios —
+            // leave the current screen alone unless a case explicitly needs focus restore.
+            if (!open.keepSession && !open.alreadyInApp()) {
                 open.bringAppToForeground(open.udid, open.appPackage, open.appActivity);
+            } else if (open.keepSession && !open.alreadyInApp()) {
+                LOG.info("keep.session — not bringing app to foreground (pkg={}); continuing on current screen",
+                        safeCurrentPackage(open));
             }
             return open;
         }
@@ -109,6 +114,7 @@ public final class AppiumManager {
         }
         this.driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
         AdbCommands.grantCommonRuntimePermissions(this.udid, this.appPackage);
+        // Session create only. Between scenarios (reuse + keep.session) we never force foreground.
         bringAppToForeground(this.udid, this.appPackage, this.appActivity);
     }
 
@@ -121,6 +127,14 @@ public final class AppiumManager {
             return appPackage.equals(driver.getCurrentPackage());
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    private static String safeCurrentPackage(AppiumManager mgr) {
+        try {
+            return mgr.driver.getCurrentPackage();
+        } catch (Exception e) {
+            return "(unknown)";
         }
     }
 

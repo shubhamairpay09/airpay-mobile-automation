@@ -15,7 +15,7 @@
     <description>Android E2E + accessibility for Airpay Capital</description>
 
     <properties>
-        <cucumber.filter.tags>@airpay-capital and @smoke and not @a11y</cucumber.filter.tags>
+        <cucumber.filter.tags>@airpay-capital and @smoke and not @a11y and not @lms</cucumber.filter.tags>
         <airpay.product>capital</airpay.product>
     </properties>
 
@@ -54,6 +54,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.seleniumhq.selenium</groupId>
+            <artifactId>selenium-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
             <version>5.3.0</version>
@@ -83,6 +88,7 @@
                     <workingDirectory>${maven.multiModuleProjectDirectory}</workingDirectory>
                     <includes>
                         <include>**/CapitalRunner.class</include>
+                        <include>**/CapitalLmsRunner.class</include>
                     </includes>
                 </configuration>
             </plugin>

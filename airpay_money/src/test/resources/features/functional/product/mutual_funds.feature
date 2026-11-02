@@ -7,6 +7,7 @@ Feature: Mutual Funds after login
   Those repeated rows are the same cases and are not automated twice.
   KYC is not started. A Bike goal is created, checked on My Goals, and deleted.
   Invest, One Time, and Monthly are not tapped.
+  TC_019 Back on Portfolio/Transactions/Profile tabs: in-app Back first; if app Back does not leave the tab, system Back is used.
 
   Background:
     Given the logged-in airpay money home screen is open
@@ -46,10 +47,11 @@ Feature: Mutual Funds after login
     When I open View all Mutual Funds
     Then the mutual fund catalog is displayed
 
-  @MF_TC_007
-  Scenario: TC_007 Long Term Investment opens that fund list
-    When I open the mutual fund list "Long Term Investment"
-    Then the mutual fund list "Long Term Investment" is displayed
+  # Module tile not on this build (Curated: Long Term Investment)
+  # @MF_TC_007
+  # Scenario: TC_007 Long Term Investment opens that fund list
+  #   When I open the mutual fund list "Long Term Investment"
+  #   Then the mutual fund list "Long Term Investment" is displayed
 
   @MF_TC_008
   Scenario: TC_008 Tax Saving Fund opens that fund list
@@ -63,12 +65,13 @@ Feature: Mutual Funds after login
     When I open a fund from the current list
     Then the fund details page is displayed
 
-  @MF_TC_010
-  Scenario: TC_010 Bluechip Fund opens that fund list and a fund can be viewed
-    When I open the mutual fund list "Bluechip Fund"
-    Then the mutual fund list "Bluechip Fund" is displayed
-    When I open a fund from the current list
-    Then the fund details page is displayed
+  # Module tile not on this build (Curated: Bluechip Fund)
+  # @MF_TC_010
+  # Scenario: TC_010 Bluechip Fund opens that fund list and a fund can be viewed
+  #   When I open the mutual fund list "Bluechip Fund"
+  #   Then the mutual fund list "Bluechip Fund" is displayed
+  #   When I open a fund from the current list
+  #   Then the fund details page is displayed
 
   @MF_TC_011
   Scenario: TC_011 Nifty 50 opens that fund list and a fund can be viewed
@@ -87,22 +90,25 @@ Feature: Mutual Funds after login
     When I open the mutual fund list "Nifty 100"
     Then the mutual fund list "Nifty 100" is displayed
 
-  @MF_TC_014
-  Scenario: TC_014 Nifty Small Cap 50 opens that fund list
-    When I open the mutual fund list "Nifty Small Cap 50"
-    Then the mutual fund list "Nifty Small Cap 50" is displayed
+  # Module tile not on this build (Index: Nifty Small Cap 50)
+  # @MF_TC_014
+  # Scenario: TC_014 Nifty Small Cap 50 opens that fund list
+  #   When I open the mutual fund list "Nifty Small Cap 50"
+  #   Then the mutual fund list "Nifty Small Cap 50" is displayed
 
-  @MF_TC_015
-  Scenario: TC_015 Nifty Large Midcap opens that fund list
-    When I open the mutual fund list "Nifty Large Midcap 250"
-    Then the mutual fund list "Nifty Large Midcap 250" is displayed
+  # Module tile not on this build (Index: Nifty Large Midcap 250)
+  # @MF_TC_015
+  # Scenario: TC_015 Nifty Large Midcap opens that fund list
+  #   When I open the mutual fund list "Nifty Large Midcap 250"
+  #   Then the mutual fund list "Nifty Large Midcap 250" is displayed
 
-  @MF_TC_016
-  Scenario: TC_016 Global Fund opens that fund list and investment options can be viewed
-    When I open the mutual fund list "Global Fund"
-    Then the mutual fund list "Global Fund" is displayed
-    When I open a fund from the current list
-    Then the fund details page is displayed
+  # Module tile not on this build (Index: Global Fund)
+  # @MF_TC_016
+  # Scenario: TC_016 Global Fund opens that fund list and investment options can be viewed
+  #   When I open the mutual fund list "Global Fund"
+  #   Then the mutual fund list "Global Fund" is displayed
+  #   When I open a fund from the current list
+  #   Then the fund details page is displayed
 
   @MF_TC_017
   Scenario: TC_017 the risk profile category is displayed

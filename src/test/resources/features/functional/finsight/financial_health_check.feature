@@ -8,6 +8,7 @@ Feature: Financial Health Check after login
   Amounts are read from the FHC sheet in testdata/money-functional-data.xlsx.
   The scenarios do not type a fixed amount. Income, Expenses, Principal, EMI, InterestRate, CurrentValue, BankBalance, and Pincode come from the DEFAULT row.
   Diagnosis share actions are not tapped.
+  Leave/Back steps: in-app Back first; if the Flutter Back control does not leave the page, system Back is used once.
 
   Background:
     Given the logged-in airpay money home screen is open

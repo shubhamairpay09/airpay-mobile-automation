@@ -61,10 +61,13 @@ public class MoneyFunctionalSteps {
         if (home.sourceContains("Hello") && home.sourceContains("Financial Health")) {
             return;
         }
-        welcome.tapLoginWithMobile();
-        Assertions.assertThat(mobileLogin.waitUntilDisplayed(Duration.ofSeconds(15)))
-                .as("Login with Mobile must open the mobile number screen. Visible: " + home.visibleLabels())
-                .isTrue();
+        // Already on the mobile login form — do not tap Login before number + consent.
+        if (!mobileLogin.waitUntilDisplayed(Duration.ofSeconds(3))) {
+            welcome.tapLoginWithMobile();
+            Assertions.assertThat(mobileLogin.waitUntilDisplayed(Duration.ofSeconds(15)))
+                    .as("Login with Mobile must open the mobile number screen. Visible: " + home.visibleLabels())
+                    .isTrue();
+        }
         lastMobile = MoneyTestData.mobile(context.config());
         Assertions.assertThat(lastMobile)
                 .as("money.test.mobile in config/money.properties must be set")
@@ -72,18 +75,27 @@ public class MoneyFunctionalSteps {
         mobileLogin.enterMobile(lastMobile);
         mobileLogin.acceptConsentIfShown();
         mobileLogin.tapSendOtp();
-        String otp = MoneyTestData.otp(context.config());
-        Assertions.assertThat(otp)
-                .as("money.test.otp in config/money.properties must be set when the welcome screen is shown")
-                .isNotBlank();
-        otpScreen.enterOtp(otp);
-        otpScreen.waitUntilGone(Duration.ofSeconds(30));
+        Assertions.assertThat(otpScreen.waitUntilDisplayed(Duration.ofSeconds(45))
+                        || home.sourceContains("Enter your Airpay Money PIN", "Hello"))
+                .as("OTP screen or signed-in/PIN must open after Login with Mobile Number. Visible: "
+                        + home.visibleLabels())
+                .isTrue();
+        if (otpScreen.isDisplayed()) {
+            String otp = MoneyTestData.otp(context.config());
+            Assertions.assertThat(otp)
+                    .as("money.test.otp in config/money.properties must be set when the welcome screen is shown")
+                    .isNotBlank();
+            otpScreen.enterOtp(otp);
+            otpScreen.waitUntilGone(Duration.ofSeconds(60));
+        }
         new BiometricScreen(context).dismissIfShown();
         unlockPinAndSkipBiometric();
     }
 
     @Then("the signed-in home shows Hello and Your Financial Health Score")
     public void signedInHomeMarkers() {
+        unlockPinAndSkipBiometric();
+        leavePrivacyOrTermsWebView();
         unlockPinAndSkipBiometric();
         String source = home.pageSource();
         Assertions.assertThat(source)
@@ -92,6 +104,26 @@ public class MoneyFunctionalSteps {
         Assertions.assertThat(source)
                 .as("Signed-in home must show Your Financial Health Score. Visible: " + home.visibleLabels())
                 .contains("Your Financial Health Score");
+    }
+
+    private void leavePrivacyOrTermsWebView() {
+        for (int i = 0; i < 4; i++) {
+            String src = home.pageSource();
+            boolean web = src.contains("Privacy Policy web page")
+                    || (src.contains("Privacy Policy") && !src.contains("Login with Mobile") && !src.contains("Hello"));
+            boolean terms = src.contains("Terms and Conditions") && !src.contains("Hello")
+                    && !src.contains("Login with Mobile");
+            if (!web && !terms) {
+                return;
+            }
+            home.pressSystemBack();
+            try {
+                Thread.sleep(700);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     private void unlockPinAndSkipBiometric() {

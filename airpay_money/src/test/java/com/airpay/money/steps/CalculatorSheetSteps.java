@@ -87,9 +87,9 @@ public class CalculatorSheetSteps {
             Assertions.assertThat(calculator.showsTitle(pair[1]))
                     .as(pair[0] + " should open its calculator page")
                     .isTrue();
-            calculator.tapBack();
+            calculator.leaveViaBack();
             if (!hub.isDisplayed()) {
-                calculator.tapBack();
+                calculator.leaveViaBack();
             }
         }
     }
@@ -442,14 +442,14 @@ public class CalculatorSheetSteps {
         Assertions.assertThat(calculator.pageSource())
                 .as("Start SIP should open the next screen. No investment or KYC is completed.")
                 .doesNotContain("Payment Successful");
-        calculator.tapBack();
+        calculator.leaveViaBack();
     }
 
     @When("I go back to Financial Calculators")
     public void backHub() {
-        calculator.tapBack();
+        calculator.leaveViaBack();
         if (!hub.isDisplayed()) {
-            calculator.tapBack();
+            calculator.leaveViaBack();
         }
     }
 
@@ -561,7 +561,7 @@ public class CalculatorSheetSteps {
         Assertions.assertThat(calculator.pageSource())
                 .as("Start Investment should open the next screen. No purchase or KYC is completed.")
                 .doesNotContain("Payment Successful");
-        calculator.tapBack();
+        calculator.leaveViaBack();
     }
 
     @When("I change lumpsum investment, return, and tenure")
@@ -654,20 +654,25 @@ public class CalculatorSheetSteps {
         }
     }
 
-    /** Leave the calculator page, then the profile menu if Back landed there, and open the Calculators tab. */
+    /**
+     * Leave the calculator page (in-app Back, then system Back when app Back is dead),
+     * then reopen the Calculators tab if needed.
+     */
     private void returnToHub(String openedTitle) {
-        if (calculator.showsTitle(openedTitle)) {
-            calculator.tapBack();
-            sleepQuiet(800);
+        for (int i = 0; i < 3 && calculator.showsTitle(openedTitle); i++) {
+            calculator.leaveViaBack();
+            sleepQuiet(700);
         }
         showCalculatorsHub();
     }
 
     private void showCalculatorsHub() {
         hub.unlockIfNeeded();
-        for (int i = 0; i < 4 && !hub.isDisplayed(); i++) {
-            if (hub.sourceContains("PROFILE SETTINGS", "Personal Details", "Log Out")) {
-                hub.tapBack();
+        for (int i = 0; i < 5 && !hub.isDisplayed(); i++) {
+            if (hub.sourceContains("PROFILE SETTINGS", "Personal Details", "Log Out")
+                    || calculator.sourceContains("SIP Calculator", "Lumpsum Calculator", "EMI Calculator",
+                    "Fixed Deposit", "Buy Vs Rent", "Term Insurance", "Goal Planner")) {
+                hub.leaveViaBack();
                 sleepQuiet(700);
                 continue;
             }

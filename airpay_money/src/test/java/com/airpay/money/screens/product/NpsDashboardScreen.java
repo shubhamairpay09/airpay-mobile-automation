@@ -212,9 +212,10 @@ public class NpsDashboardScreen extends BaseScreen {
                 || titleNearTop("Profile");
     }
 
+    /** In-app Back, then system Back when the app Back control does not leave NPS. */
     public void goBack() {
-        tapHeaderBack();
-        sleep(800);
+        leaveViaBack();
+        sleep(400);
     }
 
     public boolean productsHubDisplayed() {

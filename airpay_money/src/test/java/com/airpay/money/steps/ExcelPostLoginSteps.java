@@ -601,22 +601,34 @@ public class ExcelPostLoginSteps {
 
     private void unlockPinAndSkipBiometric() {
         biometric.dismissIfShown();
-        if (!pinUnlock.waitUntilDisplayed(Duration.ofSeconds(3))
-                && !home.sourceContains("Enter your Airpay Money PIN")) {
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (!pinUnlock.waitUntilDisplayed(Duration.ofSeconds(4))
+                    && !home.sourceContains("Enter your Airpay Money PIN", "Welcome Back")) {
+                biometric.dismissIfShown();
+                return;
+            }
+            String pin = MoneyExcel.pin("880272");
+            LOG.info("Entering session PIN from the Login sheet (attempt {})", attempt + 1);
+            try {
+                pinUnlock.enterPin(pin);
+            } catch (RuntimeException e) {
+                LOG.warn("PIN key tap failed: {}", e.toString());
+            }
+            sleepQuiet(1500);
             biometric.dismissIfShown();
-            return;
+            if (!onPinOrLogin()) {
+                return;
+            }
+            sleepQuiet(800);
         }
-        String pin = MoneyExcel.pin("880272");
-        LOG.info("Entering session PIN from the Login sheet");
-        pinUnlock.enterPin(pin);
-        sleepQuiet(1200);
-        biometric.dismissIfShown();
     }
 
     private boolean onPinOrLogin() {
-        return home.sourceContains(
-                "Login with Mobile", "Enter your Airpay Money PIN",
-                "Forgot PIN", "Sign Up or Login", "Unlock faster with Biometrics");
+        // Biometric "Unlock faster..." alone is not a lock — dismiss handles it.
+        // Require the actual PIN / login gate so keep.session runs do not false-fail.
+        return home.sourceContains("Login with Mobile", "Sign Up or Login")
+                || home.sourceContains("Enter your Airpay Money PIN")
+                || (home.sourceContains("Welcome Back") && home.sourceContains("Forgot PIN"));
     }
 
     private static void sleepQuiet(long ms) {
