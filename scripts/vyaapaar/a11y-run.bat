@@ -11,10 +11,12 @@ rem sections: Featured Services/PAN Application, Money Transfer/..., Non Channel
 rem Recharge & Billpay/..., Other Services/..., then Services, History, and Profile.
 
 rem Keep the window open when double-clicked so errors are readable.
+rem Usage (optional): a11y-run.bat [deep|two|fromhere] [udid]
 if /i not "%~1"=="KEEPOPEN" (
-  cmd /k call "%~f0" KEEPOPEN
+  cmd /k call "%~f0" KEEPOPEN %*
   exit /b %ERRORLEVEL%
 )
+shift /1
 
 cd /d "%~dp0..\.."
 if errorlevel 1 (
@@ -22,13 +24,33 @@ if errorlevel 1 (
   goto :fail
 )
 
+set "MODE=deep"
+set "FORCE_UDID="
+if /i "%~1"=="two" (
+  set "MODE=two"
+  set "FORCE_UDID=%~2"
+) else if /i "%~1"=="fromhere" (
+  set "MODE=fromhere"
+  set "FORCE_UDID=%~2"
+) else if /i "%~1"=="deep" (
+  set "MODE=deep"
+  set "FORCE_UDID=%~2"
+) else if not "%~1"=="" (
+  set "FORCE_UDID=%~1"
+)
+if defined FORCE_UDID set "UDID=%FORCE_UDID%"
+
 set "BAT_LOG=%CD%\target\vyaapaar-a11y-run-bat.log"
 if not exist "%CD%\target" mkdir "%CD%\target" >nul 2>nul
-echo ==== a11y-run %DATE% %TIME% ==== > "%BAT_LOG%"
+echo ==== a11y-run %DATE% %TIME% mode=%MODE% ==== > "%BAT_LOG%"
 call :log Repo=%CD%
 
-set "ADB=D:\Android_Studio\Sdk\platform-tools\adb.exe"
-if not exist "%ADB%" set "ADB=adb"
+set "ADB="
+if defined ANDROID_HOME if exist "%ANDROID_HOME%\platform-tools\adb.exe" set "ADB=%ANDROID_HOME%\platform-tools\adb.exe"
+if not defined ADB if defined ANDROID_SDK_ROOT if exist "%ANDROID_SDK_ROOT%\platform-tools\adb.exe" set "ADB=%ANDROID_SDK_ROOT%\platform-tools\adb.exe"
+if not defined ADB if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" set "ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"
+if not defined ADB if exist "D:\Android_Studio\Sdk\platform-tools\adb.exe" set "ADB=D:\Android_Studio\Sdk\platform-tools\adb.exe"
+if not defined ADB set "ADB=adb"
 set "APPIUM_URL=http://127.0.0.1:4723"
 set "APPIUM_WAIT_SECS=90"
 set "APP_PACKAGE=com.airpay.mahaepay_aeps"
@@ -55,6 +77,7 @@ echo Maven launcher jar=%CLASSWORLDS_JAR%
 
 echo.
 echo === Airpay Vyaapaar accessibility ===
+echo Mode:   %MODE%
 echo Report: target\vyaapaar\accessibility_testing_result
 echo ZIP:    target\vyaapaar\accessibility_email_artifact\vyaapaar-a11y-reports.zip
 echo Logs:   target\vyaapaar\logs\automation.log
@@ -203,10 +226,21 @@ if /i not "%FRESH_REPORT%"=="No" (
   echo Keeping previous report at target\vyaapaar ^(merge mode^).
 )
 
+set "TAGS=@VYAAPAAR_001 and @deep"
+set "EXTRA=-Da11y.deep.scan=true -Da11y.login.password=true"
+if /i "%MODE%"=="two" (
+  set "TAGS=@VYAAPAAR_TWO_001 and @live-two"
+  set "EXTRA=-Da11y.deep.scan=false -Da11y.capture.two=true -Da11y.live.wait.seconds=300 -Dandroid.keep.session=true"
+)
+if /i "%MODE%"=="fromhere" (
+  set "TAGS=@VYAAPAAR_FROM_001 and @from-here"
+  set "EXTRA=-Da11y.deep.scan=true -Da11y.from.here=true -Da11y.skip.edits=false -Da11y.skip.fill=false -Dandroid.keep.session=true -Da11y.deep.max.screens=120"
+)
+
 if defined CLASSWORLDS_JAR (
-  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%CLASSWORLDS_JAR%" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true"
+  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%CLASSWORLDS_JAR%" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=%TAGS%" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.gate.strict=false" %EXTRA%
 ) else (
-  call mvn test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=@VYAAPAAR_001 and @deep" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.deep.scan=true" "-Da11y.gate.strict=false" "-Da11y.login.password=true"
+  call mvn test -pl airpay_vyaapaar -am "-DforkCount=0" "-Dtest=VyaapaarRunner" "-Dsurefire.failIfNoSpecifiedTests=false" "-Dcucumber.filter.tags=%TAGS%" "-Dairpay.product=vyaapaar" "-Dandroid.udid=%UDID%" "-Da11y.enabled=true" "-Da11y.gate.strict=false" %EXTRA%
 )
 set "EXIT_CODE=%ERRORLEVEL%"
 call :log Maven exit=%EXIT_CODE%

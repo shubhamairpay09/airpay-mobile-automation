@@ -90,15 +90,79 @@ public class MutualFundsLandingScreen extends BaseScreen {
                 MobileWaits.xpath("//android.widget.Button[@content-desc='Dashboard']")) != null;
     }
 
-    public boolean openSection(String label) {
-        for (int i = 0; i < 6; i++) {
-            if (tapLabel(label)) {
-                sleep(120);
+    /** Scroll MF dashboard to top then find {@code label} without requiring a tap. */
+    public boolean scrollSectionIntoView(String label) {
+        scrollToTop();
+        for (int i = 0; i < 10; i++) {
+            if (pageSource().contains(label)) {
                 return true;
             }
-            swipeUp();
+            swipeUpSmall();
+        }
+        return pageSource().contains(label);
+    }
+
+    public boolean openSection(String label) {
+        scrollToTop();
+        for (int i = 0; i < 10; i++) {
+            if (tapQuick(label) || tapLabel(label)) {
+                sleep(200);
+                return true;
+            }
+            swipeUpSmall();
         }
         return false;
+    }
+
+    /** Catalog entry — "View all Mutual Funds" sits mid-dashboard above the calculators. */
+    public boolean openViewAllMutualFunds() {
+        scrollToTop();
+        for (int i = 0; i < 12; i++) {
+            if (tapQuick("View all Mutual Funds") || tapLabel("View all Mutual Funds")) {
+                sleep(250);
+                String src = pageSource();
+                if (src.contains("All Mutual Funds") || src.contains("EditText")
+                        || src.contains("Search Funds") || src.contains("Search")) {
+                    return true;
+                }
+                if (!src.contains("SIP Calculator") && src.contains("Fund")) {
+                    return true;
+                }
+            }
+            swipeUpSmall();
+        }
+        return false;
+    }
+
+    /** MF often restores prior scroll (calculators at bottom); reset before tile hunts. */
+    public boolean waitReady() {
+        long deadline = System.currentTimeMillis() + 30_000;
+        while (System.currentTimeMillis() < deadline) {
+            String src = pageSource();
+            String lower = src.toLowerCase();
+            if (lower.contains("please wait") || src.contains("android.widget.ProgressBar")) {
+                sleep(500);
+                continue;
+            }
+            if (isDisplayed()) {
+                scrollToTop();
+                return true;
+            }
+            sleep(300);
+        }
+        if (isDisplayed()) {
+            scrollToTop();
+            return true;
+        }
+        return false;
+    }
+
+    /** Risk profile sits near the top of the MF dashboard; calculators are at the bottom. */
+    private void scrollToTop() {
+        for (int i = 0; i < 6; i++) {
+            swipeDown();
+        }
+        sleep(200);
     }
 
     /**
@@ -255,6 +319,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
      * The row can extend off the right edge, so the section is held and swiped sideways.
      */
     public boolean openTileInSection(String section, String... labels) {
+        scrollToTop();
         for (int i = 0; i < 12; i++) {
             String src = squash(pageSource());
             if (src.contains(squash(section))) {
@@ -281,6 +346,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
 
     /** Edit control sits to the right of the Your risk profile text. The saved profile is not changed here. */
     public boolean openRiskEdit() {
+        scrollToTop();
         for (int i = 0; i < 10; i++) {
             if (pageSource().toLowerCase().contains("risk profile") && tapEditBesideRiskProfile()) {
                 sleep(120);

@@ -89,14 +89,57 @@ public class MoneyDeepScanFlow {
         this.loanApply = new LoanApplyScreen(context);
     }
 
-    /** Scan whatever is on screen now. Does not tap. */
-    public void scanCurrentOnly(String id, String label) {
+    /** Clear prior a11y pages so a multi-screen live capture starts clean. */
+    public void beginFreshCapture() {
         A11yScanSession.clear();
         scannedIds.clear();
         scannedFingerprints.clear();
+        LOG.info("Fresh a11y capture session started");
+    }
+
+    /**
+     * Scan whatever is on screen now. Does not tap.
+     * Appends to the current session (call {@link #beginFreshCapture()} first for a clean run).
+     */
+    public void scanCurrentOnly(String id, String label) {
         scanNoTap(id, label, id);
         writeScreenList();
-        LOG.info("Captured current screen {} — {} pages", id, scannedIds.size());
+        LOG.info("Captured current screen {} — {} pages in session", id, scannedIds.size());
+    }
+
+    /**
+     * Wait until the UI fingerprint changes (operator opened a different screen).
+     * No taps. Times out after {@code a11y.live.wait.seconds} (default 300).
+     */
+    public void waitForDifferentScreen() {
+        String before = screenFingerprint();
+        long waitSec = context.config().getLong("a11y.live.wait.seconds", 300);
+        long deadline = System.currentTimeMillis() + waitSec * 1000L;
+        LOG.info("Waiting up to {}s for a different screen (navigate on the phone)...", waitSec);
+        while (System.currentTimeMillis() < deadline) {
+            sleep(1500);
+            String now = screenFingerprint();
+            if (!now.isBlank() && !now.equals(before)) {
+                LOG.info("Different screen detected — ready to capture");
+                sleep(500);
+                return;
+            }
+        }
+        throw new IllegalStateException(
+                "Timed out after " + waitSec + "s waiting for a different screen. "
+                        + "Open the second screen on the device and retry.");
+    }
+
+    /** Capture two live screens: screen1 now, wait for navigation, then screen2. No taps. */
+    public void scanTwoLiveScreens(String firstId, String firstLabel, String secondId, String secondLabel) {
+        beginFreshCapture();
+        LOG.info("Live a11y screen 1/2: {}", firstLabel);
+        scanCurrentOnly(firstId, firstLabel);
+        waitForDifferentScreen();
+        LOG.info("Live a11y screen 2/2: {}", secondLabel);
+        scanCurrentOnly(secondId, secondLabel);
+        writeScreenList();
+        LOG.info("Two-screen live a11y done — {} pages", scannedIds.size());
     }
 
     private void scanNoTap(String id, String label, String route) {

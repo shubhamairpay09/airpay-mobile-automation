@@ -29,7 +29,17 @@ public class ProfileSettingsScreen extends BaseScreen {
         if (settingsDisplayed()) {
             return true;
         }
-        for (int i = 0; i < 4; i++) {
+        // Leave WebView / nested profile pages (Terms, Privacy, Contact Us) before hunting Open settings.
+        for (int i = 0; i < 6 && !settingsDisplayed() && displayed("Open settings") == null; i++) {
+            if (!tapProfileBack()) {
+                pressSystemBack();
+            }
+            sleep(500);
+        }
+        if (settingsDisplayed()) {
+            return true;
+        }
+        for (int i = 0; i < 5; i++) {
             WebElement settings = displayed("Open settings");
             if (settings != null) {
                 pressElement(settings);
@@ -38,17 +48,56 @@ public class ProfileSettingsScreen extends BaseScreen {
                     return true;
                 }
             }
-            swipeDown();
+            // Avatar is top-left on FinSight/Products — scroll home content up, not only down.
+            if (i % 2 == 0) {
+                swipeDown();
+            } else {
+                swipeUp();
+            }
         }
         return settingsDisplayed();
     }
 
     public boolean settingsDisplayed() {
-        return text().contains("PROFILE SETTINGS");
+        return text().toUpperCase(Locale.ROOT).contains("PROFILE SETTINGS");
+    }
+
+    /** Wait out Please Wait / spinner after Back or Open settings. */
+    public boolean waitSettingsReady() {
+        long deadline = System.currentTimeMillis() + 25_000;
+        while (System.currentTimeMillis() < deadline) {
+            String src = text().toLowerCase(Locale.ROOT);
+            if (src.contains("please wait") || src.contains("progressbar")) {
+                sleep(500);
+                continue;
+            }
+            if (settingsDisplayed()) {
+                return true;
+            }
+            sleep(400);
+        }
+        return settingsDisplayed();
     }
 
     public boolean openRow(String label) {
-        return pressExact(label);
+        boolean fromSettings = settingsDisplayed();
+        if (!pressExact(label)) {
+            return false;
+        }
+        if ("Log Out".equalsIgnoreCase(label)) {
+            return true;
+        }
+        // Flutter taps can miss; confirm we left the PROFILE SETTINGS list.
+        if (fromSettings) {
+            for (int i = 0; i < 3 && settingsDisplayed(); i++) {
+                sleep(400);
+                if (settingsDisplayed()) {
+                    pressExact(label);
+                }
+            }
+            return !settingsDisplayed();
+        }
+        return true;
     }
 
     public boolean openContaining(String label) {
@@ -78,18 +127,21 @@ public class ProfileSettingsScreen extends BaseScreen {
         WebElement node = displayed(label);
         if (node == null) {
             node = firstPresent(Duration.ofSeconds(3),
-                    MobileWaits.xpath("//*[contains(@content-desc," + xpathLiteral(label) + ") or contains(@text," + xpathLiteral(label) + ")]"));
+                    MobileWaits.xpath("//*[contains(translate(@content-desc,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),"
+                            + xpathLiteral(label.toLowerCase(Locale.ROOT))
+                            + ") or contains(translate(@text,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),"
+                            + xpathLiteral(label.toLowerCase(Locale.ROOT)) + ")]"));
         }
         return node != null && node.getRect().getY() < 500;
     }
 
     public boolean shows(String label) {
-        return text().contains(label);
+        return text().toLowerCase(Locale.ROOT).contains(label.toLowerCase(Locale.ROOT));
     }
 
     public boolean editPersonalDisplayed() {
-        String src = text();
-        return src.contains("Full name") && src.contains("Father's name") && src.contains("Mother's name");
+        String src = text().toLowerCase(Locale.ROOT);
+        return src.contains("full name") && src.contains("father") && src.contains("mother");
     }
 
     public boolean editFieldsPrefilled() {
@@ -114,21 +166,82 @@ public class ProfileSettingsScreen extends BaseScreen {
     }
 
     public boolean personalDetailsAgain() {
-        return titleNearTop("Personal Details") && displayed("Edit personal details") != null && !text().contains("Update");
+        // Edit form still open → one more Back (header icon often has no content-desc).
+        if (onEditPersonalForm()) {
+            goBack();
+        }
+        String src = text().toLowerCase(Locale.ROOT);
+        boolean title = src.contains("personal detail");
+        boolean editCue = src.contains("edit personal") || displayed("Edit personal details") != null;
+        boolean notEditing = !onEditPersonalForm();
+        return title && editCue && notEditing;
+    }
+
+    private boolean onEditPersonalForm() {
+        String src = text().toLowerCase(Locale.ROOT);
+        return src.contains("update") && (src.contains("father") || src.contains("mother's name") || src.contains("mothers name"));
     }
 
     public void goBack() {
-        tapHeaderBack();
-        sleep(800);
+        String before = shortFingerprint();
+        boolean tapped = tapProfileBack();
+        if (!tapped) {
+            tapHeaderBack();
+        }
+        sleep(700);
+        // Only use system Back when the in-app control did nothing (avoid overshooting to Products).
+        if (before.equals(shortFingerprint())) {
+            pressSystemBack();
+            sleep(700);
+        }
+    }
+
+    private boolean tapProfileBack() {
+        WebElement back = firstPresent(Duration.ofMillis(500),
+                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
+                MobileWaits.xpath("//*[@content-desc='Back']"));
+        if (back != null) {
+            pressElement(back);
+            sleep(500);
+            return true;
+        }
+        // Unlabelled circular chevron in the top-left header.
+        for (WebElement node : driver.findElements(MobileWaits.xpath("//*[@clickable='true']"))) {
+            try {
+                if (!node.isDisplayed()) {
+                    continue;
+                }
+                var rect = node.getRect();
+                if (rect.getX() < 160 && rect.getY() < 280 && rect.getWidth() < 180 && rect.getHeight() < 180) {
+                    pressElement(node);
+                    sleep(500);
+                    return true;
+                }
+            } catch (Exception ignored) {
+                // stale
+            }
+        }
+        return false;
+    }
+
+    private String shortFingerprint() {
+        String src = text();
+        int max = Math.min(src.length(), 1200);
+        return src.substring(0, max);
     }
 
     public String contactValue(String hintPart) {
         WebElement field = firstPresent(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.widget.EditText[contains(@hint," + xpathLiteral(hintPart) + ")]"));
+                MobileWaits.xpath("//android.widget.EditText[contains(@hint," + xpathLiteral(hintPart) + ")]"),
+                MobileWaits.xpath("//android.widget.EditText[contains(@content-desc," + xpathLiteral(hintPart) + ")]"),
+                MobileWaits.xpath("//*[contains(@content-desc," + xpathLiteral(hintPart) + ")]/following::android.widget.EditText[1]"));
         if (field == null) {
             return "";
         }
         String value = String.valueOf(field.getAttribute("text")).trim();
+        if ("null".equals(value) || value.isBlank()) {
+            value = String.valueOf(field.getAttribute("content-desc")).trim();
+        }
         return "null".equals(value) ? "" : value;
     }
 

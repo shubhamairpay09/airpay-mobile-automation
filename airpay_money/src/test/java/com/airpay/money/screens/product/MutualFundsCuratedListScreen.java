@@ -172,31 +172,67 @@ public class MutualFundsCuratedListScreen extends BaseScreen {
         }
     }
 
+    /** All Mutual Funds often shows skeleton rows before clickable fund cards appear. */
+    public boolean waitForFundCards() {
+        long deadline = System.currentTimeMillis() + 45_000;
+        boolean refreshed = false;
+        while (System.currentTimeMillis() < deadline) {
+            if (firstFundCard() != null) {
+                return true;
+            }
+            if (!refreshed && System.currentTimeMillis() + 25_000 < deadline) {
+                pullToRefresh();
+                refreshed = true;
+            }
+            sleep(500);
+        }
+        return firstFundCard() != null;
+    }
+
+    private void pullToRefresh() {
+        swipeDown();
+        sleep(1200);
+    }
+
     public boolean openFundCard() {
-        for (int pass = 0; pass < 3; pass++) {
-            for (WebElement card : driver.findElements(MobileWaits.xpath(
-                    "//*[@clickable='true' and @content-desc]"))) {
+        waitForFundCards();
+        for (int pass = 0; pass < 4; pass++) {
+            WebElement card = firstFundCard();
+            if (card != null) {
                 try {
-                    String desc = String.valueOf(card.getAttribute("content-desc"));
-                    String lower = desc.toLowerCase();
-                    if (!card.isDisplayed() || desc.length() < 28) {
-                        continue;
-                    }
-                    if (lower.contains("back") || lower.contains("filter") || lower.contains("dashboard")) {
-                        continue;
-                    }
-                    if (lower.contains("fund") || lower.contains("investment") || desc.contains("%")) {
-                        card.click();
-                        sleep(800);
-                        return true;
-                    }
+                    card.click();
+                    sleep(800);
+                    return true;
                 } catch (Exception ignored) {
-                    // stale
+                    // stale — retry
                 }
             }
             swipeUp();
             sleep(400);
         }
         return false;
+    }
+
+    private WebElement firstFundCard() {
+        for (WebElement card : driver.findElements(MobileWaits.xpath(
+                "//*[@clickable='true' and @content-desc]"))) {
+            try {
+                String desc = String.valueOf(card.getAttribute("content-desc"));
+                String lower = desc.toLowerCase();
+                if (!card.isDisplayed() || desc.length() < 28) {
+                    continue;
+                }
+                if (lower.contains("back") || lower.contains("filter") || lower.contains("dashboard")
+                        || lower.contains("search") || lower.contains("all mutual")) {
+                    continue;
+                }
+                if (lower.contains("fund") || lower.contains("investment") || desc.contains("%")) {
+                    return card;
+                }
+            } catch (Exception ignored) {
+                // stale
+            }
+        }
+        return null;
     }
 }

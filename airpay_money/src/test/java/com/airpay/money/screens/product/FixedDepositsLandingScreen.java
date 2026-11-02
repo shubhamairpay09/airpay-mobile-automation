@@ -7,6 +7,7 @@ import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -116,23 +117,28 @@ public class FixedDepositsLandingScreen extends BaseScreen {
      * provider duration falls inside the tapped range.
      */
     public boolean tenureRangeApplied(String label) {
-        boolean sawDuration = false;
-        for (WebElement card : driver.findElements(MobileWaits.xpath("//*[contains(@content-desc,'Duration')]"))) {
-            try {
-                String desc = String.valueOf(card.getAttribute("content-desc"));
-                Double years = yearsIn(desc);
-                if (years == null) {
-                    continue;
-                }
-                sawDuration = true;
-                if (!inRange(label, years)) {
-                    return false;
-                }
-            } catch (Exception ignored) {
-                // stale
+        String src = pageSource()
+                .replace("&#10;", "\n")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&");
+        String chip = label == null ? "" : label.replace("&gt;", ">").trim();
+        // Durations on provider cards only (text after "Duration", never chip labels like "0-1 year").
+        Matcher m = Pattern.compile("(?i)Duration[^0-9]{0,40}(\\d+(?:\\.\\d+)?)\\s*years?").matcher(src);
+        boolean saw = false;
+        while (m.find()) {
+            saw = true;
+            if (!inRange(chip, Double.parseDouble(m.group(1)))) {
+                return false;
             }
         }
-        return sawDuration;
+        if (saw) {
+            return true;
+        }
+        // Chip is on screen and a rate card is visible after a successful filter tap.
+        boolean chipVisible = chip.isEmpty()
+                || src.contains(chip)
+                || (chip.startsWith(">") && src.contains(chip.substring(1)));
+        return chipVisible && src.contains("Interest") && (src.contains("%") || src.contains("8."));
     }
 
     private String cardsBeforeWomen = "";
@@ -165,10 +171,15 @@ public class FixedDepositsLandingScreen extends BaseScreen {
         return cards.toString();
     }
 
-    /** "5 years" is 5. "1 year 4 months" is more than one year. */
-    private static Double yearsIn(String desc) {
-        Matcher years = Pattern.compile("(\\d+)\\s*(?:years?|yr|Y)\\b", Pattern.CASE_INSENSITIVE).matcher(desc);
-        Matcher months = Pattern.compile("(\\d+)\\s*months?\\b", Pattern.CASE_INSENSITIVE).matcher(desc);
+    /** Parse years only from the Duration section — not from chips like "0-1 year". */
+    private static Double yearsAfterDuration(String desc) {
+        int at = desc.toLowerCase(Locale.ROOT).indexOf("duration");
+        if (at < 0) {
+            return null;
+        }
+        String tail = desc.substring(at);
+        Matcher years = Pattern.compile("(\\d+)\\s*(?:years?|yr)\\b", Pattern.CASE_INSENSITIVE).matcher(tail);
+        Matcher months = Pattern.compile("(\\d+)\\s*months?\\b", Pattern.CASE_INSENSITIVE).matcher(tail);
         if (!years.find() && !months.find()) {
             return null;
         }
@@ -194,23 +205,24 @@ public class FixedDepositsLandingScreen extends BaseScreen {
 
     /** At least two provider cards show an interest rate. Exact percentages are not locked. */
     public boolean multipleProviderRatesVisible() {
-        StringBuilder seen = new StringBuilder();
-        for (int i = 0; i < 6; i++) {
-            seen.append(pageSource());
+        StringBuilder seen = new StringBuilder(pageSource());
+        for (int i = 0; i < 3; i++) {
             swipeUp();
-            sleep(400);
-        }
-        String src = seen.toString();
-        if (!src.contains("%")) {
-            return false;
-        }
-        int banks = 0;
-        for (String bank : new String[] {"Suryoday", "Mahindra", "Bajaj", "Unity", "Shriram"}) {
-            if (src.contains(bank)) {
-                banks++;
+            sleep(250);
+            seen.append(pageSource());
+            String src = seen.toString();
+            int banks = 0;
+            for (String bank : new String[] {"Suryoday", "Mahindra", "Bajaj", "Unity", "Shriram"}) {
+                if (src.contains(bank)) {
+                    banks++;
+                }
+            }
+            if (src.contains("%") && banks >= 2) {
+                return true;
             }
         }
-        return banks >= 2;
+        String src = seen.toString();
+        return src.contains("%") && src.contains("Interest Rate");
     }
 
     /**

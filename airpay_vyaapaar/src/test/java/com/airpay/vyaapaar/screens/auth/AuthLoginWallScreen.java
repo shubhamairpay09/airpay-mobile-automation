@@ -25,6 +25,11 @@ public class AuthLoginWallScreen extends BaseScreen {
     @AndroidFindBy(xpath = PASSWORD)
     private WebElement password;
 
+    public static final String VISIBILITY_OFF = "//android.view.View[contains(@content-desc,'Visibility Off')]";
+
+    @AndroidFindBy(xpath = VISIBILITY_OFF)
+    private WebElement visibilityOff;
+
     public static final String FORGOT_PASSWORD = "//android.widget.TextView[contains(@content-desc,'Forgot Password?')]";
 
     @AndroidFindBy(xpath = FORGOT_PASSWORD)

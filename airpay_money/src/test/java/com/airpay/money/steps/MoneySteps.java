@@ -48,9 +48,24 @@ public class MoneySteps {
         flow().scanFromLoginThroughAllModules();
     }
 
+    @When("I start a fresh accessibility capture")
+    public void startFreshCapture() {
+        flow().beginFreshCapture();
+    }
+
     @When("I capture the current screen as {string}")
     public void captureCurrent(String name) {
         flow().scanCurrentOnly(slug(name), name);
+    }
+
+    @When("I wait for the operator to open a different screen")
+    public void waitForDifferentScreen() {
+        flow().waitForDifferentScreen();
+    }
+
+    @When("I capture two live accessibility screens {string} then {string}")
+    public void captureTwoLive(String first, String second) {
+        flow().scanTwoLiveScreens(slug(first), first, slug(second), second);
     }
 
     @When("I capture saved hierarchy dump {string} as {string}")

@@ -536,10 +536,8 @@ public class ExcelPostLoginSteps {
                 sleepQuiet(400);
                 continue;
             }
-            if (home.sourceContains("Your Risk Profile")) {
-                return;
-            }
-            if (i > 0) {
+            // MF dashboard also shows "Your Risk Profile" — leave that screen; do not treat it as hub.
+            if (i > 0 || home.sourceContains("Mutual Funds")) {
                 leaveProductNestedScreens();
             }
             if (products.open()) {

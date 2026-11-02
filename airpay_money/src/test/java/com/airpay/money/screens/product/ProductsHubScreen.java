@@ -146,6 +146,14 @@ public class ProductsHubScreen extends BaseScreen {
         if (isDisplayed()) {
             return true;
         }
+        // Inside MF/FD/NPS the Products tab is hidden — Back out before selecting Products.
+        for (int i = 0; i < 4 && !sourceContains("Products"); i++) {
+            if (!tapLabel("Back") && !tapFirst(Duration.ofMillis(400),
+                    MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"))) {
+                break;
+            }
+            sleep(250);
+        }
         if (!tapFirst(Duration.ofMillis(800),
                 MobileWaits.xpath("//android.widget.Button[@content-desc='Products']"),
                 MobileWaits.xpath("//android.view.View[@content-desc='Products']"),

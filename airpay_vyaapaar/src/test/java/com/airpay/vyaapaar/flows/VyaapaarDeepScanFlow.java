@@ -154,6 +154,16 @@ public class VyaapaarDeepScanFlow {
             findAndCaptureCity();
             return;
         }
+        if (Boolean.getBoolean("a11y.capture.two") || "true".equalsIgnoreCase(
+                System.getProperty("a11y.capture.two", ""))) {
+            captureTwoOpenScreens();
+            return;
+        }
+        if (Boolean.getBoolean("a11y.from.here") || "true".equalsIgnoreCase(
+                System.getProperty("a11y.from.here", ""))) {
+            deepScanFromOpenScreen();
+            return;
+        }
         if (Boolean.getBoolean("a11y.capture.only")) {
             captureOpenScreen();
             return;
@@ -3055,15 +3065,198 @@ public class VyaapaarDeepScanFlow {
         return false;
     }
 
+    /**
+     * Deep a11y from the screen already open: edits, filters, dropdowns, dates,
+     * then every safe control into the next screens. Does not login or go Home first.
+     */
+    private void deepScanFromOpenScreen() {
+        A11yScanSession.clear();
+        resetFinishedForThisPass();
+        keepAwake();
+        String udid = context.config().get("android.udid", "");
+        AdbCommands.grantCommonRuntimePermissions(udid, appPackage);
+        AdbCommands.shell(udid, "cmd", "statusbar", "collapse");
+        try {
+            openAppForScan();
+            if (!inApp()) {
+                AdbCommands.shell(udid, "monkey", "-p", appPackage, "-c",
+                        "android.intent.category.LAUNCHER", "1");
+                sleep(2000);
+            }
+            if (!inApp()) {
+                LOG.warn("App is not in front — cannot deep-scan from here");
+                return;
+            }
+            waitIfBiometricAppears();
+            dismissEntryGates();
+            String title = screenTitle(source());
+            if (title.isBlank() || title.toLowerCase(Locale.ROOT).startsWith("home screen page")) {
+                title = "Open screen";
+            }
+            String module = "from-here";
+            String rootId = "from-here-" + slug(title);
+            LOG.info("=== Deep scan FROM OPEN SCREEN: {} (edits/filters/dropdowns/toggles/next) ===", title);
+            // Pass 1: full crawl (capture + edits + dropdowns + filters + child screens).
+            crawl(rootId, title, module, 0);
+            // Pass 2: exhaustive local coverage — scroll entire page, hit every control,
+            // never jump to signed-in Home (this is a from-here run).
+            exhaustiveFromHere(rootId, title, module);
+        } finally {
+            saveFinished();
+            writeScreenList();
+            publish(true);
+            LOG.info("From-here deep scan stored {} screens", inventory.pageCount());
+        }
+    }
+
+    /**
+     * Scrolls the open screen end-to-end, covers edits/toggles/dropdowns/filters on each
+     * viewport, and opens every safe control into the next screen (then backs).
+     */
+    private void exhaustiveFromHere(String rootId, String title, String module) {
+        Set<String> done = new LinkedHashSet<>();
+        Set<String> seenFp = new LinkedHashSet<>();
+        String originFp = fingerprint();
+        String originTitle = screenTitle(source());
+        long deadline = System.currentTimeMillis() + 12 * 60_000L;
+        int opened = 0;
+        int maxOpen = Math.min(80, maxScreens);
+        // Scroll to top first so section 1 is covered.
+        scrollToTop();
+        for (int up = 0; up < 4; up++) {
+            String before = fingerprint();
+            Dimension size = driver.manage().window().getSize();
+            swipe(size.width / 2, (int) (size.height * 0.32), size.width / 2, (int) (size.height * 0.78));
+            sleep(200);
+            if (fingerprint().equals(before)) {
+                break;
+            }
+        }
+        for (int pass = 0; pass < 18 && !timedOut() && captures < maxScreens
+                && System.currentTimeMillis() < deadline; pass++) {
+            String fp = fingerprint();
+            if (seenFp.add(fp)) {
+                coverEditFields(module, trimId(rootId + "-p" + pass), title + " / pass " + pass);
+                coverToggleControls(module, trimId(rootId + "-tog" + pass), title);
+                openDropdowns(module, title);
+                openFilterControls(module, trimId(rootId + "-f" + pass), title, done);
+                coverDateFilterControls(module, trimId(rootId + "-d" + pass), title, done);
+            }
+            List<Action> actions = new ArrayList<>(visibleActions());
+            for (Action action : actions) {
+                if (opened >= maxOpen || timedOut() || captures >= maxScreens
+                        || System.currentTimeMillis() > deadline) {
+                    break;
+                }
+                String key = controlKey(action.label);
+                if (done.contains(key) || shouldSkip(action.label, source()) || isNoise(action.label)) {
+                    continue;
+                }
+                if (isTabJump(action.label) || isModuleJump(action.label)) {
+                    done.add(key);
+                    continue;
+                }
+                String before = fingerprint();
+                String beforeTitle = screenTitle(source());
+                LOG.info("From-here opening: {}", action.label);
+                if (!tap(action.x, action.y) && !tapLabel(action.label)) {
+                    done.add(key);
+                    continue;
+                }
+                done.add(key);
+                opened++;
+                sleep(450);
+                allowDialogs();
+                dismissEntryGates();
+                if (!inApp()) {
+                    bringAppForward();
+                    break;
+                }
+                if (fingerprint().equals(before)) {
+                    continue;
+                }
+                String childId = trimId(rootId + "-" + slug(action.label));
+                String childLabel = joinPath(title, action.label);
+                if (!screenAlreadyScanned(fingerprint())) {
+                    crawl(childId, childLabel, module, 1);
+                } else {
+                    capture(module, childId, childLabel);
+                    coverEditFields(module, childId, childLabel);
+                    coverToggleControls(module, childId, childLabel);
+                }
+                if (!backUntil(before, beforeTitle)) {
+                    // Stay local — do not go Home. Try one more back, else scroll on.
+                    tapInAppBack();
+                    sleep(350);
+                    if (!fingerprint().equals(before) && !screenTitle(source()).equalsIgnoreCase(beforeTitle)) {
+                        LOG.info("Could not return after {} — continuing scroll coverage", action.label);
+                    }
+                }
+            }
+            String beforeScroll = fingerprint();
+            swipeUp();
+            sleep(280);
+            if (fingerprint().equals(beforeScroll)) {
+                LOG.info("From-here: end of scroll after pass {}", pass);
+                break;
+            }
+        }
+        // Best-effort return to the screen we started on.
+        for (int i = 0; i < 4 && !fingerprint().equals(originFp)
+                && !screenTitle(source()).equalsIgnoreCase(originTitle); i++) {
+            if (!tapInAppBack()) {
+                break;
+            }
+            sleep(300);
+        }
+        LOG.info("From-here exhaustive opened {} controls, stored {} screens so far",
+                opened, inventory.pageCount());
+    }
+
+    /** CheckBoxes, Switches, RadioButtons — tap each once for a11y coverage. */
+    private void coverToggleControls(String module, String screenId, String label) {
+        try {
+            List<WebElement> toggles = driver.findElements(By.xpath(
+                    "//android.widget.CheckBox|//android.widget.Switch|//android.widget.RadioButton"
+                            + "|//android.widget.ToggleButton|//*[@checkable='true']"));
+            int n = 0;
+            String before = fingerprint();
+            for (WebElement t : toggles) {
+                if (n >= 12) {
+                    break;
+                }
+                try {
+                    if (!t.isDisplayed() || !t.isEnabled()) {
+                        continue;
+                    }
+                    t.click();
+                    n++;
+                    sleep(100);
+                } catch (Exception ignored) {
+                    // Compose nodes sometimes reject click
+                }
+            }
+            if (n > 0) {
+                LOG.info("Toggled {} checkable control(s) on {}", n, label);
+                if (!fingerprint().equals(before)) {
+                    capture(module, trimId(screenId + "-toggles"), label + " (toggles)");
+                }
+            }
+        } catch (Exception e) {
+            LOG.debug("Toggle cover skipped: {}", e.toString());
+        }
+    }
+
     /** Stores whatever is on screen. Does not tap, type, or go back. */
     private void captureOpenScreen() {
         A11yScanSession.clear();
         try {
+            openAppForScan();
             String src = source();
             String sheet = System.getProperty("a11y.sheet.label", "").trim();
             boolean linkMids = src.contains("Linked MIDs") || src.contains("Link MIDs");
             String title = !sheet.isBlank() ? sheet : linkMids ? "Link MIDs" : screenTitle(src);
-            String module = linkMids ? "link-mids" : "home";
+            String module = linkMids ? "link-mids" : "live";
             String id = linkMids ? "link-mids-linked-list" : "open-" + slug(title);
             LOG.info("Capturing the open screen only: {}", title);
             capture(module, id, title);
@@ -3072,6 +3265,141 @@ public class VyaapaarDeepScanFlow {
             publish(true);
             LOG.info("Open screen stored. Leave the phone as it is.");
         }
+    }
+
+    /**
+     * Login with valid credentials first, then a11y-scan TWO post-login screens only
+     * (login wall is not kept in the scorecard). Screen 2: wait for a real navigation.
+     */
+    private void captureTwoOpenScreens() {
+        A11yScanSession.clear();
+        resetFinishedForThisPass();
+        try {
+            openAppForScan();
+            if (!inApp()) {
+                LOG.warn("Vyaapaar not in foreground — cannot capture live screens");
+                return;
+            }
+            ensureLoggedInForLiveCapture();
+            // Drop any auth pages captured during login — report is post-login only.
+            A11yScanSession.clear();
+            storedIds.clear();
+            captures = 0;
+            resetFinishedForThisPass();
+
+            if (onAuthWall(source()) || isOtp(source())) {
+                LOG.warn("Still on login/OTP after credential login — cannot capture post-login screens");
+                return;
+            }
+            sleep(800);
+            String src1 = source();
+            String title1 = System.getProperty("a11y.screen1.label", "").trim();
+            if (title1.isBlank()) {
+                title1 = onSignedInHome(src1) || onMainShell(src1)
+                        ? "Home after login"
+                        : screenTitle(src1);
+            }
+            LOG.info("Post-login a11y 1/2: {}", title1);
+            captureForced("live", "live-post-login-1-" + slug(title1), title1);
+            publish(false);
+
+            String before = fingerprint();
+            long waitSec = context.config().getLong("a11y.live.wait.seconds", 180);
+            long deadline = System.currentTimeMillis() + waitSec * 1000L;
+            LOG.info("Waiting up to {}s — open the SECOND post-login screen (different from home)...", waitSec);
+            boolean changed = false;
+            while (System.currentTimeMillis() < deadline) {
+                sleep(1500);
+                String nowFp = fingerprint();
+                String nowSrc = source();
+                if (nowFp.isBlank() || nowFp.equals(before)) {
+                    continue;
+                }
+                // Require a real navigation away from auth and a different title/body.
+                if (onAuthWall(nowSrc) || isOtp(nowSrc)) {
+                    continue;
+                }
+                String t = screenTitle(nowSrc);
+                if (!t.isBlank() && !t.equalsIgnoreCase(title1) && !t.equalsIgnoreCase("Home after login")) {
+                    changed = true;
+                    LOG.info("Second post-login screen detected: {}", t);
+                    sleep(700);
+                    break;
+                }
+                // Fingerprint changed enough even if title slug is generic
+                if (Math.abs(nowSrc.length() - src1.length()) > 400 || !nowSrc.contains("Username")) {
+                    changed = true;
+                    LOG.info("Second post-login screen detected (hierarchy changed)");
+                    sleep(700);
+                    break;
+                }
+            }
+            if (!changed) {
+                LOG.warn("No second post-login screen within {}s — open it on the phone and rerun", waitSec);
+            } else {
+                String src2 = source();
+                String title2 = System.getProperty("a11y.screen2.label", "").trim();
+                if (title2.isBlank()) {
+                    title2 = screenTitle(src2);
+                    if (title2.isBlank() || title2.equalsIgnoreCase(title1)) {
+                        title2 = "Post-login screen 2";
+                    }
+                }
+                LOG.info("Post-login a11y 2/2: {}", title2);
+                captureForced("live", "live-post-login-2-" + slug(title2), title2);
+            }
+        } finally {
+            writeScreenList();
+            publish(true);
+            LOG.info("Two-screen post-login a11y done. Captures={}", captures);
+        }
+    }
+
+    /** Sign in with username/password when on the auth wall. Does not deep-crawl. */
+    private void ensureLoggedInForLiveCapture() {
+        String src = source();
+        if (!onAuthWall(src) && !isOtp(src) && !onRegistration(src)) {
+            LOG.info("Already past login — capturing from the current signed-in screen");
+            waitIfBiometricAppears();
+            dismissEntryGates();
+            return;
+        }
+        String password = context.config().get("vyaapaar.test.password", "");
+        if (password == null || password.isBlank()) {
+            throw new IllegalStateException(
+                    "Set vyaapaar.test.password in config/secrets.properties for post-login a11y");
+        }
+        LOG.info("Logging in with valid credentials before post-login a11y capture");
+        loginWithUsernameAndPassword();
+        for (int i = 0; i < 20; i++) {
+            waitIfBiometricAppears();
+            dismissEntryGates();
+            src = source();
+            if (!onAuthWall(src) && !isOtp(src) && !onRegistration(src)) {
+                LOG.info("Signed in — ready for post-login screens");
+                return;
+            }
+            sleep(1000);
+        }
+        LOG.warn("Login may not have completed — visible: {}", visibleLabels());
+    }
+
+    /** Always run a11y scan (used for live two-screen so screen 2 is never skipped). */
+    private void captureForced(String module, String screenId, String label) {
+        String xml = source();
+        if (xml.isBlank() || !xml.contains("<hierarchy")) {
+            return;
+        }
+        String id = trimId(screenId);
+        inventory.add(module, id, label, PageXpathStore.namedXpaths(xml));
+        storedIds.add(id);
+        A11yPageRef ref = A11yPageRef.screen(id, module, label, id);
+        var result = AndroidA11yScanner.scan(driver, context.config(), ref);
+        A11yScanSession.add(result);
+        savePageScore(result);
+        captures++;
+        markScreenFinished(fingerprint());
+        LOG.info("Stored {} / {} ({}) score={}", module, id, label, result.score());
     }
 
     /**

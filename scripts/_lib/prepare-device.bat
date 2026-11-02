@@ -16,10 +16,17 @@ if "%PRODUCT%"=="" (
 set "ROOT=%~dp0..\.."
 cd /d "%ROOT%"
 
-set "ADB=D:\Android_Studio\Sdk\platform-tools\adb.exe"
-if not exist "%ADB%" set "ADB=adb"
-set "APPIUM_CMD=C:\Users\shubham.verma\AppData\Roaming\npm\appium.cmd"
-if not exist "%APPIUM_CMD%" set "APPIUM_CMD=appium"
+rem Prefer PATH / ANDROID_HOME; only then fall back to common install locations.
+set "ADB="
+if defined ANDROID_HOME if exist "%ANDROID_HOME%\platform-tools\adb.exe" set "ADB=%ANDROID_HOME%\platform-tools\adb.exe"
+if not defined ADB if defined ANDROID_SDK_ROOT if exist "%ANDROID_SDK_ROOT%\platform-tools\adb.exe" set "ADB=%ANDROID_SDK_ROOT%\platform-tools\adb.exe"
+if not defined ADB if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" set "ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"
+if not defined ADB if exist "D:\Android_Studio\Sdk\platform-tools\adb.exe" set "ADB=D:\Android_Studio\Sdk\platform-tools\adb.exe"
+if not defined ADB set "ADB=adb"
+set "APPIUM_CMD="
+if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_CMD=%APPDATA%\npm\appium.cmd"
+if not defined APPIUM_CMD if exist "%LOCALAPPDATA%\npm\appium.cmd" set "APPIUM_CMD=%LOCALAPPDATA%\npm\appium.cmd"
+if not defined APPIUM_CMD set "APPIUM_CMD=appium"
 
 set "APP_PACKAGE="
 for /f "usebackq tokens=1,* delims==" %%A in (`findstr /b /c:"%PRODUCT%.app.package=" "config\%PRODUCT%.properties"`) do (
@@ -42,7 +49,7 @@ call :appiumUp
 if not errorlevel 1 goto :appiumReady
 echo Appium is not running. Starting it.
 where appium >nul 2>&1
-if errorlevel 1 if not exist "C:\Users\shubham.verma\AppData\Roaming\npm\appium.cmd" (
+if errorlevel 1 if not exist "%APPDATA%\npm\appium.cmd" if not exist "%LOCALAPPDATA%\npm\appium.cmd" (
   echo Appium was not found. Install it with: npm install -g appium
   exit /b 1
 )
