@@ -292,18 +292,27 @@ public abstract class BaseScreen {
         return !before.equals(screenFingerprint());
     }
 
-    /** Home / Products / Calculators / FinSight hub — system Back finishes the activity. */
+    /**
+     * True only on a real tab hub (not a nested Flutter page that still shows the bottom nav).
+     * System Back on these screens finishes Money / lands on the launcher.
+     */
     protected boolean onRootTabScreen() {
         String src = safeSource();
+        // Nested pages (SIP, Personal Details, MF tabs, etc.) — always allow system Back.
+        if (src.contains("content-desc=\"Back\"") || src.contains("content-desc=\"Back ")) {
+            return false;
+        }
         boolean bottomNav = src.contains("content-desc=\"Products\"")
-                || src.contains("content-desc=\"FinSight\"")
-                || src.contains("content-desc=\"Calculators\"");
+                && src.contains("content-desc=\"FinSight\"")
+                && src.contains("content-desc=\"Calculators\"");
         if (!bottomNav) {
             return false;
         }
-        // Nested calculator / product pages can still show the tab bar briefly — require hub chrome.
-        return src.contains("Financial Calculators")
-                || src.contains("Your Financial Health Score")
+        // Calculators hub: header + at least one tile. Do not match nested calculator titles alone.
+        if (src.contains("Financial Calculators") && src.contains("EMI Calculator")) {
+            return true;
+        }
+        return src.contains("Your Financial Health Score")
                 || src.contains("Featured Services")
                 || src.contains("Explore Products")
                 || (src.contains("content-desc=\"Hello\"") && src.contains("Open settings"));

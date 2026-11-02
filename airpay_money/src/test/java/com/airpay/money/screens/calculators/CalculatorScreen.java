@@ -312,7 +312,15 @@ public class CalculatorScreen extends com.airpay.money.screens.base.BaseScreen {
     // No call to action on this screen.
 
     public boolean showsTitle(String screenTitle) {
-        return sourceContains(screenTitle);
+        if (!sourceContains(screenTitle)) {
+            return false;
+        }
+        // Hub grid lists the same labels as tiles — that is not an open calculator page.
+        if (sourceContains("Financial Calculators") && sourceContains("EMI Calculator")
+                && sourceContains("SIP Calculator")) {
+            return false;
+        }
+        return true;
     }
 
     public String rowText(String label) {

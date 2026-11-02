@@ -669,9 +669,8 @@ public class CalculatorSheetSteps {
     private void showCalculatorsHub() {
         hub.unlockIfNeeded();
         for (int i = 0; i < 5 && !hub.isDisplayed(); i++) {
-            if (hub.sourceContains("PROFILE SETTINGS", "Personal Details", "Log Out")
-                    || calculator.sourceContains("SIP Calculator", "Lumpsum Calculator", "EMI Calculator",
-                    "Fixed Deposit", "Buy Vs Rent", "Term Insurance", "Goal Planner")) {
+            // Never leaveViaBack on hub tile names — those labels are on the hub itself.
+            if (hub.sourceContains("PROFILE SETTINGS", "Personal Details", "Log Out")) {
                 hub.leaveViaBack();
                 sleepQuiet(700);
                 continue;

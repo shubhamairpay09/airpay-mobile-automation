@@ -41,11 +41,13 @@ public class BaseHooks {
             return;
         }
         if (lmsWebScenario(scenario)) {
+            // LMS / DSA: Chrome on the phone (Appium browserName=Chrome), not desktop Chrome.
             testContext.setWebDriver(WebBrowserManager.open(testContext.config()));
-            LOG.info("Scenario start | {} | env={} | product={} | mode=lms-web",
+            LOG.info("Scenario start | {} | env={} | product={} | mode=lms-mobile-chrome | udid={}",
                     scenario.getName(),
                     testContext.config().environment(),
-                    testContext.config().product());
+                    testContext.config().product(),
+                    testContext.config().get("android.udid", ""));
             return;
         }
         appiumManager = AppiumManager.open(testContext.config());

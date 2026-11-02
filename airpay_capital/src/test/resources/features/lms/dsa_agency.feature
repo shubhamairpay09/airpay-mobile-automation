@@ -1,5 +1,6 @@
 @airpay-capital @capital @lms @dsa @web
 Feature: DSA Agency Management (LMS admin)
+  Opens https://admin-staging.airpay.capital in Chrome on the Android device (web.browser=mobile-chrome).
   Credentials: capital.lms.* in config/secrets.properties
   Staging OTP/PIN is capital.lms.otp (default 1234).
 

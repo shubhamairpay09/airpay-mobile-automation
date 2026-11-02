@@ -33,19 +33,23 @@ public class OtpScreen extends BaseScreen {
     }
 
     public boolean isDisplayed() {
-        return waits.present(MobileWaits.xpath(
-                        "//*[contains(@content-desc,'OTP') or contains(@content-desc,'Verify')]"),
-                Duration.ofSeconds(8))
-                || firstPresent(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.widget.EditText[contains(@hint,'OTP') or contains(@hint,'password')]"))
-                        != null;
+        // Do not match "Send OTP" on the mobile-login screen.
+        return firstPresent(Duration.ofSeconds(3),
+                MobileWaits.xpath("//android.widget.EditText[@hint='One time password' or contains(@hint,'digit code')"
+                        + " or contains(@hint,'OTP')]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Verify OTP') or contains(@content-desc,'One time password')"
+                        + " or contains(@content-desc,'Enter OTP')]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Resend') and contains(@content-desc,'OTP')]"))
+                != null;
     }
 
     public boolean waitUntilDisplayed(Duration timeout) {
         return firstPresent(timeout,
-                MobileWaits.xpath("//android.widget.EditText[contains(@hint,'OTP') or contains(@hint,'password')"
-                        + " or contains(@hint,'digit code')]"),
-                MobileWaits.xpath("//*[contains(@content-desc,'Verify OTP') or contains(@content-desc,'One time password')]"))
+                MobileWaits.xpath("//android.widget.EditText[@hint='One time password' or contains(@hint,'digit code')"
+                        + " or contains(@hint,'OTP')]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Verify OTP') or contains(@content-desc,'One time password')"
+                        + " or contains(@content-desc,'Enter OTP')]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Resend') and contains(@content-desc,'OTP')]"))
                 != null;
     }
 
@@ -121,17 +125,32 @@ public class OtpScreen extends BaseScreen {
                 || tapLabel("Edit");
     }
 
-    /** Taps Resend OTP and waits until the OTP field is ready again. */
+    /**
+     * Taps resend after the cooldown. UI copy is {@code Send again OTP (Ns)} while waiting,
+     * then {@code Send again OTP} when tappable (not {@code Resend OTP}).
+     */
     public boolean tapResendOtp() {
-        boolean tapped = tapFirst(Duration.ofSeconds(8),
-                MobileWaits.xpath("//*[contains(@content-desc,'Resend') and contains(@content-desc,'OTP')]"),
-                MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Resend')]"),
-                accessibility("Resend OTP"))
-                || tapAny(java.util.List.of("Resend OTP", "Resend"));
-        if (tapped) {
-            waitUntilDisplayed(Duration.ofSeconds(10));
+        long end = System.currentTimeMillis() + Duration.ofSeconds(75).toMillis();
+        while (System.currentTimeMillis() < end) {
+            if (tryTapResendReady()) {
+                waitUntilDisplayed(Duration.ofSeconds(10));
+                return true;
+            }
+            sleep(1_000);
         }
-        return tapped;
+        return tryTapResendReady();
+    }
+
+    private boolean tryTapResendReady() {
+        // Prefer controls that are past the "(Ns)" cooldown suffix.
+        return tapFirst(Duration.ofSeconds(2),
+                MobileWaits.xpath("//*[@content-desc='Send again OTP' or @text='Send again OTP']"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Send again OTP') and not(contains(@content-desc,'('))]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Resend') and contains(@content-desc,'OTP')"
+                        + " and not(contains(@content-desc,'('))]"),
+                accessibility("Send again OTP"),
+                accessibility("Resend OTP"))
+                || tapAny(java.util.List.of("Send again OTP", "Resend OTP", "Resend"));
     }
 
     public boolean invalidOtpMessageVisible() {
