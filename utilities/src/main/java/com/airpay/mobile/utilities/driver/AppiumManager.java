@@ -95,6 +95,11 @@ public final class AppiumManager {
         options.setCapability("appium:dontStopAppOnReset", true);
         options.setCapability("appium:forceAppLaunch", config.getBoolean(product + ".fresh.start", false));
         options.setCapability("appium:autoLaunch", config.getBoolean("android.autoLaunch", true));
+        // Default adb install of the UiAutomator2 server APK is 20s. Slow USB on another PC times out.
+        int adbTimeoutMs = config.getInt("android.adbExecTimeoutMs", 120_000);
+        options.setCapability("appium:adbExecTimeout", adbTimeoutMs);
+        options.setCapability("appium:uiautomator2ServerInstallTimeout", adbTimeoutMs);
+        options.setCapability("appium:uiautomator2ServerLaunchTimeout", config.getInt("android.uiautomator2ServerLaunchTimeoutMs", 60_000));
 
         LOG.info("Starting Appium session | server={} | udid={} | pkg={} | activity={}",
                 server, this.udid.isBlank() ? "(first device)" : this.udid, this.appPackage, this.appActivity);
