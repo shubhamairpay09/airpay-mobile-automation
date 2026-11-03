@@ -36,7 +36,8 @@ Smoke, functional, and regression runs automatically add `not @a11y` so deep acc
 
 ```cmd
 rem Via script (recommended)
-scripts\capital\run.bat
+scripts\capital\functional.bat
+scripts\capital\a11y.bat
 
 rem Or Maven directly (Appium must be running)
 mvn -pl airpay_capital -am test "-Dcucumber.filter.tags=@airpay-capital and @functional"
@@ -64,6 +65,7 @@ mvn -pl airpay_capital -am test "-Dcucumber.filter.tags=@airpay-capital and @a11
 | `@MONEY_001` | Login with mobile number |
 
 ```cmd
-scripts\money\run.bat
+scripts\money\functional.bat
+scripts\money\a11y.bat
 mvn -pl airpay_money -am test "-Dcucumber.filter.tags=@airpay-money and @smoke"
 ```

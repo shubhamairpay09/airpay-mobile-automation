@@ -42,6 +42,10 @@ public class NetWorthSyncSteps {
 
     @When("I scroll to the Sync Your Net Worth card")
     public void scrollToSyncCard() {
+        if (finsight.alreadySyncedCard()) {
+            ScenarioSkip.unlessPresent(false,
+                    "Sync Your Net Worth. This account is already synced: " + finsight.netWorthCardText());
+        }
         if (!finsight.syncOfferDisplayed()) {
             finsight.scrollIntoDescription("Sync Your Net Worth");
         }

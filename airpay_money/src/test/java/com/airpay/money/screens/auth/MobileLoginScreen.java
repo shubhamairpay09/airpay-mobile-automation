@@ -121,17 +121,42 @@ public class MobileLoginScreen extends BaseScreen {
 
     public void acceptConsentIfShown() {
         // Do not tap Privacy Policy / Terms — those open WebViews and break login.
-        // Only check the consent box when it is still unchecked (button stays disabled otherwise).
+        // Flutter consent may be CheckBox, checkable View, or an unmarked box left of the agree text.
         WebElement unchecked = firstPresent(Duration.ofSeconds(3),
                 MobileWaits.xpath("//android.widget.CheckBox[@checked='false']"),
-                MobileWaits.xpath("//*[@checkable='true' and @checked='false']"));
+                MobileWaits.xpath("//*[@checkable='true' and @checked='false']"),
+                MobileWaits.xpath("//android.widget.CheckBox"),
+                MobileWaits.xpath("//*[@checkable='true']"));
         if (unchecked != null) {
-            unchecked.click();
-            sleep(400);
+            try {
+                String checked = unchecked.getAttribute("checked");
+                if (!"true".equalsIgnoreCase(checked)) {
+                    unchecked.click();
+                    sleep(400);
+                }
+            } catch (Exception e) {
+                unchecked.click();
+                sleep(400);
+            }
+            return;
+        }
+        // Fallback: tap left of the consent copy (avoids Privacy Policy / Terms buttons).
+        WebElement agree = firstPresent(Duration.ofSeconds(2),
+                MobileWaits.xpath("//*[contains(@content-desc,'By clicking')]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'you agree')]"));
+        if (agree != null) {
+            try {
+                org.openqa.selenium.Rectangle r = agree.getRect();
+                tapAt(Math.max(40, r.getX() - 30), r.getY() + r.getHeight() / 2);
+                sleep(400);
+            } catch (Exception ignored) {
+                // Login tap will report if consent is still off.
+            }
         }
     }
 
     public void tapSendOtp() {
+        acceptConsentIfShown();
         sleep(500);
         if (tapAny(OTP_BUTTON_LABELS)) {
             return;

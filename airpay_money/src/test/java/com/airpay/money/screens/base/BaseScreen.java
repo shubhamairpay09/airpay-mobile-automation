@@ -193,32 +193,14 @@ public abstract class BaseScreen {
         sleep(700);
     }
 
-    /** Blank back image in the top-left header. It has no content description. */
+    /**
+     * Top-left Back only. Do not scan every clickable node — that query crashes UiAutomator2
+     * and then hangs the rest of the suite.
+     */
     private WebElement headerBackIcon() {
-        WebElement back = null;
-        int bestArea = Integer.MAX_VALUE;
-        for (WebElement node : driver.findElements(MobileWaits.xpath("//*[@clickable='true']"))) {
-            try {
-                if (!node.isDisplayed()) {
-                    continue;
-                }
-                String desc = String.valueOf(node.getAttribute("content-desc"));
-                if (desc.contains("Back")) {
-                    return node;
-                }
-                var rect = node.getRect();
-                int area = rect.getWidth() * rect.getHeight();
-                if (rect.getY() < 280 && rect.getX() < 220 && rect.getWidth() < 220
-                        && rect.getHeight() < 220 && area < bestArea
-                        && (desc.isBlank() || "null".equals(desc))) {
-                    back = node;
-                    bestArea = area;
-                }
-            } catch (Exception ignored) {
-                // stale
-            }
-        }
-        return back;
+        return firstPresent(Duration.ofSeconds(1),
+                MobileWaits.xpath("//*[contains(@content-desc,'Back')]"),
+                AppiumBy.accessibilityId("Back"));
     }
 
     protected void pressElement(WebElement element) {

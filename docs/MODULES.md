@@ -27,8 +27,8 @@ target/
 | Module | Purpose | Example run |
 |--------|---------|-------------|
 | `utilities` | Driver, hooks, config, a11y | `mvn -pl utilities test` |
-| `airpay_capital` | Capital app (26 functional + a11y) | `scripts\capital\run.bat` |
-| `airpay_money` | airpay money app (login smoke) | `scripts\money\run.bat` |
+| `airpay_capital` | Capital app (26 functional + a11y) | `scripts\capital\functional.bat` |
+| `airpay_money` | airpay money app | `scripts\money\functional.bat` |
 
 ## `airpay_capital` package map
 

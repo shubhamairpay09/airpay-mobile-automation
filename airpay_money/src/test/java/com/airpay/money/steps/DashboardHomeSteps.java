@@ -107,6 +107,10 @@ public class DashboardHomeSteps {
 
     @Then("the Sync Your Net Worth button is displayed on the dashboard")
     public void syncButton() {
+        if (dashboard.alreadySynced()) {
+            ScenarioSkip.unlessPresent(false,
+                    "Sync Your Net Worth button. This account already shows a synced net worth");
+        }
         Assertions.assertThat(dashboard.syncButtonDisplayed())
                 .as("Sync Your Net Worth button should be displayed")
                 .isTrue();
@@ -124,6 +128,10 @@ public class DashboardHomeSteps {
 
     @When("I tap the Sync Your Net Worth button on the dashboard")
     public void tapSync() {
+        if (dashboard.alreadySynced() && !dashboard.syncOfferVisible()) {
+            ScenarioSkip.unlessPresent(false,
+                    "Sync Your Net Worth. This account already shows a synced net worth");
+        }
         Assertions.assertThat(dashboard.tapSync())
                 .as("Sync Your Net Worth should open the consent screen. Allow Consent is not tapped")
                 .isTrue();

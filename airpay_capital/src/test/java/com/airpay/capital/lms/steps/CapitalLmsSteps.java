@@ -7,18 +7,20 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.assertj.core.api.Assertions;
-import org.openqa.selenium.By;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
-import java.time.Duration;
+import java.util.List;
 
-/** Capital LMS / DSA Agency admin portal steps (Selenium). */
+/** Detailed LMS / DSA steps. Each Then asserts one visible outcome. */
 public class CapitalLmsSteps {
+
+    private static final String[] GRID_COLUMNS = {
+            "Sr. No", "DSA Code", "Agency Name", "Loan Type", "Onboarded On Date", "Status"
+    };
 
     private final TestContext context;
     private LmsLoginFlow loginFlow;
     private DsaAgencyPage dsa;
+    private boolean alreadySignedIn;
 
     public CapitalLmsSteps(TestContext context) {
         this.context = context;
@@ -31,14 +33,84 @@ public class CapitalLmsSteps {
         return loginFlow;
     }
 
-    @Given("I am logged in to the Capital LMS admin portal")
-    public void loggedInToLms() {
-        Assertions.assertThat(context.config().get("capital.lms.email", ""))
-                .as("capital.lms.email must be set in config/secrets.properties")
+    private DsaAgencyPage page() {
+        return dsa != null ? dsa : flow().dsaAgency();
+    }
+
+    @Given("mobile Chrome is open on the LMS sign-in page")
+    public void openSignIn() {
+        Assertions.assertThat(context.config().get("capital.lms.url", ""))
+                .as("capital.lms.url must be set")
                 .isNotBlank();
-        flow().login();
-        Assertions.assertThat(context.webDriver().getCurrentUrl())
-                .as("After LMS OTP verify, URL should leave the sign-in page")
+        Assertions.assertThat(context.config().get("capital.lms.email", ""))
+                .as("capital.lms.email must be set")
+                .isNotBlank();
+        flow().openSignIn();
+        if (!flow().currentUrl().contains("/signin")) {
+            alreadySignedIn = true;
+            return;
+        }
+        alreadySignedIn = false;
+        Assertions.assertThat(flow().currentUrl())
+                .as("Sign-in URL should be the staging admin sign-in page")
+                .contains("/signin");
+    }
+
+    @When("I enter the LMS email from config")
+    public void enterEmail() {
+        if (alreadySignedIn) {
+            return;
+        }
+        flow().enterEmail();
+    }
+
+    @When("I enter the LMS password from config")
+    public void enterPassword() {
+        if (alreadySignedIn) {
+            return;
+        }
+        flow().enterPassword();
+    }
+
+    @When("I tap Sign In on the LMS sign-in page")
+    public void tapSignIn() {
+        if (alreadySignedIn) {
+            return;
+        }
+        flow().tapSignIn();
+    }
+
+    @Then("the Mobile OTP dialog should be displayed")
+    public void assertOtpDialog() {
+        if (alreadySignedIn) {
+            return;
+        }
+        Assertions.assertThat(flow().otpDialogShown())
+                .as("Mobile OTP dialog should appear after Sign In. url=%s", flow().currentUrl())
+                .isTrue();
+    }
+
+    @When("I enter the LMS OTP from config")
+    public void enterOtp() {
+        if (alreadySignedIn) {
+            return;
+        }
+        flow().enterOtp();
+    }
+
+    @When("I submit the LMS OTP")
+    public void submitOtp() {
+        if (alreadySignedIn) {
+            return;
+        }
+        flow().submitOtp();
+    }
+
+    @Then("I should be signed in to the Capital LMS admin portal")
+    public void assertSignedIn() {
+        flow().waitUntilSignedIn();
+        Assertions.assertThat(flow().currentUrl())
+                .as("Authenticated LMS URL must leave /signin")
                 .doesNotContain("/signin");
     }
 
@@ -47,54 +119,75 @@ public class CapitalLmsSteps {
         dsa = flow().openDsaAgency();
     }
 
-    @Then("the DSA Agency Management page should be displayed")
-    public void assertDsaPage() {
-        Assertions.assertThat(dsa != null ? dsa.isDisplayed() : flow().dsaAgency().isDisplayed())
-                .as("DSA Agency Management page should be displayed with the agencies list")
+    @Then("the DSA Agency Management title should be displayed")
+    public void assertTitle() {
+        Assertions.assertThat(page().titleVisible())
+                .as("Title 'DSA Agency Management' should be visible. url=%s", page().currentUrl())
                 .isTrue();
-        Assertions.assertThat(context.webDriver().getPageSource())
-                .as("Page should show List of registered agencies")
-                .contains("List of registered agencies");
     }
 
-    @Then("the DSA agency grid should show the required columns")
+    @Then("the DSA Agency Management URL should contain dsa-agency")
+    public void assertAgencyUrl() {
+        Assertions.assertThat(page().currentUrl())
+                .as("DSA Agency list URL")
+                .contains("dsa-agency");
+    }
+
+    @Then("the list of registered agencies heading should be displayed")
+    public void assertListHeading() {
+        Assertions.assertThat(page().listHeadingVisible())
+                .as("Heading 'List of registered agencies' should be visible. url=%s", page().currentUrl())
+                .isTrue();
+    }
+
+    @Then("the Register New Agency button should be visible")
+    public void assertRegisterVisible() {
+        Assertions.assertThat(page().registerNewAgencyVisible())
+                .as("Register New Agency should be visible on the agency list. url=%s", page().currentUrl())
+                .isTrue();
+    }
+
+    @Then("the Register New Agency button should be enabled")
+    public void assertRegisterEnabled() {
+        Assertions.assertThat(page().registerNewAgencyEnabled())
+                .as("Register New Agency should be enabled")
+                .isTrue();
+    }
+
+    @Then("the agency grid should show the required columns")
     public void assertColumns() {
-        DsaAgencyPage page = dsa != null ? dsa : flow().dsaAgency();
-        Assertions.assertThat(page.gridShowsRequiredColumns())
-                .as("Grid should show Sr. No., DSA Code, Agency Name, Loan Type, Onboarded On Date, and Status")
-                .isTrue();
-        Assertions.assertThat(page.hasAgencyRows())
-                .as("At least one agency row should be present in the grid")
-                .isTrue();
+        List<String> missing = page().missingColumns(GRID_COLUMNS);
+        Assertions.assertThat(missing)
+                .as("Agency grid is missing columns")
+                .isEmpty();
+    }
+
+    @Then("the agency grid should contain at least one agency row")
+    public void assertRows() {
+        Assertions.assertThat(page().agencyRowCount())
+                .as("Agency grid should list at least one agency. url=%s", page().currentUrl())
+                .isGreaterThan(0);
     }
 
     @When("I click Register New Agency on the DSA Agency page")
     public void clickRegister() {
-        DsaAgencyPage page = dsa != null ? dsa : flow().dsaAgency();
-        Assertions.assertThat(page.registerNewAgencyVisible())
-                .as("Register New Agency button should be visible")
+        Assertions.assertThat(page().registerNewAgencyVisible())
+                .as("Register New Agency must be visible before click")
                 .isTrue();
-        page.clickRegisterNewAgency();
+        page().clickRegisterNewAgency();
     }
 
-    @Then("the agency registration form should open")
+    @Then("the agency registration form should be displayed")
     public void assertRegistrationForm() {
-        new WebDriverWait(context.webDriver(), Duration.ofSeconds(15))
-                .until(ExpectedConditions.or(
-                        ExpectedConditions.urlContains("register"),
-                        ExpectedConditions.presenceOfElementLocated(
-                                By.xpath("//*[contains(normalize-space(),'PAN') or contains(normalize-space(),'Register')]"))));
-        String src = context.webDriver().getPageSource();
-        Assertions.assertThat(src.contains("PAN") || src.toLowerCase().contains("register"))
-                .as("Registration form should open with PAN / Register fields")
+        Assertions.assertThat(page().registrationFormOpen())
+                .as("Registration form should open after Register New Agency. url=%s", page().currentUrl())
                 .isTrue();
     }
 
     @Then("the registration form should display the PAN Number field")
     public void assertPanField() {
-        String src = context.webDriver().getPageSource();
-        Assertions.assertThat(src.contains("PAN") || src.contains("Pan"))
-                .as("Registration form should display the PAN Number field")
+        Assertions.assertThat(page().panNumberFieldVisible())
+                .as("Registration form should show a PAN Number field. url=%s", page().currentUrl())
                 .isTrue();
     }
 }

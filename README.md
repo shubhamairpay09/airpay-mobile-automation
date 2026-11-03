@@ -11,7 +11,9 @@ airpay-mobile-automation/
 ├── config/                    defaults + capital.properties + secrets
 ├── utilities/                 shared Appium framework
 ├── airpay_capital/            Capital Android app (first module)
-├── scripts/capital/run.bat    local runner
+├── scripts/money/             money a11y.bat + functional.bat
+├── scripts/capital/           capital a11y.bat + functional.bat
+├── scripts/vyaapaar/          vyaapaar a11y.bat
 ├── jenkins/capital/           CI pipeline
 ├── docs/                      ARCHITECTURE, MODULES, TAGS, ONBOARDING
 └── target/capital/            logs, allure, screenshots, a11y (gitignored)
@@ -39,8 +41,11 @@ airpay-mobile-automation/
 3. Terminal 2:
 
 ```cmd
-scripts\capital\run.bat
-scripts\money\run.bat
+scripts\capital\functional.bat
+scripts\capital\a11y.bat
+scripts\money\functional.bat
+scripts\money\a11y.bat
+scripts\vyaapaar\a11y.bat
 ```
 
 Or Maven directly:

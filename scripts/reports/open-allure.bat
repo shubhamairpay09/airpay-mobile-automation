@@ -5,14 +5,14 @@ if "%PRODUCT%"=="" set "PRODUCT=capital"
 set "ROOT=%~dp0..\.."
 cd /d "%ROOT%"
 
-if not defined JAVA_HOME set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.11"
-if not defined M2_HOME set "M2_HOME=C:\Tools\apache-maven-3.9.16"
+call "%~dp0..\_lib\resolve-java-maven.bat"
+if errorlevel 1 exit /b 1
 
 dir /b /ad ".allure\allure-*" >nul 2>&1
 if errorlevel 1 (
   echo Installing Allure CLI to .allure ...
-  if exist "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" (
-    "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher -q io.qameta.allure:allure-maven:2.13.0:install
+  if defined CLASSWORLDS_JAR (
+    "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%CLASSWORLDS_JAR%" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher -q io.qameta.allure:allure-maven:2.13.0:install
   ) else (
     mvn -q io.qameta.allure:allure-maven:2.13.0:install
   )

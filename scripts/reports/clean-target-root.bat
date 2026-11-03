@@ -15,7 +15,7 @@ echo.
 echo === Clean legacy files under target\ root ===
 
 for %%E in (py json xml log txt class) do (
-  for /f "delimiters=" %%F in ('dir /b /a-d "%T%\*.%%E" 2^>nul') do (
+  for /f "delims=" %%F in ('dir /b /a-d "%T%\*.%%E" 2^>nul') do (
     del /q "%T%\%%F" 2>nul && echo Removed %%F
   )
 )

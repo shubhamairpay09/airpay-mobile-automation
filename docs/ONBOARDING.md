@@ -25,10 +25,9 @@ appium
 Terminal 2:
 
 ```cmd
-scripts\capital\run.bat
+scripts\capital\functional.bat
+scripts\capital\a11y.bat
 ```
-
-Edit knobs at the top of `scripts/capital/run.bat` (`SUITE`, `ENV`, `EXTRA_TAGS`, `CLEAN_PREVIOUS_REPORTS`).
 
 ## Reports
 

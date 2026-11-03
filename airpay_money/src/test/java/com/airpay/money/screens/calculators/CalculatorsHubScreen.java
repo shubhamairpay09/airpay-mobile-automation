@@ -101,23 +101,26 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
             return false;
         }
         By tile = MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(label) + "]");
-        for (int i = 0; i < 6; i++) {
-            if (tapFirst(Duration.ofSeconds(2), tile, accessibility(label))) {
-                sleep(700);
-                return true;
+        for (int i = 0; i < 4; i++) {
+            org.openqa.selenium.WebElement el = firstPresent(Duration.ofSeconds(2), tile, accessibility(label));
+            if (el != null) {
+                // Flutter tiles ignore a zero-length click. A short press opens the page.
+                pressElement(el);
+                sleep(900);
+                if (!stillOnHubGrid()) {
+                    return true;
+                }
             }
             swipeUp();
-            sleep(300);
+            sleep(250);
         }
-        for (int i = 0; i < 6; i++) {
-            swipeDown();
-            sleep(300);
-            if (tapFirst(Duration.ofSeconds(2), tile, accessibility(label))) {
-                sleep(700);
-                return true;
-            }
-        }
-        return false;
+        return !stillOnHubGrid();
+    }
+
+    /** Hub catalog still showing — tile tap did not open a calculator page. */
+    private boolean stillOnHubGrid() {
+        return sourceContains("Financial Calculators") && sourceContains("EMI Calculator")
+                && sourceContains("SIP Calculator");
     }
 
     /**

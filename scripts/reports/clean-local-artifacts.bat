@@ -9,7 +9,7 @@ echo === Clean leftover module target\ dumps ===
 echo Does not delete repo-root target\ or .allure
 echo.
 
-for %%D in (airpay_capital airpay_money utilities) do (
+for %%D in (airpay_capital airpay_money airpay_vyaapaar utilities) do (
   if exist "%ROOT%\%%D\target" (
     rmdir /s /q "%ROOT%\%%D\target" 2>nul && echo Removed %%D\target || (echo FAILED %%D\target & set "LEFT=1")
   )

@@ -5,7 +5,7 @@ set "ROOT=%~dp0..\.."
 cd /d "%ROOT%"
 
 if "%MODULE%"=="" (
-  echo MODULE is not set. Call from scripts\^<product^>\run.bat
+  echo MODULE is not set. Run scripts\money\functional.bat or scripts\capital\functional.bat
   exit /b 1
 )
 if "%PRODUCT%"=="" (
@@ -17,8 +17,8 @@ if "%SUITE%"=="" set "SUITE=smoke"
 if "%CLEAN_PREVIOUS_REPORTS%"=="" set "CLEAN_PREVIOUS_REPORTS=No"
 if "%OPEN_ALLURE%"=="" set "OPEN_ALLURE=Yes"
 if "%PARALLEL_THREADS%"=="" set "PARALLEL_THREADS=1"
-if not defined JAVA_HOME set "JAVA_HOME=C:\Program Files\Java\jdk-21.0.11"
-if not defined M2_HOME set "M2_HOME=C:\Tools\apache-maven-3.9.16"
+call "%~dp0resolve-java-maven.bat"
+if errorlevel 1 exit /b 1
 
 echo.
 echo === %MODULE%  product=%PRODUCT%  env=%ENV%  suite=%SUITE% ===
@@ -38,7 +38,7 @@ if /i "%CLEAN_PREVIOUS_REPORTS%"=="Yes" (
   )
 )
 
-call "%~dp0prepare-device.bat" %PRODUCT%
+call "%~dp0prepare-device.bat" %PRODUCT% %PREFERRED_UDID%
 if errorlevel 1 exit /b 1
 set "UDID="
 for /f "usebackq tokens=1,* delims==" %%A in ("target\%PRODUCT%\prepare.env") do set "%%A=%%B"
@@ -91,16 +91,16 @@ if /i "%OPEN_ALLURE%"=="Yes" (
 exit /b %EXIT_CODE%
 
 :mvnInstall
-if exist "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" (
-  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher -pl utilities -am install -DskipTests -q
+if defined CLASSWORLDS_JAR (
+  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%CLASSWORLDS_JAR%" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher -pl utilities -am install -DskipTests -q
 ) else (
   mvn -pl utilities -am install -DskipTests -q
 )
 exit /b %ERRORLEVEL%
 
 :mvnTest
-if exist "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" (
-  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%M2_HOME%\boot\plexus-classworlds-2.11.0.jar" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher -pl %MODULE% -am test -Denv=%ENV% -Dairpay.product=%PRODUCT% %A11Y_ARGS% %FEAT_ARG% %TEST_ARG% %DEVICE_ARG% %EXTRA_MAVEN% "-Dcucumber.filter.tags=%TAGS%"
+if defined CLASSWORLDS_JAR (
+  "%JAVA_HOME%\bin\java.exe" "-Dmaven.home=%M2_HOME%" "-Dmaven.multiModuleProjectDirectory=%CD%" -classpath "%CLASSWORLDS_JAR%" "-Dclassworlds.conf=%M2_HOME%\bin\m2.conf" org.codehaus.plexus.classworlds.launcher.Launcher -pl %MODULE% -am test -Denv=%ENV% -Dairpay.product=%PRODUCT% %A11Y_ARGS% %FEAT_ARG% %TEST_ARG% %DEVICE_ARG% %EXTRA_MAVEN% "-Dcucumber.filter.tags=%TAGS%"
 ) else (
   mvn -pl %MODULE% -am test -Denv=%ENV% -Dairpay.product=%PRODUCT% %A11Y_ARGS% %FEAT_ARG% %TEST_ARG% %DEVICE_ARG% %EXTRA_MAVEN% "-Dcucumber.filter.tags=%TAGS%"
 )

@@ -16,13 +16,26 @@ if "%PRODUCT%"=="" (
 set "ROOT=%~dp0..\.."
 cd /d "%ROOT%"
 
-rem Prefer PATH / ANDROID_HOME; only then fall back to common install locations.
-set "ADB="
-if defined ANDROID_HOME if exist "%ANDROID_HOME%\platform-tools\adb.exe" set "ADB=%ANDROID_HOME%\platform-tools\adb.exe"
-if not defined ADB if defined ANDROID_SDK_ROOT if exist "%ANDROID_SDK_ROOT%\platform-tools\adb.exe" set "ADB=%ANDROID_SDK_ROOT%\platform-tools\adb.exe"
-if not defined ADB if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" set "ADB=%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe"
-if not defined ADB if exist "D:\Android_Studio\Sdk\platform-tools\adb.exe" set "ADB=D:\Android_Studio\Sdk\platform-tools\adb.exe"
-if not defined ADB set "ADB=adb"
+rem SDK must be visible to the Appium process, not only to this bat.
+if defined ANDROID_HOME for /f "delims=" %%A in ("%ANDROID_HOME%") do set "ANDROID_HOME=%%~A"
+if defined ANDROID_SDK_ROOT for /f "delims=" %%A in ("%ANDROID_SDK_ROOT%") do set "ANDROID_SDK_ROOT=%%~A"
+if not defined ANDROID_HOME if defined ANDROID_SDK_ROOT set "ANDROID_HOME=%ANDROID_SDK_ROOT%"
+if not defined ANDROID_HOME if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
+if not defined ANDROID_HOME if exist "D:\Android_Studio\Sdk\platform-tools\adb.exe" set "ANDROID_HOME=D:\Android_Studio\Sdk"
+if not defined ANDROID_HOME if exist "C:\Android\Sdk\platform-tools\adb.exe" set "ANDROID_HOME=C:\Android\Sdk"
+if not defined ANDROID_HOME (
+  echo ANDROID_HOME is not set, and no SDK was found under %%LOCALAPPDATA%%\Android\Sdk
+  echo Set ANDROID_HOME to the Android Studio SDK folder ^(no quotes^), open a NEW CMD, then rerun.
+  exit /b 1
+)
+if not exist "%ANDROID_HOME%\platform-tools\adb.exe" (
+  echo ANDROID_HOME=%ANDROID_HOME% does not contain platform-tools\adb.exe
+  exit /b 1
+)
+set "ANDROID_SDK_ROOT=%ANDROID_HOME%"
+set "ADB=%ANDROID_HOME%\platform-tools\adb.exe"
+set "PATH=%ANDROID_HOME%\platform-tools;%PATH%"
+echo SDK: %ANDROID_HOME%
 set "APPIUM_CMD="
 if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_CMD=%APPDATA%\npm\appium.cmd"
 if not defined APPIUM_CMD if exist "%LOCALAPPDATA%\npm\appium.cmd" set "APPIUM_CMD=%LOCALAPPDATA%\npm\appium.cmd"
@@ -45,15 +58,34 @@ set "ENVFILE=target\%PRODUCT%\prepare.env"
 echo.
 echo === Device setup for %PRODUCT% ===
 
+rem Always restart Appium so the server process sees ANDROID_HOME.
+rem An already-open Appium window keeps the OLD environment and fails with
+rem "Neither ANDROID_HOME nor ANDROID_SDK_ROOT environment variable was exported".
+rem Set KEEP_APPIUM=Yes only when that server was started after the SDK vars were set.
+if /i "%KEEP_APPIUM%"=="Yes" (
+  call :appiumUp
+  if errorlevel 1 (
+    echo KEEP_APPIUM=Yes but nothing is listening on http://127.0.0.1:4723
+    exit /b 1
+  )
+  echo Keeping the Appium that is already running.
+  goto :appiumReady
+)
 call :appiumUp
-if not errorlevel 1 goto :appiumReady
-echo Appium is not running. Starting it.
+if not errorlevel 1 (
+  echo Restarting Appium so it picks up ANDROID_HOME.
+  powershell -NoProfile -Command "$ErrorActionPreference='SilentlyContinue'; Get-NetTCPConnection -LocalPort 4723 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"
+  timeout /t 2 /nobreak >nul
+)
 where appium >nul 2>&1
 if errorlevel 1 if not exist "%APPDATA%\npm\appium.cmd" if not exist "%LOCALAPPDATA%\npm\appium.cmd" (
   echo Appium was not found. Install it with: npm install -g appium
+  echo Then: appium driver install uiautomator2
   exit /b 1
 )
-start "Airpay Appium" cmd /c call "%~dp0start-appium.cmd"
+echo Starting Appium with ANDROID_HOME=%ANDROID_HOME%
+rem Extra quotes so a repo path with spaces (for example "Airpay automation") is not split.
+start "Airpay Appium" cmd /k ""%~dp0start-appium.cmd""
 set /a TRIES=0
 :waitAppium
 call :appiumUp

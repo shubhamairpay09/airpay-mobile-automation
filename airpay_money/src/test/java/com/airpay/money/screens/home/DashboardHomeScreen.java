@@ -166,8 +166,23 @@ public class DashboardHomeScreen extends BaseScreen {
         return fhc.onPersonal() || fhc.onDiagnosis() || text().contains("Personal Details");
     }
 
+    /** True when the dashboard already shows a synced net worth instead of the Sync offer. */
+    public boolean alreadySynced() {
+        String src = text().toLowerCase();
+        return src.contains("accounts synced")
+                || src.contains("actual net worth")
+                || src.contains("view net worth");
+    }
+
+    public boolean syncOfferVisible() {
+        return displayed("Sync Your Net Worth") != null;
+    }
+
     public boolean syncButtonDisplayed() {
-        for (int i = 0; i < 6; i++) {
+        if (alreadySynced()) {
+            return false;
+        }
+        for (int i = 0; i < 3; i++) {
             if (displayed("Sync Your Net Worth") != null) {
                 return true;
             }
