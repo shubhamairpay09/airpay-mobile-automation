@@ -35,6 +35,14 @@ public final class AppiumManager {
             open = null;
         }
         if (open != null && open.alive()) {
+            if (!open.instrumentationHealthy()) {
+                LOG.warn("UiAutomator2 instrumentation dead — closing session and starting a new one");
+                restartUiAutomatorServer(config.get("android.udid", ""));
+                open.quit();
+                open = null;
+                open = new AppiumManager(config);
+                return open;
+            }
             open.createdNow = false;
             LOG.info("Reusing Appium session | session={} | pkg={}", open.driver.getSessionId(), open.appPackage);
             // keep.session: do not am start / bring to foreground between scenarios —
@@ -42,8 +50,9 @@ public final class AppiumManager {
             if (!open.keepSession && !open.alreadyInApp()) {
                 open.bringAppToForeground(open.udid, open.appPackage, open.appActivity);
             } else if (open.keepSession && !open.alreadyInApp()) {
-                LOG.info("keep.session — not bringing app to foreground (pkg={}); continuing on current screen",
+                LOG.info("keep.session — app left foreground (pkg={}); restoring without clearing app data",
                         safeCurrentPackage(open));
+                open.bringAppToForeground(open.udid, open.appPackage, open.appActivity);
             }
             return open;
         }
@@ -151,6 +160,32 @@ public final class AppiumManager {
         }
     }
 
+    /** Appium session id can outlive a crashed UiAutomator2 instrumentation process. */
+    private boolean instrumentationHealthy() {
+        try {
+            driver.getPageSource();
+            return true;
+        } catch (Exception e) {
+            return !instrumentationDead(e);
+        }
+    }
+
+    private static boolean instrumentationDead(Throwable e) {
+        String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+        return msg.contains("instrumentation process is not running")
+                || msg.contains("cannot be proxied to uiautomator2")
+                || msg.contains("nosuchsession")
+                || msg.contains("session is either terminated");
+    }
+
+    private static void restartUiAutomatorServer(String udid) {
+        if (udid == null || udid.isBlank()) {
+            return;
+        }
+        AdbCommands.shell(udid, "am", "force-stop", "io.appium.uiautomator2.server");
+        AdbCommands.shell(udid, "am", "force-stop", "io.appium.uiautomator2.server.test");
+    }
+
     /** Samsung often leaves UiAutomator2 on the launcher; force Capital into foreground. */
     private void bringAppToForeground(String udid, String appPackage, String appActivity) {
         try {
@@ -177,6 +212,27 @@ public final class AppiumManager {
 
     public AndroidDriver driver() {
         return driver;
+    }
+
+    /** Close a dead UiAutomator session and open a new one without clearing app data. */
+    public static synchronized AndroidDriver recover(FrameworkConfig config) {
+        LOG.warn("Recovering Appium session (UiAutomator2 restart, app stays installed)");
+        restartUiAutomatorServer(config.get("android.udid", ""));
+        if (open != null) {
+            open.quit();
+            open = null;
+        }
+        open = new AppiumManager(config);
+        return open.driver;
+    }
+
+    /** Bring the product app to the foreground. Recovers the session if instrumentation is dead. */
+    public static synchronized void ensureForeground(FrameworkConfig config) {
+        if (open == null || !open.alive() || !open.instrumentationHealthy()) {
+            recover(config);
+            return;
+        }
+        open.bringAppToForeground(open.udid, open.appPackage, open.appActivity);
     }
 
     public void quit() {

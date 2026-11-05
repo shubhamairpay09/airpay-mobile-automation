@@ -1,6 +1,7 @@
 package com.airpay.money.screens.base;
 
 import com.airpay.mobile.utilities.android.AdbCommands;
+import com.airpay.mobile.utilities.android.AdbInput;
 import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.waits.MobileWaits;
 import io.appium.java_client.AppiumBy;
@@ -9,8 +10,6 @@ import io.appium.java_client.pagefactory.AppiumFieldDecorator;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.interactions.PointerInput;
-import org.openqa.selenium.interactions.Sequence;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.support.PageFactory;
@@ -62,7 +61,7 @@ public abstract class BaseScreen {
         while (System.currentTimeMillis() < end) {
             for (By by : locators) {
                 try {
-                    for (WebElement el : driver.findElements(by)) {
+                    for (WebElement el : live().findElements(by)) {
                         try {
                             if (el.isDisplayed() && el.isEnabled()) {
                                 el.click();
@@ -87,7 +86,7 @@ public abstract class BaseScreen {
         while (System.currentTimeMillis() < end) {
             for (By by : locators) {
                 try {
-                    for (WebElement el : driver.findElements(by)) {
+                    for (WebElement el : live().findElements(by)) {
                         try {
                             if (el.isDisplayed()) {
                                 return el;
@@ -109,8 +108,39 @@ public abstract class BaseScreen {
         return AppiumBy.accessibilityId(id);
     }
 
+    protected AndroidDriver live() {
+        AndroidDriver current = context.driver();
+        return current != null ? current : driver;
+    }
+
     public String pageSource() {
-        return driver.getPageSource();
+        return live().getPageSource();
+    }
+
+    /** If launcher/search stole focus, bring Money back (activateApp, then am start). */
+    public void ensureMoneyInForeground() {
+        String udid = context.config().get("android.udid", "");
+        String pkg = AdbInput.foregroundPackage(udid);
+        if (pkg.isBlank()) {
+            try {
+                pkg = live().getCurrentPackage();
+            } catch (Exception ignored) {
+                pkg = "";
+            }
+        }
+        if ("com.finmapp.fininfinity".equals(pkg)) {
+            return;
+        }
+        LOG.info("Money not in foreground (pkg={}) — activateApp + am start", pkg);
+        try {
+            live().activateApp("com.finmapp.fininfinity");
+        } catch (Exception e) {
+            LOG.warn("activateApp failed: {}", e.toString());
+        }
+        AdbInput.startActivity(udid,
+                context.config().get("money.app.package", "com.finmapp.fininfinity"),
+                context.config().get("money.app.activity", "com.finmapp.fininfinity.MainActivity"));
+        sleep(1500);
     }
 
     /** Short list of on-screen labels, so a failed check names what was actually open. */
@@ -147,7 +177,7 @@ public abstract class BaseScreen {
 
     protected String safeSource() {
         try {
-            return driver.getPageSource();
+            return live().getPageSource();
         } catch (Exception e) {
             return "";
         }
@@ -301,8 +331,12 @@ public abstract class BaseScreen {
     }
 
     protected String currentAppPackage() {
+        String pkg = AdbInput.foregroundPackage(context.config().get("android.udid", ""));
+        if (!pkg.isBlank()) {
+            return pkg;
+        }
         try {
-            return driver.getCurrentPackage();
+            return live().getCurrentPackage();
         } catch (Exception e) {
             return "";
         }
@@ -315,12 +349,15 @@ public abstract class BaseScreen {
     }
 
     protected void tapAt(int x, int y) {
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence tap = new Sequence(finger, 1);
-        tap.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), x, y));
-        tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        driver.perform(List.of(tap));
+        String udid = context.config().get("android.udid", "");
+        AdbInput.tap(udid, x, y);
+        sleep(200);
+    }
+
+    protected void adbSwipe(int x1, int y1, int x2, int y2, int durationMs) {
+        String udid = context.config().get("android.udid", "");
+        AdbInput.swipe(udid, x1, y1, x2, y2, durationMs);
+        sleep(450);
     }
 
     /**
@@ -344,7 +381,7 @@ public abstract class BaseScreen {
         }
         String escaped = fragment.replace("\\", "\\\\").replace("\"", "\\\"");
         try {
-            driver.findElement(AppiumBy.androidUIAutomator(
+            live().findElement(AppiumBy.androidUIAutomator(
                     "new UiScrollable(new UiSelector().className(\"android.widget.ScrollView\"))"
                             + ".setAsVerticalList().setMaxSearchSwipes(3)"
                             + ".scrollIntoView(new UiSelector().descriptionContains(\""
@@ -374,31 +411,19 @@ public abstract class BaseScreen {
     }
 
     public void swipeUp() {
-        Dimension size = driver.manage().window().getSize();
-        int startX = size.width / 2;
-        int startY = (int) (size.height * 0.78);
-        int endY = (int) (size.height * 0.28);
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence swipe = new Sequence(finger, 1);
-        swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
-        swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        swipe.addAction(finger.createPointerMove(Duration.ofMillis(300), PointerInput.Origin.viewport(), startX, endY));
-        swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        driver.perform(List.of(swipe));
+        int[] size = AdbInput.screenSize(context.config().get("android.udid", ""));
+        int startX = size[0] / 2;
+        int startY = (int) (size[1] * 0.78);
+        int endY = (int) (size[1] * 0.28);
+        adbSwipe(startX, startY, startX, endY, 320);
     }
 
     public void swipeDown() {
-        Dimension size = driver.manage().window().getSize();
-        int startX = size.width / 2;
-        int startY = (int) (size.height * 0.30);
-        int endY = (int) (size.height * 0.75);
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence swipe = new Sequence(finger, 1);
-        swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
-        swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        swipe.addAction(finger.createPointerMove(Duration.ofMillis(300), PointerInput.Origin.viewport(), startX, endY));
-        swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        driver.perform(List.of(swipe));
+        int[] size = AdbInput.screenSize(context.config().get("android.udid", ""));
+        int startX = size[0] / 2;
+        int startY = (int) (size[1] * 0.30);
+        int endY = (int) (size[1] * 0.75);
+        adbSwipe(startX, startY, startX, endY, 320);
     }
 
     protected static String xpathLiteral(String value) {

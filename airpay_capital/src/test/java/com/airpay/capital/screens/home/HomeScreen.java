@@ -64,17 +64,41 @@ public class HomeScreen extends BaseScreen {
                 || src.contains("Authentication required") || src.contains("Enable biometric")) {
             return false;
         }
-        return sourceContains("Personal Loan", "Home Loan", "Dashboard")
+        return sourceContains("Personal Loan", "Home Loan", "Dashboard",
+                "Resume Application", "Your loan journey", "offers available", "Tab 1 of 3")
                 || src.contains("content-desc=\"Home\"")
                 || isDisplayed(tabHome);
     }
 
+    public boolean journeyInProgress() {
+        return sourceContains("Your loan journey is in progress");
+    }
+
     public void openHome() {
-        if (!tapFirst(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc,'Home')]"))) {
-            tapLabel("Home");
+        for (int i = 0; i < 5 && !productGridVisible(); i++) {
+            if (journeyInProgress()
+                    || (sourceContains("Back") && !sourceContains("Tab 1 of 3"))) {
+                if (!tapCenter(MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"))) {
+                    tapBack();
+                }
+                waitUntilSourceContains(Duration.ofSeconds(4), "Tab 1 of 3", "Apply Now", "Your loan journey is in progress");
+                continue;
+            }
+            tapFirst(Duration.ofSeconds(2),
+                    MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc,'Home')]"));
+            waitUntilSourceContains(Duration.ofSeconds(4), "Tab 1 of 3", "Apply Now");
         }
-        waitUntilSourceContains(Duration.ofSeconds(6), "Personal Loan", "Home Loan", "Dashboard");
+    }
+
+    private boolean productGridVisible() {
+        return sourceContains("Tab 1 of 3") && sourceContains("Apply Now") && !journeyInProgress();
+    }
+
+    public boolean tapResumeApplication() {
+        if (tapCenter(MobileWaits.xpath("//android.widget.Button[@content-desc='Resume Application']"))) {
+            return true;
+        }
+        return tapLabel("Resume Application");
     }
 
     public void openProfile() {
@@ -108,54 +132,99 @@ public class HomeScreen extends BaseScreen {
     /** Tap product card Apply Now strip from home grid (Flutter-safe coordinate tap). */
     public boolean tapProductApplyNow(String productLabel) {
         openHome();
-        for (int i = 0; i < 6 && !sourceContains(productLabel); i++) {
-            swipeUp();
-            waitUntilSourceContains(Duration.ofSeconds(2), productLabel);
+        String xpath = productCardXpath(productLabel);
+        if (!scrollCardIntoView(xpath)) {
+            return false;
         }
-        String exclude = "Home Loan".equals(productLabel) ? "Loan Against" : "";
-        String xpath = "//android.widget.Button[@clickable='true' and contains(@content-desc,"
-                + xpathLiteral(productLabel) + ") and (contains(@content-desc,'Apply Now') or contains(@content-desc,'Apply'))]";
-        if (!exclude.isBlank()) {
-            xpath += " and not(contains(@content-desc," + xpathLiteral(exclude) + "))";
-        }
-        bringCardAboveTabBar(xpath);
         String before = shortFingerprint();
-        if (tapApplyStrip(xpath)) {
-            waitUntilSourceContains(Duration.ofSeconds(12),
-                    "Tell us about your work", "Enter PAN", "Salaried", "Resume Application");
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (!tapApplyStrip(productLabel, attempt)) {
+                continue;
+            }
+            waitUntilSourceContains(Duration.ofSeconds(8),
+                    "Tell us about your work", "Enter PAN", "Salaried",
+                    "Your loan journey is in progress", "Resume Application", "offers available");
             if (leftHomeGridOrInApply(before)) {
                 return true;
             }
         }
-        tapApplyStrip(xpath);
-        waitUntilSourceContains(Duration.ofSeconds(12),
-                "Tell us about your work", "Enter PAN", "Salaried", "Resume Application");
         return leftHomeGridOrInApply(before);
     }
 
-    private void bringCardAboveTabBar(String cardXpath) {
-        for (int i = 0; i < 4; i++) {
-            try {
-                List<WebElement> els = driver.findElements(MobileWaits.xpath(cardXpath));
-                if (els.isEmpty()) {
-                    swipeUp();
-                    continue;
-                }
-                var r = els.get(0).getRect();
-                int screenH = driver.manage().window().getSize().getHeight();
-                int tabTop = (int) (screenH * 0.88);
-                if (r.y + r.height < tabTop) {
-                    return;
-                }
-                swipeUp();
-            } catch (Exception e) {
-                return;
-            }
+    private String productCardXpath(String productLabel) {
+        String exclude = "Home Loan".equals(productLabel) ? "Loan Against" : "";
+        String xpath = "//*[@clickable='true' and contains(@content-desc," + xpathLiteral(productLabel) + ")";
+        if (!exclude.isBlank()) {
+            xpath += " and not(contains(@content-desc," + xpathLiteral(exclude) + "))";
         }
+        xpath += "]";
+        return xpath;
     }
 
-    private boolean tapApplyStrip(String cardXpath) {
-        int[] xy = applyStripCoords(cardXpath);
+    /** Smallest card that names this product and Apply Now, so a parent grid is not tapped. */
+    private WebElement productCard(String productLabel) {
+        String exclude = "Home Loan".equals(productLabel) ? "Loan Against" : "";
+        List<WebElement> els = driver.findElements(MobileWaits.xpath(productCardXpath(productLabel)));
+        WebElement best = null;
+        int bestArea = Integer.MAX_VALUE;
+        for (WebElement el : els) {
+            String desc = el.getAttribute("content-desc");
+            if (desc == null) {
+                desc = el.getAttribute("contentDescription");
+            }
+            if (desc == null || !desc.contains("Apply")) {
+                continue;
+            }
+            if (!exclude.isBlank() && desc.contains(exclude)) {
+                continue;
+            }
+            var r = el.getRect();
+            int area = r.width * r.height;
+            if (area > 0 && area < bestArea) {
+                best = el;
+                bestArea = area;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Personal Loan sits above the fold once the home list is scrolled.
+     * Move the card until its Apply strip is between the header and the tab bar.
+     */
+    private boolean scrollCardIntoView(String cardXpath) {
+        for (int i = 0; i < 8; i++) {
+            try {
+                List<WebElement> els = driver.findElements(MobileWaits.xpath(cardXpath));
+                int screenH = driver.manage().window().getSize().getHeight();
+                int topSafe = (int) (screenH * 0.20);
+                int bottomSafe = (int) (screenH * 0.84);
+                if (!els.isEmpty()) {
+                    var r = els.get(0).getRect();
+                    int applyY = r.y + Math.max((r.height * 88) / 100, r.height - 36);
+                    if (applyY > topSafe && applyY < bottomSafe && r.y < bottomSafe) {
+                        return true;
+                    }
+                    if (r.y < topSafe || applyY < topSafe) {
+                        swipeDown();
+                    } else {
+                        swipeUp();
+                    }
+                } else if (i < 4) {
+                    swipeDown();
+                } else {
+                    swipeUp();
+                }
+                sleep(400);
+            } catch (Exception e) {
+                swipeDown();
+            }
+        }
+        return !driver.findElements(MobileWaits.xpath(cardXpath)).isEmpty();
+    }
+
+    private boolean tapApplyStrip(String productLabel, int attempt) {
+        int[] xy = applyStripCoords(productLabel, attempt);
         if (xy == null) {
             return false;
         }
@@ -167,15 +236,21 @@ public class HomeScreen extends BaseScreen {
         }
     }
 
-    private int[] applyStripCoords(String cardXpath) {
+    private int[] applyStripCoords(String productLabel, int attempt) {
         try {
-            List<WebElement> els = driver.findElements(MobileWaits.xpath(cardXpath));
-            if (els.isEmpty()) {
+            WebElement card = productCard(productLabel);
+            if (card == null) {
                 return null;
             }
-            var r = els.get(0).getRect();
+            var r = card.getRect();
             int x = r.x + r.width / 2;
-            int y = r.y + Math.max((r.height * 88) / 100, r.height - 36);
+            int ratio = attempt == 0 ? 88 : attempt == 1 ? 78 : 94;
+            int y = r.y + Math.max((r.height * ratio) / 100, r.height - 28);
+            int screenH = driver.manage().window().getSize().getHeight();
+            int tabTop = (int) (screenH * 0.86);
+            if (y >= tabTop) {
+                y = Math.min(r.y + r.height - 12, tabTop - 8);
+            }
             return new int[]{x, y};
         } catch (Exception e) {
             return null;
@@ -183,7 +258,8 @@ public class HomeScreen extends BaseScreen {
     }
 
     private boolean leftHomeGridOrInApply(String beforeFingerprint) {
-        if (sourceContains("Tell us about your work", "Select your occupation", "Salaried")) {
+        if (sourceContains("Tell us about your work", "Select your occupation", "Salaried",
+                "Your loan journey is in progress", "Resume Application", "offers available")) {
             return true;
         }
         String after = shortFingerprint();

@@ -24,17 +24,8 @@ public class FixedDepositSheetSteps {
 
     @Then("interest rates are displayed on more than one FD provider card")
     public void providerRates() {
-        Assertions.assertThat(fixedDeposit.cardShows("Suryoday", MoneyExcel.text("SuryodayRate", "8.25")))
-                .as("Suryoday Small Finance Bank should show the sheet rate")
-                .isTrue();
-        Assertions.assertThat(fixedDeposit.cardShows("Mahindra", MoneyExcel.text("MahindraRate", "7.50")))
-                .as("Mahindra Finance Ltd should show the sheet rate")
-                .isTrue();
-        Assertions.assertThat(fixedDeposit.cardShows("Bajaj", MoneyExcel.text("BajajRate", "7.40")))
-                .as("Bajaj Finance Ltd should show the sheet rate")
-                .isTrue();
-        Assertions.assertThat(fixedDeposit.cardShows("Unity", MoneyExcel.text("UnityRate", "8.00")))
-                .as("Unity Small Finance Bank should show the sheet rate")
+        Assertions.assertThat(fixedDeposit.multipleProviderRatesVisible())
+                .as("More than one FD provider card should show interest rates")
                 .isTrue();
     }
 

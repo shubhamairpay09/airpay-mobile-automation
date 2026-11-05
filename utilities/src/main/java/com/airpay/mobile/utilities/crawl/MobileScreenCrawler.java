@@ -1,5 +1,6 @@
 package com.airpay.mobile.utilities.crawl;
 
+import com.airpay.mobile.utilities.android.AdbInput;
 import com.airpay.mobile.utilities.android.PermissionDialogHandler;
 import com.airpay.mobile.utilities.config.FrameworkConfig;
 import io.appium.java_client.AppiumBy;
@@ -10,9 +11,6 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.Dimension;
 import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.interactions.PointerInput;
-import org.openqa.selenium.interactions.Sequence;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
@@ -56,6 +54,10 @@ public final class MobileScreenCrawler {
 
     /** Screens already opened in this JVM. Each screen is scanned once, like the Drupal page inventory. */
     private static final Set<String> SESSION_EXPLORED = java.util.Collections.synchronizedSet(new LinkedHashSet<>());
+
+    public static void clearSessionExplored() {
+        SESSION_EXPLORED.clear();
+    }
 
     private static final List<Pattern> STOP_PATTERNS = List.of(
             Pattern.compile("(?i)^submit$"),
@@ -353,12 +355,7 @@ public final class MobileScreenCrawler {
 
     private boolean tapViewport(int x, int y) {
         try {
-            PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-            Sequence tap = new Sequence(finger, 1);
-            tap.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), x, y));
-            tap.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-            tap.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-            driver.perform(List.of(tap));
+            AdbInput.tap(config.get("android.udid", ""), x, y);
             return true;
         } catch (Exception e) {
             LOG.debug("tapViewport failed: {}", e.toString());
@@ -447,13 +444,7 @@ public final class MobileScreenCrawler {
             int startX = size.width / 2;
             int startY = (int) (size.height * 0.28);
             int endY = (int) (size.height * 0.78);
-            PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-            Sequence swipe = new Sequence(finger, 1);
-            swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
-            swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-            swipe.addAction(finger.createPointerMove(Duration.ofMillis(280), PointerInput.Origin.viewport(), startX, endY));
-            swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-            driver.perform(List.of(swipe));
+            AdbInput.swipe(config.get("android.udid", ""), startX, startY, startX, endY, 280);
         } catch (Exception e) {
             LOG.debug("swipeDown failed: {}", e.toString());
         }
@@ -850,14 +841,7 @@ public final class MobileScreenCrawler {
             int startX = size.width / 2;
             int startY = (int) (size.height * 0.78);
             int endY = (int) (size.height * 0.28);
-            PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-            Sequence swipe = new Sequence(finger, 1);
-            swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
-            swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-            // Faster swipe (~300ms) to reveal off-screen fields/CTAs quickly
-            swipe.addAction(finger.createPointerMove(Duration.ofMillis(300), PointerInput.Origin.viewport(), startX, endY));
-            swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-            driver.perform(List.of(swipe));
+            AdbInput.swipe(config.get("android.udid", ""), startX, startY, startX, endY, 300);
         } catch (Exception e) {
             LOG.debug("swipeUp failed: {}", e.toString());
         }

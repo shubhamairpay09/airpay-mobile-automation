@@ -77,6 +77,23 @@ public abstract class BaseScreen {
         return false;
     }
 
+    /** Flutter often ignores WebElement.click() on a semantics node. Tap the node center. */
+    protected boolean tapCenter(By by) {
+        try {
+            List<WebElement> els = driver.findElements(by);
+            if (els.isEmpty()) {
+                return false;
+            }
+            var r = els.get(0).getRect();
+            int x = r.x + Math.max(r.width / 2, 1);
+            int y = r.y + Math.max(r.height / 2, 1);
+            driver.executeScript("mobile: clickGesture", java.util.Map.of("x", x, "y", y));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     protected WebElement firstPresent(Duration wait, By... locators) {
         long end = System.currentTimeMillis() + wait.toMillis();
         while (System.currentTimeMillis() < end) {
@@ -156,10 +173,19 @@ public abstract class BaseScreen {
     }
 
     public void swipeUp() {
+        swipeVertical(0.78, 0.28);
+    }
+
+    /** Scroll the list toward the top (content that sits above the viewport). */
+    public void swipeDown() {
+        swipeVertical(0.32, 0.78);
+    }
+
+    private void swipeVertical(double startRatio, double endRatio) {
         Dimension size = driver.manage().window().getSize();
         int startX = size.width / 2;
-        int startY = (int) (size.height * 0.78);
-        int endY = (int) (size.height * 0.28);
+        int startY = (int) (size.height * startRatio);
+        int endY = (int) (size.height * endRatio);
         PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
         Sequence swipe = new Sequence(finger, 1);
         swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));

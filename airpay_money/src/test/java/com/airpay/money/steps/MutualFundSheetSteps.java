@@ -305,9 +305,12 @@ public class MutualFundSheetSteps {
 
     @When("I tap the Mutual Funds back button")
     public void tapMfBack() {
-        // App Back often dead on MF tabs — leaveViaBack falls back to system Back.
-        Assertions.assertThat(landing.leaveViaBack())
-                .as("Mutual Funds Back (in-app, else system Back) should leave the current tab")
+        if (!landing.returnToDashboardFromTab() && !landing.isDisplayed()) {
+            products.openMutualFunds();
+            landing.waitReady();
+        }
+        Assertions.assertThat(landing.returnToDashboardFromTab() || landing.onDashboardTab())
+                .as("Mutual Funds Back should return to the Dashboard tab without leaving Mutual Funds")
                 .isTrue();
     }
 

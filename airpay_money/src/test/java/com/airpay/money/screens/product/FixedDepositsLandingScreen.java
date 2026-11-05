@@ -88,9 +88,37 @@ public class FixedDepositsLandingScreen extends BaseScreen {
         return true;
     }
 
+    public static final String[] PLAN_BANKS = {
+            "Suryoday", "Mahindra", "Bajaj", "Unity", "Shriram"
+    };
+
     public boolean openPlan(String bank) {
-        return tapFirst(Duration.ofSeconds(6),
-                MobileWaits.xpath("//android.view.View[@clickable='true' and contains(@content-desc,'" + bank + "')]"));
+        for (int i = 0; i < 7; i++) {
+            if (tapFirst(Duration.ofSeconds(3),
+                    MobileWaits.xpath("//android.view.View[@clickable='true' and contains(@content-desc,'" + bank + "')]"))) {
+                sleep(900);
+                if (planPageOpened()) {
+                    return true;
+                }
+            }
+            swipeUp();
+            sleep(250);
+        }
+        return false;
+    }
+
+    /** Prefer Suryoday; open the first provider card that opens the in-app plan page. */
+    public String openFirstAvailablePlan() {
+        for (String bank : PLAN_BANKS) {
+            if (openPlan(bank)) {
+                return bank;
+            }
+        }
+        return null;
+    }
+
+    private boolean planPageOpened() {
+        return sourceContains("Select goal tenure", "Book FD", "Interest Payout", "Amount Invested", "Amount");
     }
 
     /** Any provider card for this bank shows the rate. The list is scrolled until that card appears. */

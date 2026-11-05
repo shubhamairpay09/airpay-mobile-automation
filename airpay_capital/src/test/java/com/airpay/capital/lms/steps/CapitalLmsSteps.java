@@ -154,6 +154,13 @@ public class CapitalLmsSteps {
                 .isTrue();
     }
 
+    @Then("the agency grid should show column {string}")
+    public void assertColumn(String column) {
+        Assertions.assertThat(page().missingColumns(column))
+                .as("Agency grid should show column '%s'. url=%s", column, page().currentUrl())
+                .isEmpty();
+    }
+
     @Then("the agency grid should show the required columns")
     public void assertColumns() {
         List<String> missing = page().missingColumns(GRID_COLUMNS);

@@ -39,6 +39,15 @@ public class FinSightHomeScreen extends BaseScreen {
         super(context);
     }
 
+    /** Logged-in FinSight home (Hello + health score), not FHC Personal Details or launcher. */
+    public boolean isDashboardHome() {
+        String src = pageSource().replace("&#10;", "\n");
+        return src.contains("Hello")
+                && src.contains("Your Financial Health Score")
+                && src.contains("FinSight")
+                && src.contains("Calculators");
+    }
+
     public boolean isDisplayed() {
         String src = pageSource().replace("&#10;", "\n");
         boolean tabs = src.contains("FinSight") && (src.contains("Products") || src.contains("Calculators"));
@@ -60,7 +69,9 @@ public class FinSightHomeScreen extends BaseScreen {
 
     public boolean alreadySyncedCard() {
         String lower = pageSource().toLowerCase();
-        return lower.contains("view net worth") || lower.contains("accounts synced");
+        return lower.contains("view net worth")
+                || lower.contains("accounts synced")
+                || lower.contains("actual net worth");
     }
 
     public String netWorthCardText() {

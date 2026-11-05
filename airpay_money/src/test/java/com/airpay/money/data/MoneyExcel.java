@@ -149,7 +149,7 @@ public final class MoneyExcel {
                 if (row.getCell(2) == null) {
                     row.createCell(2);
                 }
-                row.getCell(2).setCellValue("880272");
+                row.getCell(2).setCellValue("790628");
                 found = true;
                 break;
             }
@@ -158,7 +158,7 @@ public final class MoneyExcel {
             Row row = sheet.createRow(Math.max(sheet.getLastRowNum(), 0) + 1);
             row.createCell(0).setCellValue("DEFAULT");
             row.createCell(1).setCellValue("Pin");
-            row.createCell(2).setCellValue("880272");
+            row.createCell(2).setCellValue("790628");
             row.createCell(3).setCellValue("Used when the app asks for the Airpay Money PIN");
         }
         try (OutputStream out = Files.newOutputStream(path)) {
@@ -338,7 +338,7 @@ public final class MoneyExcel {
                 "The sheet listed Allow Consent twice. That case is automated once as NW_TC.", "");
 
         header(book.createSheet("Login"));
-        put(book, "Login", "DEFAULT", "Pin", "880272", "Used when the app asks for the Airpay Money PIN");
+        put(book, "Login", "DEFAULT", "Pin", "790628", "Used when the app asks for the Airpay Money PIN");
     }
 
     private static void header(Sheet sheet) {

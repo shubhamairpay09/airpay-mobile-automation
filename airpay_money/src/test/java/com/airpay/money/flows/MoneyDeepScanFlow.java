@@ -26,6 +26,8 @@ import com.airpay.mobile.utilities.accessibility.A11yPageScanResult;
 import com.airpay.mobile.utilities.accessibility.A11yScanSession;
 import com.airpay.mobile.utilities.accessibility.AndroidA11yScanner;
 import com.airpay.mobile.utilities.android.AdbCommands;
+import com.airpay.mobile.utilities.android.AdbInput;
+import com.airpay.mobile.utilities.driver.AppiumManager;
 import com.airpay.mobile.utilities.android.PermissionDialogHandler;
 import com.airpay.mobile.utilities.config.ProjectPaths;
 import com.airpay.mobile.utilities.context.TestContext;
@@ -97,6 +99,11 @@ public class MoneyDeepScanFlow {
         LOG.info("Fresh a11y capture session started");
     }
 
+    /** Bat default: rescan every screen and replace the scorecard (no resume / no UI fingerprint skip). */
+    private boolean freshA11yRun() {
+        return context.config().getBoolean("a11y.fresh.run", false);
+    }
+
     /**
      * Scan whatever is on screen now. Does not tap.
      * Appends to the current session (call {@link #beginFreshCapture()} first for a clean run).
@@ -147,16 +154,18 @@ public class MoneyDeepScanFlow {
             LOG.info("Skip rescan id={}", id);
             return;
         }
-        String fp = screenFingerprint();
-        if (!fp.isBlank() && scannedFingerprints.contains(fp)) {
-            LOG.info("Skip rescan fingerprint for {} ({})", id, label);
-            scannedIds.add(id);
-            return;
+        if (!freshA11yRun()) {
+            String fp = screenFingerprint();
+            if (!fp.isBlank() && scannedFingerprints.contains(fp)) {
+                LOG.info("Skip rescan fingerprint for {} ({})", id, label);
+                scannedIds.add(id);
+                return;
+            }
+            if (!fp.isBlank()) {
+                scannedFingerprints.add(fp);
+            }
         }
         scannedIds.add(id);
-        if (!fp.isBlank()) {
-            scannedFingerprints.add(fp);
-        }
         A11yPageRef ref = A11yPageRef.screen(id, "money", label, route);
         A11yPageScanResult result = AndroidA11yScanner.scan(context.driver(), context.config(), ref);
         A11yScanSession.add(result);
@@ -184,6 +193,10 @@ public class MoneyDeepScanFlow {
         A11yScanSession.clear();
         scannedIds.clear();
         scannedFingerprints.clear();
+        if (freshA11yRun()) {
+            MobileScreenCrawler.clearSessionExplored();
+            LOG.info("Fresh deep a11y — full crawl depth, no scorecard resume");
+        }
         allowDialogs(Duration.ofSeconds(12));
         bringMoneyToForeground();
         googlePicker.dismissIfShown();
@@ -203,11 +216,16 @@ public class MoneyDeepScanFlow {
         }
 
         if (home.looksLoggedIn() || !onLoginForm()) {
-            LOG.info("Already past login — capture the current screen, then remaining modules");
-            scan("live-current", "Current screen", "current");
-            saveCurrentDump();
             captureSkipThenOk();
-            resumeRemainingModules();
+            if (freshA11yRun()) {
+                LOG.info("Already past login — fresh a11y run, full module deep scan");
+                fullModuleDeepScan();
+            } else {
+                LOG.info("Already past login — capture current screen, then scorecard resume");
+                scan("live-current", "Current screen", "current");
+                saveCurrentDump();
+                resumeRemainingModules();
+            }
             return;
         }
 
@@ -590,17 +608,51 @@ public class MoneyDeepScanFlow {
     }
 
     private void fullModuleDeepScan() {
-        fastResume = true;
-        coverageDeadline = System.currentTimeMillis() + Duration.ofMinutes(60).toMillis();
-        LOG.info("One-by-one coverage: Profile → each Products module → FinSight → Calculators");
+        fastResume = !freshA11yRun();
+        long budgetMin = freshA11yRun() ? 150 : 60;
+        coverageDeadline = System.currentTimeMillis() + Duration.ofMinutes(budgetMin).toMillis();
+        LOG.info("Deep coverage (fastResume={}): Products → FinSight → Calculators → Profile", fastResume);
         keepMoneyForeground();
         leaveInnerScreen();
-        coverProfileSettings();
         if (timeLeft()) {
-            coverProductsDeepOrdered();
+            try {
+                goToBottomTab("Products");
+                coverProductsDeepOrdered();
+            } catch (Exception e) {
+                LOG.warn("Products deep scan broke — recover and continue: {}", e.toString());
+                recoverSessionIfDead();
+                keepMoneyForeground();
+            }
         }
         if (timeLeft()) {
-            coverFinSight(loadExistingPageIds());
+            try {
+                goToBottomTab("FinSight");
+                coverFinSight(loadExistingPageIds());
+            } catch (Exception e) {
+                LOG.warn("FinSight deep scan broke — recover and continue: {}", e.toString());
+                recoverSessionIfDead();
+                keepMoneyForeground();
+            }
+        }
+        if (timeLeft()) {
+            try {
+                goToBottomTab("Calculators");
+                coverCalculators();
+            } catch (Exception e) {
+                LOG.warn("Calculators deep scan broke — recover and continue: {}", e.toString());
+                recoverSessionIfDead();
+                keepMoneyForeground();
+            }
+        }
+        if (timeLeft()) {
+            try {
+                goToBottomTab("FinSight");
+                coverProfileSettings();
+            } catch (Exception e) {
+                LOG.warn("Profile deep scan broke — recover and continue: {}", e.toString());
+                recoverSessionIfDead();
+                keepMoneyForeground();
+            }
         }
         publishReport();
         writeScreenList();
@@ -657,38 +709,81 @@ public class MoneyDeepScanFlow {
     };
 
     /**
-     * Keep Money foreground. Use activateApp only — never am start MainActivity
-     * (that relaunches Flutter and looks like a crash to the user).
+     * Always keep Money in the foreground during bat deep scan.
+     * If launcher / Play Store / shade steals focus: activateApp, then {@code am start}.
+     * If UiAutomator died: recover session and continue (do not abort the crawl).
      */
     private void keepMoneyForeground() {
-        try {
-            String pkg = safePackage();
-            if (!PKG.equals(pkg)) {
-                LOG.info("Money was not in foreground (pkg={}) — activateApp (no relaunch)", pkg);
-                try {
+        recoverSessionIfDead();
+        String udid = context.config().get("android.udid", "");
+        String activity = context.config().get("money.app.activity", PKG + ".MainActivity");
+        String pkg = AdbInput.foregroundPackage(udid);
+        if (pkg.isBlank()) {
+            pkg = safePackage();
+        }
+        if (!PKG.equals(pkg)) {
+            LOG.info("Money not in foreground (pkg={}) — activateApp + am start", pkg);
+            try {
+                if (context.driver() != null) {
                     context.driver().activateApp(PKG);
-                } catch (Exception e) {
-                    LOG.warn("activateApp failed: {}", e.toString());
                 }
-                sleep(fastResume ? 150 : 300);
+            } catch (Exception e) {
+                LOG.warn("activateApp failed: {}", e.toString());
             }
-            unlockPinIfPresent();
+            AdbInput.startActivity(udid, PKG, activity);
+            sleep(900);
+        }
+        unlockPinIfPresent();
+    }
+
+    private void recoverSessionIfDead() {
+        try {
+            if (context.driver() != null) {
+                context.driver().getPageSource();
+            }
+            return;
         } catch (Exception e) {
-            LOG.warn("keepMoneyForeground: {}", e.toString());
+            if (!instrumentationDead(e)) {
+                return;
+            }
+        }
+        LOG.warn("UiAutomator dead — recover session, bring Money to foreground, continue deep scan");
+        try {
+            context.setDriver(AppiumManager.recover(context.config()));
+            AppiumManager.ensureForeground(context.config());
+            sleep(1200);
+        } catch (Exception e) {
+            LOG.warn("Session recover failed: {}", e.toString());
         }
     }
 
-    /** Fast PIN: ADB digit taps preferred; tiny settles only. */
+    private static boolean instrumentationDead(Throwable e) {
+        String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+        return msg.contains("instrumentation process is not running")
+                || msg.contains("cannot be proxied to uiautomator2")
+                || msg.contains("nosuchsession")
+                || msg.contains("session is either terminated")
+                || msg.contains("invalidelementstate");
+    }
+
+    /**
+     * This realme ({@code money.a11y.auto.pin.udid}) auto-enters {@code money.test.pin}.
+     * Any other phone waits until the operator types PIN.
+     */
     private void unlockPinIfPresent() {
-        if (!isPinPad()) {
+        if (!isPinPad() && !isPin()) {
             return;
         }
-        LOG.info("PIN screen — fast auto-enter");
-        typeConfiguredPin();
-        sleep(fastResume ? 80 : 200);
-        if (isPinPad()) {
+        if (autoEnterPinOnThisDevice()) {
+            LOG.info("PIN screen — auto-enter configured PIN on {}", context.config().get("android.udid", ""));
             typeConfiguredPin();
-            sleep(fastResume ? 80 : 200);
+            sleep(200);
+            if (isPinPad()) {
+                typeConfiguredPin();
+                sleep(200);
+            }
+        } else {
+            waitForOperatorPin();
         }
         if (!isPinPad()) {
             try {
@@ -700,6 +795,60 @@ public class MoneyDeepScanFlow {
                 captureSkipThenOk();
             }
         }
+    }
+
+    private boolean autoEnterPinOnThisDevice() {
+        String udid = context.config().get("android.udid", "").trim();
+        String allowed = context.config().get("money.a11y.auto.pin.udid", "0412419R50001340");
+        for (String one : allowed.split(",")) {
+            if (udid.equals(one.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void waitForOperatorPin() {
+        long waitSec = context.config().getLong("money.a11y.pin.wait.seconds", 300);
+        LOG.info("PIN on this phone is not auto-entered — type PIN on the device (waiting up to {}s)", waitSec);
+        long deadline = System.currentTimeMillis() + waitSec * 1000L;
+        while (System.currentTimeMillis() < deadline && (isPinPad() || isPin())) {
+            keepMoneyForegroundQuiet();
+            sleep(2000);
+        }
+        if (isPinPad() || isPin()) {
+            LOG.warn("PIN still showing after {}s — continuing; enter PIN when the pad appears again", waitSec);
+        } else {
+            LOG.info("PIN entered on device — deep scan continues");
+        }
+    }
+
+    private void keepMoneyForegroundQuiet() {
+        String udid = context.config().get("android.udid", "");
+        String pkg = AdbInput.foregroundPackage(udid);
+        if (!pkg.isBlank() && !PKG.equals(pkg)) {
+            AdbInput.startActivity(udid, PKG, context.config().get("money.app.activity", PKG + ".MainActivity"));
+        }
+    }
+
+    /** Leave inner screens, then tap a bottom tab so the next module starts on the right hub. */
+    private void goToBottomTab(String tab) {
+        keepMoneyForeground();
+        leaveInnerScreen();
+        int slot = switch (tab) {
+            case "Products" -> 0;
+            case "FinSight" -> 1;
+            case "Calculators" -> 2;
+            default -> 1;
+        };
+        if (home.tapLabel(tab) || home.tapLabelFast(tab)) {
+            sleep(600);
+            LOG.info("Opened bottom tab {}", tab);
+            return;
+        }
+        AdbInput.tapBottomNav(context.config().get("android.udid", ""), slot, 3);
+        sleep(700);
+        LOG.info("Opened bottom tab {} via ADB nav slot {}", tab, slot);
     }
 
     private void saveCurrentDump() {
@@ -761,7 +910,7 @@ public class MoneyDeepScanFlow {
                 sleep(60);
                 keepMoneyForeground();
                 if (PKG.equals(safePackage())) {
-                    AdbCommands.shell(udid, "input", "tap", "180", "2200");
+                    AdbInput.tapBottomNav(udid, 0, 3);
                 }
                 sleep(80);
                 keepMoneyForeground();
@@ -782,7 +931,7 @@ public class MoneyDeepScanFlow {
                 sleep(280);
                 continue;
             }
-            AdbCommands.shell(udid, "input", "tap", "180", "2200");
+            AdbInput.tapBottomNav(udid, 0, 3);
             sleep(200);
             keepMoneyForeground();
             if (onTabBar() || softProductsHub()) {
@@ -792,7 +941,7 @@ public class MoneyDeepScanFlow {
         if (!onTabBar()) {
             LOG.warn("Still not on tab bar after leave — activate Money + ADB Products");
             keepMoneyForeground();
-            AdbCommands.shell(udid, "input", "tap", "180", "2200");
+            AdbInput.tapBottomNav(udid, 0, 3);
             sleep(fastResume ? 120 : 300);
         }
     }
@@ -840,7 +989,7 @@ public class MoneyDeepScanFlow {
             try {
                 home.openProductsTab();
             } catch (Exception ignored) {
-                AdbCommands.shell(context.config().get("android.udid", ""), "input", "tap", "180", "2200");
+                AdbInput.tapBottomNav(context.config().get("android.udid", ""), 0, 3);
             }
             sleep(fastResume ? 200 : 300);
             keepMoneyForeground();
@@ -956,6 +1105,8 @@ public class MoneyDeepScanFlow {
             if (!timeLeft()) {
                 return;
             }
+            keepMoneyForeground();
+            try {
             if (!profile.settingsDisplayed()) {
                 profile.open();
             }
@@ -991,6 +1142,16 @@ public class MoneyDeepScanFlow {
                 scanProfileChildren(profile, id, "Profile / FAQs", 8);
             }
             profile.returnToSettings();
+            } catch (Exception e) {
+                LOG.warn("Profile row {} failed — recover and continue: {}", row, e.toString());
+                recoverSessionIfDead();
+                keepMoneyForeground();
+                try {
+                    profile.returnToSettings();
+                } catch (Exception ignored) {
+                    // next row will re-open Profile
+                }
+            }
         }
         coverGeneralSettings(profile);
         LOG.info("Skipped Change profile picture, Change PIN, and the social apps");
@@ -1310,7 +1471,7 @@ public class MoneyDeepScanFlow {
             try {
                 home.openProductsTab();
             } catch (Exception e) {
-                AdbCommands.shell(udid, "input", "tap", "180", "2200");
+                AdbInput.tapBottomNav(udid, 0, 3);
             }
             sleep(fastResume ? 200 : 300);
         }
@@ -1320,7 +1481,7 @@ public class MoneyDeepScanFlow {
         if (onProductsHub()) {
             return true;
         }
-        AdbCommands.shell(udid, "input", "tap", "180", "2200");
+        AdbInput.tapBottomNav(udid, 0, 3);
         sleep(fastResume ? 250 : 400);
         boolean ok = onProductsHub();
         if (!ok) {
@@ -1396,6 +1557,9 @@ public class MoneyDeepScanFlow {
 
     /** Page ids already written to the Money scorecard (kept across resume runs). */
     private Set<String> loadExistingPageIds() {
+        if (freshA11yRun()) {
+            return new LinkedHashSet<>();
+        }
         Set<String> ids = new LinkedHashSet<>();
         try {
             Path pages = ProjectPaths.resolveKind(ProjectPaths.KIND_A11Y).resolve("money-pages-scanned.txt");
@@ -1555,7 +1719,7 @@ public class MoneyDeepScanFlow {
     }
 
     private void coverFinSight(Set<String> coveredIds) {
-        LOG.info("=== FinSight visible-only (no scroll-hunt) ===");
+        LOG.info("=== FinSight deep (cards, CTAs, filters) ===");
         keepMoneyForeground();
         home.openTab("FinSight");
         sleep(300);
@@ -1573,7 +1737,8 @@ public class MoneyDeepScanFlow {
         };
         Set<String> seen = new LinkedHashSet<>();
         List<String> toOpen = new ArrayList<>();
-        for (int pass = 0; pass < 2; pass++) {
+        int passes = freshA11yRun() ? 5 : 2;
+        for (int pass = 0; pass < passes; pass++) {
             String src = "";
             try {
                 src = context.driver().getPageSource();
@@ -2008,27 +2173,44 @@ public class MoneyDeepScanFlow {
     }
 
     private void scan(String id, String label, String route) {
-        if (isPinPad()) {
-            unlockPinIfPresent();
-        }
+        keepMoneyForeground();
         if (scannedIds.contains(id)) {
             LOG.info("Skip rescan id={}", id);
             return;
         }
-        String fp = screenFingerprint();
-        if (!fp.isBlank() && scannedFingerprints.contains(fp)) {
-            LOG.info("Skip a11y rescan for {} ({}) — screen already stored", id, label);
+        if (!freshA11yRun()) {
+            String fp = screenFingerprint();
+            if (!fp.isBlank() && scannedFingerprints.contains(fp)) {
+                LOG.info("Skip a11y rescan for {} ({}) — screen already stored", id, label);
+                scannedIds.add(id);
+                return;
+            }
             scannedIds.add(id);
-            return;
-        }
-        scannedIds.add(id);
-        if (!fp.isBlank()) {
-            scannedFingerprints.add(fp);
+            if (!fp.isBlank()) {
+                scannedFingerprints.add(fp);
+            }
+        } else {
+            scannedIds.add(id);
         }
         if (!fastResume) {
             allowDialogs(Duration.ofMillis(400));
         }
-        recordScreen(id, label, route);
+        try {
+            recordScreen(id, label, route);
+        } catch (Exception e) {
+            if (!instrumentationDead(e)) {
+                LOG.warn("scan {} failed: {}", id, e.toString());
+                return;
+            }
+            LOG.warn("scan {} hit dead UiAutomator — recover and retry once", id);
+            recoverSessionIfDead();
+            keepMoneyForeground();
+            try {
+                recordScreen(id, label, route);
+            } catch (Exception retry) {
+                LOG.warn("scan {} retry failed: {}", id, retry.toString());
+            }
+        }
     }
 
     private String screenFingerprint() {

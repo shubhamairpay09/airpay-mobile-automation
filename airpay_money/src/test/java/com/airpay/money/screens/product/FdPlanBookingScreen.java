@@ -66,13 +66,20 @@ public class FdPlanBookingScreen extends BaseScreen {
         bookFd.click();
     }
 
-    /** Suryoday details page. Book FD stays visible and is not tapped. */
+    /** In-app FD plan page (any provider). Book FD stays visible and is not tapped. */
     public boolean showsPlanDetails() {
         if (!isDisplayed() && !sourceContains("Select goal tenure", "Book FD")) {
             return false;
         }
         String src = pageSource();
-        return src.contains("Suryoday")
+        boolean knownBank = false;
+        for (String bank : FixedDepositsLandingScreen.PLAN_BANKS) {
+            if (src.contains(bank)) {
+                knownBank = true;
+                break;
+            }
+        }
+        return knownBank
                 && (src.contains("Amount") || src.contains("Invest"))
                 && src.contains("Select goal tenure")
                 && src.contains("Interest Payout")

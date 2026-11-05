@@ -14,6 +14,7 @@ Feature: Airpay Capital Login
     And I enter the mobile number from the Capital Excel sheet
     And I accept consent on the mobile login screen
     And I tap Send OTP on the mobile login screen
+    Then the OTP verification screen should be displayed
     And I enter the OTP from device notifications and verify
     Then I should see the Capital home screen
 
@@ -23,6 +24,7 @@ Feature: Airpay Capital Login
     And I enter the mobile number from the Capital Excel sheet
     And I accept consent on the mobile login screen
     And I tap Send OTP on the mobile login screen
+    Then the OTP verification screen should be displayed
     And I enter the invalid OTP from the Capital Excel sheet and verify
     Then an Invalid OTP error should be displayed and the user should remain on OTP verification
 
@@ -32,6 +34,7 @@ Feature: Airpay Capital Login
     And I enter the mobile number from the Capital Excel sheet
     And I accept consent on the mobile login screen
     And I tap Send OTP on the mobile login screen
+    Then the OTP verification screen should be displayed
     And I enter the expired OTP from the Capital Excel sheet and verify
     Then an OTP Expired error should be displayed and the user should remain on OTP verification
 
@@ -41,6 +44,7 @@ Feature: Airpay Capital Login
     And I enter the mobile number from the Capital Excel sheet
     And I accept consent on the mobile login screen
     And I tap Send OTP on the mobile login screen
+    Then the OTP verification screen should be displayed
     And I tap Edit beside the registered mobile number on the OTP screen
     Then the mobile registration screen should be displayed for editing the number
 
@@ -50,6 +54,7 @@ Feature: Airpay Capital Login
     And I enter the mobile number from the Capital Excel sheet
     And I accept consent on the mobile login screen
     And I tap Send OTP on the mobile login screen
+    Then the OTP verification screen should be displayed
     And I tap Resend OTP on the OTP screen
     And I enter the OTP from device notifications and verify
     Then I should see the Capital home screen

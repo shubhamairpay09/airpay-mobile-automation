@@ -61,6 +61,7 @@ Feature: Fixed Deposit after login
 
   @FD_TC_010
   Scenario: TC_010 the Suryoday investment amount can be changed
+    # Opens Suryoday when listed; otherwise the first available provider (Mahindra, Bajaj, Unity, Shriram).
     When I open the Suryoday Small Finance Bank FD card
     And I change the FD investment amount to "50000"
     And I go back to the Fixed Deposit dashboard

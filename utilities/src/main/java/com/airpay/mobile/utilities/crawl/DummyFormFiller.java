@@ -1,5 +1,6 @@
 package com.airpay.mobile.utilities.crawl;
 
+import com.airpay.mobile.utilities.android.AdbInput;
 import io.appium.java_client.android.AndroidDriver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -168,18 +169,8 @@ public final class DummyFormFiller {
             int startX = size.width / 2;
             int startY = (int) (size.height * 0.78);
             int endY = (int) (size.height * 0.28);
-            var finger = new org.openqa.selenium.interactions.PointerInput(
-                    org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger");
-            var swipe = new org.openqa.selenium.interactions.Sequence(finger, 1);
-            swipe.addAction(finger.createPointerMove(java.time.Duration.ZERO,
-                    org.openqa.selenium.interactions.PointerInput.Origin.viewport(), startX, startY));
-            swipe.addAction(finger.createPointerDown(
-                    org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
-            swipe.addAction(finger.createPointerMove(java.time.Duration.ofMillis(280),
-                    org.openqa.selenium.interactions.PointerInput.Origin.viewport(), startX, endY));
-            swipe.addAction(finger.createPointerUp(
-                    org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
-            driver.perform(java.util.List.of(swipe));
+            String udid = System.getProperty("android.udid", "");
+            AdbInput.swipe(udid, startX, startY, startX, endY, 280);
         } catch (Exception e) {
             LOG.debug("swipeUpFast failed: {}", e.toString());
         }

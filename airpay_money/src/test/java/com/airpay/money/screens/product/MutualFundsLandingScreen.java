@@ -6,9 +6,6 @@ import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.waits.MobileWaits;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.interactions.PointerInput;
-import org.openqa.selenium.interactions.Sequence;
-
 import java.time.Duration;
 import java.util.List;
 
@@ -191,6 +188,46 @@ public class MutualFundsLandingScreen extends BaseScreen {
                 MobileWaits.xpath("//android.widget.Button[@content-desc=" + xpathLiteral(label) + "]"),
                 accessibility(label));
         sleep(120);
+    }
+
+    /**
+     * MF tab Back must stay inside Mutual Funds. System Back often exits to the Products hub.
+     */
+    public boolean returnToDashboardFromTab() {
+        if (!isDisplayed()) {
+            return false;
+        }
+        if (onDashboardTab()) {
+            return true;
+        }
+        for (int i = 0; i < 3; i++) {
+            WebElement backBtn = firstPresent(Duration.ofMillis(800),
+                    MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
+                    MobileWaits.xpath("//*[@content-desc='Back']"));
+            if (backBtn != null) {
+                pressElement(backBtn);
+            } else {
+                tapHeaderBack();
+            }
+            sleep(700);
+            if (onDashboardTab()) {
+                return true;
+            }
+        }
+        openTab("Dashboard");
+        sleep(500);
+        return onDashboardTab();
+    }
+
+    public boolean onDashboardTab() {
+        if (!isDisplayed()) {
+            return false;
+        }
+        String src = pageSource();
+        return src.contains("Mutual Funds")
+                && !src.contains("Current Value")
+                && (src.contains("Create Goal") || src.contains("Your Risk Profile")
+                || src.contains("View all Mutual Funds") || src.contains("Start eKYC"));
     }
 
     public boolean goalListed(String name, String amount) {
@@ -518,12 +555,6 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     private void drag(int startX, int startY, int endX, int endY) {
-        PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "finger");
-        Sequence swipe = new Sequence(finger, 1);
-        swipe.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), startX, startY));
-        swipe.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
-        swipe.addAction(finger.createPointerMove(Duration.ofMillis(280), PointerInput.Origin.viewport(), endX, endY));
-        swipe.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        driver.perform(List.of(swipe));
+        adbSwipe(startX, startY, endX, endY, 280);
     }
 }

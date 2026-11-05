@@ -9,10 +9,14 @@ Feature: Personal Loan journeys
 
   @CA_PL_001
   Scenario: Verify the Personal Loan journey for a Salaried employee
-    When I complete the product application from the Capital Excel sheet until eligibility
-    # Then I should see loan offers available
+    When I open the product from the Capital Excel sheet
+    Then the occupation screen or the in-progress loan journey should be displayed
+    When I continue that application using the Capital Excel sheet
+    Then I should see loan offers available
 
   @CA_PL_002
   Scenario: Verify the Personal Loan journey for a Self-Employed customer
-    When I complete the product application from the Capital Excel sheet until eligibility
-    # Then I should see loan offers available
+    When I open the product from the Capital Excel sheet
+    Then the occupation screen or the in-progress loan journey should be displayed
+    When I continue that application using the Capital Excel sheet
+    Then I should see loan offers available

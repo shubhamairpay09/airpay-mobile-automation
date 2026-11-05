@@ -4,6 +4,7 @@ import com.airpay.money.data.MoneyExcel;
 import com.airpay.money.screens.calculators.CalculatorScreen;
 import com.airpay.money.screens.calculators.CalculatorsHubScreen;
 import com.airpay.money.screens.finsight.FinSightHomeScreen;
+import com.airpay.money.screens.home.HomeScreen;
 import com.airpay.mobile.utilities.context.TestContext;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
@@ -34,6 +35,8 @@ public class CalculatorSheetSteps {
             {"Budget Calculator", "Budget Calculator"}
     };
 
+    private final TestContext context;
+    private final HomeScreen home;
     private final FinSightHomeScreen finsight;
     private final CalculatorsHubScreen hub;
     private final CalculatorScreen calculator;
@@ -41,6 +44,8 @@ public class CalculatorSheetSteps {
     private String catalog = "";
 
     public CalculatorSheetSteps(TestContext context) {
+        this.context = context;
+        this.home = new HomeScreen(context);
         this.finsight = new FinSightHomeScreen(context);
         this.hub = new CalculatorsHubScreen(context);
         this.calculator = new CalculatorScreen(context);
@@ -48,9 +53,7 @@ public class CalculatorSheetSteps {
 
     @When("I open the Calculators tab")
     public void openTab() {
-        if (!hub.isDisplayed()) {
-            finsight.openCalculatorsTab();
-        }
+        showCalculatorsHub();
         Assertions.assertThat(hub.isDisplayed())
                 .as("Financial Calculators screen should open from the bottom navigation")
                 .isTrue();
@@ -643,10 +646,12 @@ public class CalculatorSheetSteps {
     public void openFromSheet() {
         for (String[] pair : MoneyExcel.rows("Option")) {
             showCalculatorsHub();
-            Assertions.assertThat(hub.openTile(pair[0]))
+            hub.swipeDown();
+            hub.swipeDown();
+            Assertions.assertThat(hub.openTile(pair[0], pair[1]))
                     .as(pair[0] + " must be listed on Financial Calculators. Visible: " + hub.visibleLabels())
                     .isTrue();
-            Assertions.assertThat(calculator.showsTitle(pair[1]))
+            Assertions.assertThat(calculatorPageOpen(pair[1]))
                     .as(pair[0] + " must open the page titled \"" + pair[1]
                             + "\". Visible: " + calculator.visibleLabels())
                     .isTrue();
@@ -658,26 +663,51 @@ public class CalculatorSheetSteps {
      * Leave the calculator page (in-app Back, then system Back when app Back is dead),
      * then reopen the Calculators tab if needed.
      */
+    private boolean calculatorPageOpen(String expectedTitle) {
+        if (calculator.showsTitle(expectedTitle)) {
+            return true;
+        }
+        if ("Buy Vs Rent".equalsIgnoreCase(expectedTitle)) {
+            return calculator.showsTitle("Buy Vs Rent calculator")
+                    || calculator.showsTitle("Buy vs Rent calculator");
+        }
+        return false;
+    }
+
     private void returnToHub(String openedTitle) {
-        for (int i = 0; i < 3 && calculator.showsTitle(openedTitle); i++) {
+        int tries = MoneyFunctionalFast.enabled(context) ? 2 : 3;
+        long pause = MoneyFunctionalFast.enabled(context) ? 450L : 700L;
+        for (int i = 0; i < tries && calculator.showsTitle(openedTitle); i++) {
             calculator.leaveViaBack();
-            sleepQuiet(700);
+            sleepQuiet(pause);
         }
         showCalculatorsHub();
     }
 
     private void showCalculatorsHub() {
+        home.ensureMoneyInForeground();
         hub.unlockIfNeeded();
-        for (int i = 0; i < 5 && !hub.isDisplayed(); i++) {
+        for (int i = 0; i < 8 && !hub.isDisplayed(); i++) {
             // Never leaveViaBack on hub tile names — those labels are on the hub itself.
             if (hub.sourceContains("PROFILE SETTINGS", "Personal Details", "Log Out")) {
                 hub.leaveViaBack();
                 sleepQuiet(700);
                 continue;
             }
-            if (finsight.openCalculatorsTab() && hub.isDisplayed()) {
+            if (home.sourceContains("Personal Details", "Pincode")) {
+                hub.leaveViaBack();
+                sleepQuiet(700);
+                continue;
+            }
+            if (home.sourceContains("FinSight") && !hub.isDisplayed()) {
+                home.tapLabel("FinSight");
+                sleepQuiet(450);
+            }
+            finsight.openCalculatorsTab();
+            if (hub.isDisplayed()) {
                 return;
             }
+            hub.swipeDown();
             sleepQuiet(600);
         }
     }

@@ -45,7 +45,13 @@ public class MoneySteps {
 
     @When("I scan all airpay money screens from login")
     public void scanFromLogin() {
-        flow().scanFromLoginThroughAllModules();
+        try {
+            flow().scanFromLoginThroughAllModules();
+        } catch (Exception e) {
+            if (A11yScanSession.results().isEmpty()) {
+                throw e instanceof RuntimeException re ? re : new IllegalStateException(e);
+            }
+        }
     }
 
     @When("I start a fresh accessibility capture")

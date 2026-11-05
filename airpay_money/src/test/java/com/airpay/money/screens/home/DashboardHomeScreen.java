@@ -174,6 +174,28 @@ public class DashboardHomeScreen extends BaseScreen {
                 || src.contains("view net worth");
     }
 
+    public String syncedNetWorthSummary() {
+        String src = text();
+        if (src.contains("Actual Net Worth")) {
+            return descriptionContaining("Actual Net Worth");
+        }
+        if (src.contains("Accounts Synced")) {
+            return descriptionContaining("Accounts Synced");
+        }
+        if (src.contains("View Net Worth")) {
+            return descriptionContaining("View Net Worth");
+        }
+        return finsightFallbackSummary(src);
+    }
+
+    private static String finsightFallbackSummary(String src) {
+        int idx = src.toLowerCase().indexOf("actual net worth");
+        if (idx >= 0) {
+            return src.substring(Math.max(0, idx), Math.min(src.length(), idx + 120));
+        }
+        return src.contains("Accounts Synced") ? "Accounts Synced" : "";
+    }
+
     public boolean syncOfferVisible() {
         return displayed("Sync Your Net Worth") != null;
     }

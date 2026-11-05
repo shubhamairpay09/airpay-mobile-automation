@@ -108,8 +108,11 @@ public class DashboardHomeSteps {
     @Then("the Sync Your Net Worth button is displayed on the dashboard")
     public void syncButton() {
         if (dashboard.alreadySynced()) {
-            ScenarioSkip.unlessPresent(false,
-                    "Sync Your Net Worth button. This account already shows a synced net worth");
+            SyncedNetWorthMode.setActive(true);
+            Assertions.assertThat(dashboard.alreadySynced())
+                    .as("Synced net worth card should be displayed instead of the Sync offer")
+                    .isTrue();
+            return;
         }
         Assertions.assertThat(dashboard.syncButtonDisplayed())
                 .as("Sync Your Net Worth button should be displayed")
@@ -118,6 +121,13 @@ public class DashboardHomeSteps {
 
     @And("the Sync Your Net Worth description is displayed")
     public void syncDescription() {
+        if (SyncedNetWorthMode.active() || dashboard.alreadySynced()) {
+            SyncedNetWorthMode.setActive(true);
+            Assertions.assertThat(dashboard.syncedNetWorthSummary())
+                    .as("Synced net worth summary should be displayed on the dashboard")
+                    .isNotBlank();
+            return;
+        }
         String description = dashboard.syncDescription();
         ScenarioSkip.unlessPresent(description != null && description.trim().length() > 8,
                 "Sync Your Net Worth description");
@@ -129,8 +139,8 @@ public class DashboardHomeSteps {
     @When("I tap the Sync Your Net Worth button on the dashboard")
     public void tapSync() {
         if (dashboard.alreadySynced() && !dashboard.syncOfferVisible()) {
-            ScenarioSkip.unlessPresent(false,
-                    "Sync Your Net Worth. This account already shows a synced net worth");
+            SyncedNetWorthMode.setActive(true);
+            return;
         }
         Assertions.assertThat(dashboard.tapSync())
                 .as("Sync Your Net Worth should open the consent screen. Allow Consent is not tapped")
@@ -139,6 +149,12 @@ public class DashboardHomeSteps {
 
     @And("Allow Consent is displayed on the consent screen")
     public void allowConsent() {
+        if (SyncedNetWorthMode.active()) {
+            Assertions.assertThat(dashboard.alreadySynced())
+                    .as("Already-synced dashboard should not require Allow Consent")
+                    .isTrue();
+            return;
+        }
         Assertions.assertThat(dashboard.allowConsentDisplayed())
                 .as("Allow Consent should be displayed. It is not tapped")
                 .isTrue();

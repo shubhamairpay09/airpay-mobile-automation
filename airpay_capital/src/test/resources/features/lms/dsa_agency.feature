@@ -24,7 +24,12 @@ Feature: DSA Agency Management (LMS admin)
   @CA_DA_002
   Scenario: Verify that all required columns are displayed in the agency grid
     When I open DSA Agency Management from the LMS menu
-    Then the agency grid should show the required columns
+    Then the agency grid should show column "Sr. No"
+    And the agency grid should show column "DSA Code"
+    And the agency grid should show column "Agency Name"
+    And the agency grid should show column "Loan Type"
+    And the agency grid should show column "Onboarded On Date"
+    And the agency grid should show column "Status"
     And the agency grid should contain at least one agency row
 
   @CA_DA_003

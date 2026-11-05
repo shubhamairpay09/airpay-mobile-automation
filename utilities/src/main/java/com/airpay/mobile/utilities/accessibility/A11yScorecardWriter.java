@@ -53,7 +53,7 @@ public final class A11yScorecardWriter {
         String title = (productTitle == null || productTitle.isBlank()) ? "Accessibility" : productTitle.trim();
         try {
             Files.createDirectories(outDir);
-            List<A11yPageScanResult> combined = mergeWithExisting(outDir.resolve(prefix + "-scan.json"), pages);
+            List<A11yPageScanResult> combined = mergeWithExisting(config, outDir.resolve(prefix + "-scan.json"), pages);
             String ts = Instant.now().toString();
             String json = A11yJson.reportDocument(baseUrl, ts, combined, prefix);
             pages = combined;
@@ -148,8 +148,13 @@ public final class A11yScorecardWriter {
      * Keeps every page already in the scorecard. A page scanned again replaces that same id.
      * Pages that were not scanned this run stay in the report.
      */
-    private static List<A11yPageScanResult> mergeWithExisting(Path existingJson, List<A11yPageScanResult> fresh)
+    private static List<A11yPageScanResult> mergeWithExisting(FrameworkConfig config, Path existingJson,
+                                                              List<A11yPageScanResult> fresh)
             throws IOException {
+        if (config != null && config.getBoolean("a11y.fresh.run", false)) {
+            LOG.info("Fresh a11y run — report lists {} pages from this session only (no merge)", fresh.size());
+            return new ArrayList<>(fresh);
+        }
         if (!existingLoaded) {
             cachedExisting = readExisting(existingJson);
             existingLoaded = true;

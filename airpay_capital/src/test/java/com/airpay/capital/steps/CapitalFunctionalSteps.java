@@ -108,7 +108,19 @@ public class CapitalFunctionalSteps {
             return;
         }
         mobileLogin.tapSendOtp();
-        otpScreen.waitUntilDisplayed(Duration.ofSeconds(15));
+        Assertions.assertThat(otpScreen.waitUntilDisplayed(Duration.ofSeconds(20)))
+                .as("OTP verification screen should open after Send OTP for the entered mobile number")
+                .isTrue();
+    }
+
+    @Then("the OTP verification screen should be displayed")
+    public void assertOtpScreen() {
+        Assertions.assertThat(otpScreen.isDisplayed())
+                .as("OTP verification screen should show the OTP input and Verify action")
+                .isTrue();
+        Assertions.assertThat(home.looksLoggedIn())
+                .as("Home must not be shown while OTP verification is still required")
+                .isFalse();
     }
 
     @When("I enter the OTP from the Capital Excel sheet and verify")
@@ -250,21 +262,27 @@ public class CapitalFunctionalSteps {
 
     @Then("an Invalid OTP error should be displayed and the user should remain on OTP verification")
     public void assertInvalidOtp() {
-        Assertions.assertThat(otpScreen.invalidOtpMessageVisible() || otpScreen.isDisplayed())
-                .as("An Invalid OTP error message should be displayed, and the user must remain on OTP verification without reaching Home")
+        Assertions.assertThat(otpScreen.invalidOtpMessageVisible())
+                .as("An Invalid OTP error should be shown on the OTP verification screen")
+                .isTrue();
+        Assertions.assertThat(otpScreen.isDisplayed())
+                .as("User should remain on the OTP verification screen after an invalid OTP")
                 .isTrue();
         Assertions.assertThat(home.looksLoggedIn())
-                .as("User must not be navigated to Home after an invalid OTP")
+                .as("User must not reach Home after an invalid OTP")
                 .isFalse();
     }
 
     @Then("an OTP Expired error should be displayed and the user should remain on OTP verification")
     public void assertExpiredOtp() {
-        Assertions.assertThat(otpScreen.expiredOtpMessageVisible() || otpScreen.isDisplayed())
-                .as("An OTP Expired error message should be displayed, and the user must remain on OTP verification without reaching Home")
+        Assertions.assertThat(otpScreen.expiredOtpMessageVisible())
+                .as("An OTP Expired error should be shown on the OTP verification screen")
+                .isTrue();
+        Assertions.assertThat(otpScreen.isDisplayed())
+                .as("User should remain on the OTP verification screen after an expired OTP")
                 .isTrue();
         Assertions.assertThat(home.looksLoggedIn())
-                .as("User must not be navigated to Home after an expired OTP")
+                .as("User must not reach Home after an expired OTP")
                 .isFalse();
     }
 
@@ -295,10 +313,76 @@ public class CapitalFunctionalSteps {
     @Then("I should be on the lender application page")
     public void assertLenderPage() {
         String src = context.driver().getPageSource();
-        Assertions.assertThat(
-                src.contains("partner") || src.contains("Apply") || src.contains("chrome")
-                        || src.contains("WebView") || !src.contains("offers available"))
-                .as("Tapping Apply Now on an offer should open the lender application page or partner WebView")
+        boolean lenderSurface = src.contains("WebView") || src.contains("chrome")
+                || src.contains("partner") || src.contains("Muthoot");
+        Assertions.assertThat(lenderSurface)
+                .as("Apply Now should open the lender application page or partner WebView")
                 .isTrue();
+        Assertions.assertThat(src.contains("Tell us about your work"))
+                .as("Occupation screen should be left behind after opening the lender page")
+                .isFalse();
+    }
+
+    @Then("the occupation screen or the in-progress loan journey should be displayed")
+    public void assertApplyEntry() {
+        boolean occupation = journeyFlow.occupationVisible();
+        boolean journey = journeyFlow.journeyInProgress();
+        Assertions.assertThat(occupation || journey)
+                .as("Opening the product should show occupation (Salaried / Self-Employed) or the saved loan journey")
+                .isTrue();
+        if (journey) {
+            String src = context.driver().getPageSource();
+            for (String step : java.util.List.of(
+                    "Basic details", "Address details", "Income",
+                    "Credit assessment", "Personalised offers", "Resume Application")) {
+                Assertions.assertThat(src)
+                        .as("In-progress loan journey should list completed step '%s'", step)
+                        .contains(step);
+            }
+        }
+    }
+
+    @When("I continue that application using the Capital Excel sheet")
+    public void continueApplicationFromExcel() {
+        if (journeyFlow.occupationVisible()) {
+            journeyFlow.selectOccupationFromExcel();
+            Assertions.assertThat(journeyFlow.applicationDetailsVisible())
+                    .as("Application details screen should be displayed after occupation is selected")
+                    .isTrue();
+            journeyFlow.completeApplyFormsFromExcel();
+            journeyFlow.tapCheckEligibility();
+            return;
+        }
+        journeyFlow.resumeSavedJourney();
+    }
+
+    @When("I open the product from the Capital Excel sheet")
+    public void openProductFromExcel() {
+        journeyFlow.openProductFromExcel();
+    }
+
+    @Then("the occupation selection screen should be displayed")
+    public void assertOccupation() {
+        Assertions.assertThat(journeyFlow.occupationVisible())
+                .as("Occupation screen should show Salaried and Self-Employed before the application form")
+                .isTrue();
+    }
+
+    @When("I select the occupation from the Capital Excel sheet and continue")
+    public void selectOccupationFromExcel() {
+        journeyFlow.selectOccupationFromExcel();
+    }
+
+    @Then("the application details screen should be displayed")
+    public void assertApplyDetails() {
+        Assertions.assertThat(journeyFlow.applicationDetailsVisible())
+                .as("Application details screen should be displayed after occupation is selected")
+                .isTrue();
+    }
+
+    @When("I fill the application details from the Capital Excel sheet and check eligibility")
+    public void fillAndCheckEligibility() {
+        journeyFlow.completeApplyFormsFromExcel();
+        journeyFlow.tapCheckEligibility();
     }
 }

@@ -96,25 +96,51 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
     }
 
     public boolean openTile(String label) {
+        return openTile(label, null);
+    }
+
+    public boolean openTile(String label, String expectedPageTitle) {
         unlockIfNeeded();
         if (!isDisplayed()) {
             return false;
         }
+        scrollIntoDescription(label);
+        CalculatorScreen detail = new CalculatorScreen(context);
         By tile = MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(label) + "]");
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             org.openqa.selenium.WebElement el = firstPresent(Duration.ofSeconds(2), tile, accessibility(label));
             if (el != null) {
-                // Flutter tiles ignore a zero-length click. A short press opens the page.
-                pressElement(el);
+                pressElementLong(el, 320);
                 sleep(900);
+                if (expectedPageTitle != null && detail.showsTitle(expectedPageTitle)) {
+                    return true;
+                }
+                if (!stillOnHubGrid()) {
+                    return true;
+                }
+                pressElementLong(el, 450);
+                sleep(900);
+                if (expectedPageTitle != null && detail.showsTitle(expectedPageTitle)) {
+                    return true;
+                }
                 if (!stillOnHubGrid()) {
                     return true;
                 }
             }
             swipeUp();
-            sleep(250);
+            sleep(200);
         }
-        return !stillOnHubGrid();
+        return expectedPageTitle != null && detail.showsTitle(expectedPageTitle);
+    }
+
+    private void pressElementLong(org.openqa.selenium.WebElement element, int holdMs) {
+        var rect = element.getRect();
+        String udid = context.config().get("android.udid", "");
+        int x = rect.getX() + rect.getWidth() / 2;
+        int y = rect.getY() + rect.getHeight() / 2;
+        com.airpay.mobile.utilities.android.AdbCommands.shell(udid, "input", "swipe",
+                Integer.toString(x), Integer.toString(y),
+                Integer.toString(x), Integer.toString(y), Integer.toString(holdMs));
     }
 
     /** Hub catalog still showing — tile tap did not open a calculator page. */
@@ -130,23 +156,6 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
      */
     public void ensureForeground() {
         // intentionally empty — never am start / activateApp between calculator steps
-    }
-
-    public void swipeDown() {
-        org.openqa.selenium.Dimension size = driver.manage().window().getSize();
-        int startX = size.width / 2;
-        int startY = (int) (size.height * 0.28);
-        int endY = (int) (size.height * 0.78);
-        org.openqa.selenium.interactions.PointerInput finger =
-                new org.openqa.selenium.interactions.PointerInput(
-                        org.openqa.selenium.interactions.PointerInput.Kind.TOUCH, "finger");
-        org.openqa.selenium.interactions.Sequence swipe =
-                new org.openqa.selenium.interactions.Sequence(finger, 1);
-        swipe.addAction(finger.createPointerMove(Duration.ZERO, org.openqa.selenium.interactions.PointerInput.Origin.viewport(), startX, startY));
-        swipe.addAction(finger.createPointerDown(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
-        swipe.addAction(finger.createPointerMove(Duration.ofMillis(300), org.openqa.selenium.interactions.PointerInput.Origin.viewport(), startX, endY));
-        swipe.addAction(finger.createPointerUp(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
-        driver.perform(java.util.List.of(swipe));
     }
 
     public static final String TAB_CALCULATORS = "//android.widget.Button[@content-desc='Calculators']";

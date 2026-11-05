@@ -58,8 +58,23 @@ public class MoneyFunctionalSteps {
     public void sessionOrLogin() {
         home.dismissHomeCoachIfShown();
         unlockPinAndSkipBiometric();
-        if (home.sourceContains("Hello") && home.sourceContains("Financial Health")) {
+        leaveNestedProductScreens();
+        unlockPinAndSkipBiometric();
+        if (alreadyOnSignedInHome()) {
             return;
+        }
+        if (home.sourceContains("Enter your Airpay Money PIN", "Unlock faster with Biometrics")) {
+            unlockPinAndSkipBiometric();
+            leaveNestedProductScreens();
+            if (alreadyOnSignedInHome()) {
+                return;
+            }
+        }
+        if (!home.sourceContains("Sign Up or Login", "Login with Mobile", "Login With Mobile", "Get Started")) {
+            // Mid-suite reuse: not on welcome — treat as signed in if tabs or Hello are present.
+            if (alreadyOnSignedInHome() || home.sourceContains("Products", "FinSight", "Calculators")) {
+                return;
+            }
         }
         // Already on the mobile login form — do not tap Login before number + consent.
         if (!mobileLogin.waitUntilDisplayed(Duration.ofSeconds(3))) {
@@ -140,6 +155,42 @@ public class MoneyFunctionalSteps {
             Thread.currentThread().interrupt();
         }
         biometric.dismissIfShown();
+    }
+
+    private boolean alreadyOnSignedInHome() {
+        return home.sourceContains("Hello")
+                && (home.sourceContains("FinSight") || home.sourceContains("Financial Health"));
+    }
+
+    /** Prior scenario may end on FD / MF / Airpay — Back out before login or home checks. */
+    private void leaveNestedProductScreens() {
+        for (int i = 0; i < 8; i++) {
+            if (alreadyOnSignedInHome()) {
+                return;
+            }
+            if (home.sourceContains("Products") && home.sourceContains("FinSight") && home.sourceContains("Calculators")
+                    && !home.sourceContains("Select goal tenure", "Book FD at", "Make Payment")) {
+                return;
+            }
+            if (home.sourceContains("Go to Dashboard")) {
+                home.tapLabel("Go to Dashboard");
+                sleepQuiet(600);
+                continue;
+            }
+            if (!home.tapBack() && !home.tapLabel("Back")) {
+                home.pressSystemBack();
+            }
+            sleepQuiet(450);
+            unlockPinAndSkipBiometric();
+        }
+    }
+
+    private static void sleepQuiet(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @When("I tap login with mobile on the airpay money welcome screen")

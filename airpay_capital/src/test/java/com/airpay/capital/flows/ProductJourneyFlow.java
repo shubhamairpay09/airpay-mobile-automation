@@ -61,8 +61,32 @@ public class ProductJourneyFlow {
         if (!product.openFromHome()) {
             throw new IllegalStateException("Could not open Apply flow for " + productLabel);
         }
-        occupation.waitUntilDisplayed(Duration.ofSeconds(15));
+        if (!occupationVisible() && !home.journeyInProgress() && !offersAreVisible()) {
+            occupation.waitUntilDisplayed(Duration.ofSeconds(12));
+        }
         return product;
+    }
+
+    public boolean journeyInProgress() {
+        return home.journeyInProgress();
+    }
+
+    /** Saved journey: every completed step is on screen, then Resume Application opens offers. */
+    public void resumeSavedJourney() {
+        if (!home.journeyInProgress()) {
+            throw new IllegalStateException("In-progress loan journey is not displayed");
+        }
+        for (String step : new String[]{
+                "Basic details", "Address details", "Income",
+                "Credit assessment", "Personalised offers", "Resume Application"}) {
+            if (!home.sourceContains(step)) {
+                throw new IllegalStateException("Loan journey is missing step: " + step);
+            }
+        }
+        if (!home.tapResumeApplication()) {
+            throw new IllegalStateException("Resume Application was not tappable");
+        }
+        home.waitUntilSourceContains(Duration.ofSeconds(20), "offers available", "offer available", "Apply now");
     }
 
     public void openProductFromExcel() {
@@ -103,6 +127,14 @@ public class ProductJourneyFlow {
 
     public void tapCheckEligibility() {
         eligibility.tapCheckEligibility();
+    }
+
+    public boolean applicationDetailsVisible() {
+        return applyDetails.isDisplayed();
+    }
+
+    public boolean occupationVisible() {
+        return occupation.isDisplayed();
     }
 
     public boolean offersAreVisible() {

@@ -128,9 +128,11 @@ public class BaseHooks {
                 LOG.info("Failure screenshot | {}", shot);
             }
             testContext.setFailureScreenshotAttached(true);
-            String source = testContext.driver().getPageSource();
-            if (source != null) {
-                Allure.addAttachment("page-source", "text/xml", source, ".xml");
+            if (!testContext.config().getBoolean("money.functional.fast", false)) {
+                String source = testContext.driver().getPageSource();
+                if (source != null) {
+                    Allure.addAttachment("page-source", "text/xml", source, ".xml");
+                }
             }
         } catch (Exception e) {
             LOG.warn("Failure capture skipped: {}", e.toString());

@@ -91,9 +91,11 @@ public final class MoneyProductsDeepWalker {
     }
 
     public void run() {
-        LOG.info("=== Products DEEP fast (in-app leave + skip stuck loaders) ===");
+        LOG.info("=== Products DEEP (hub + filters + dropdowns + tabs) ===");
         keepForeground.run();
         unlockPin.run();
+        jumpProductsTab();
+        settle(400);
         if (!returnToInvestmentsHub()) {
             LOG.warn("Investments hub not ready — will still try modules");
         } else {
@@ -789,22 +791,23 @@ public final class MoneyProductsDeepWalker {
         jumpProductsTab();
     }
 
-    /**
-     * If another app stole focus: activateApp only — never am start MainActivity
-     * (am start relaunches Flutter and looks like a crash).
-     */
+    /** If another app stole focus: activateApp, then am start. Always stay on Money. */
     private void ensureMoneyOnly() {
+        keepForeground.run();
         String pkg = currentPackage();
         if (pkg.isEmpty() || PKG.equals(pkg)) {
             return;
         }
-        LOG.warn("Focus left Money (pkg={}) — activateApp only (no relaunch)", pkg);
+        LOG.warn("Focus left Money (pkg={}) — activateApp + am start", pkg);
         try {
             context.driver().activateApp(PKG);
-        } catch (Exception e) {
-            keepForeground.run();
+        } catch (Exception ignored) {
+            // fall through to am start
         }
-        settle(120);
+        String udid = context.config().get("android.udid", "");
+        AdbCommands.shell(udid, "am", "start", "-n", PKG + "/com.finmapp.fininfinity.MainActivity");
+        settle(400);
+        unlockPin.run();
     }
 
     /** Products tab via in-app tap / bottom-nav coordinate — does not relaunch the app. */
@@ -817,8 +820,8 @@ public final class MoneyProductsDeepWalker {
         String udid = context.config().get("android.udid", "");
         // Bottom-nav Products — only while Money is already foreground
         if (PKG.equals(currentPackage())) {
-            AdbCommands.shell(udid, "input", "tap", "180", "2200");
-            settle(80);
+            com.airpay.mobile.utilities.android.AdbInput.tapBottomNav(udid, 0, 3);
+            settle(200);
         }
         ensureMoneyOnly();
     }

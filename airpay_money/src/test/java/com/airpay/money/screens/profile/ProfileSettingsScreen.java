@@ -1,5 +1,8 @@
 package com.airpay.money.screens.profile;
 
+import com.airpay.money.data.MoneyExcel;
+import com.airpay.money.screens.auth.BiometricScreen;
+import com.airpay.money.screens.auth.PinUnlockScreen;
 import com.airpay.money.screens.base.BaseScreen;
 import com.airpay.mobile.utilities.android.AdbCommands;
 import com.airpay.mobile.utilities.context.TestContext;
@@ -192,15 +195,33 @@ public class ProfileSettingsScreen extends BaseScreen {
      */
     public void goBack() {
         String before = shortFingerprint();
-        boolean tapped = tapProfileBack();
-        if (!tapped) {
-            tapHeaderBack();
+        for (int attempt = 0; attempt < 3 && before.equals(shortFingerprint()); attempt++) {
+            if (!tapProfileBack()) {
+                tapHeaderBack();
+            }
+            sleep(700);
         }
-        sleep(700);
         if (before.equals(shortFingerprint())) {
             LOG.info("Profile in-app Back did not leave the screen — using system Back");
             pressSystemBack();
             sleep(700);
+            recoverAfterProfileBackOvershoot();
+        }
+    }
+
+    /** System Back from profile sub-pages can land on PIN or FinSight — reopen settings without stacking Backs. */
+    private void recoverAfterProfileBackOvershoot() {
+        if (sourceContains("Enter your Airpay Money PIN", "Unlock faster with Biometrics")) {
+            new BiometricScreen(context).dismissIfShown();
+            PinUnlockScreen pin = new PinUnlockScreen(context);
+            if (pin.waitUntilDisplayed(Duration.ofSeconds(4)) || sourceContains("Enter your Airpay Money PIN")) {
+                pin.enterPin(MoneyExcel.pin("880272"));
+                sleep(1200);
+            }
+            new BiometricScreen(context).dismissIfShown();
+        }
+        if (!settingsDisplayed()) {
+            open();
         }
     }
 
@@ -213,23 +234,9 @@ public class ProfileSettingsScreen extends BaseScreen {
             sleep(500);
             return true;
         }
-        // Unlabelled circular chevron in the top-left header.
-        for (WebElement node : driver.findElements(MobileWaits.xpath("//*[@clickable='true']"))) {
-            try {
-                if (!node.isDisplayed()) {
-                    continue;
-                }
-                var rect = node.getRect();
-                if (rect.getX() < 160 && rect.getY() < 280 && rect.getWidth() < 180 && rect.getHeight() < 180) {
-                    pressElement(node);
-                    sleep(500);
-                    return true;
-                }
-            } catch (Exception ignored) {
-                // stale
-            }
-        }
-        return false;
+        shellPress(79, 174);
+        sleep(500);
+        return true;
     }
 
     private String shortFingerprint() {
@@ -383,9 +390,10 @@ public class ProfileSettingsScreen extends BaseScreen {
 
     @Override
     public void swipeUp() {
-        Dimension size = driver.manage().window().getSize();
-        int x = size.width / 2;
-        swipe(x, (int) (size.height * 0.78), x, (int) (size.height * 0.32));
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        int x = size[0] / 2;
+        swipe(x, (int) (size[1] * 0.78), x, (int) (size[1] * 0.32));
     }
 
     private boolean pressExact(String label) {
@@ -428,10 +436,11 @@ public class ProfileSettingsScreen extends BaseScreen {
     }
 
     private void swipeUpNarrow() {
-        Dimension size = driver.manage().window().getSize();
-        int x = 200;
-        int startY = (int) (size.height * 0.75);
-        int endY = (int) (size.height * 0.30);
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        int x = Math.min(200, size[0] / 3);
+        int startY = (int) (size[1] * 0.75);
+        int endY = (int) (size[1] * 0.30);
         swipe(x, startY, x, endY);
     }
 

@@ -36,10 +36,12 @@ public class DigitalGoldPaymentScreen extends BaseScreen {
      * Wait until Continue is in the accessibility tree. An empty WebView is not the page.
      */
     public String loadedSource() {
-        long end = System.currentTimeMillis() + Duration.ofSeconds(25).toMillis();
+        long waitMs = com.airpay.money.steps.MoneyFunctionalFast.airpayLoadWaitMs(context);
+        long pollMs = com.airpay.money.steps.MoneyFunctionalFast.pollMs(context);
+        long end = System.currentTimeMillis() + waitMs;
         String src = pageSource();
         while (System.currentTimeMillis() < end && !src.contains("Continue")) {
-            sleep(500);
+            sleep(pollMs);
             src = pageSource();
         }
         return src;

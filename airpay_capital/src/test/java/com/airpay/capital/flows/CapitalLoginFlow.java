@@ -61,7 +61,12 @@ public class CapitalLoginFlow {
             biometric.dismissIfShown();
             return;
         }
-        if (!welcome.waitForLoginButton(Duration.ofSeconds(20))) {
+        if (!welcome.waitForLoginButton(Duration.ofSeconds(12))) {
+            home.openHome();
+            if (home.looksLoggedIn()) {
+                LOG.info("Already logged in after returning home — skipping login");
+                return;
+            }
             allowDialogs(Duration.ofSeconds(5));
         }
         welcome.tapLoginWithMobile();

@@ -146,21 +146,25 @@ public class ProductsHubScreen extends BaseScreen {
         if (isDisplayed()) {
             return true;
         }
-        // Inside MF/FD/NPS the Products tab is hidden — Back out before selecting Products.
-        for (int i = 0; i < 4 && !sourceContains("Products"); i++) {
+        long deadline = System.currentTimeMillis() + 12_000;
+        while (System.currentTimeMillis() < deadline && !isDisplayed()) {
+            if (sourceContains("Products", "FinSight", "Calculators") && !isDisplayed()) {
+                tapFirst(Duration.ofMillis(500),
+                        MobileWaits.xpath("//android.widget.Button[@content-desc='Products']"),
+                        MobileWaits.xpath("//android.view.View[@content-desc='Products']"),
+                        accessibility("Products"));
+                new FinSightHomeScreen(context).openProductsTab();
+                sleep(200);
+                if (isDisplayed()) {
+                    return true;
+                }
+            }
             if (!tapLabel("Back") && !tapFirst(Duration.ofMillis(400),
                     MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"))) {
-                break;
+                pressSystemBack();
             }
-            sleep(250);
+            sleep(200);
         }
-        if (!tapFirst(Duration.ofMillis(800),
-                MobileWaits.xpath("//android.widget.Button[@content-desc='Products']"),
-                MobileWaits.xpath("//android.view.View[@content-desc='Products']"),
-                accessibility("Products"))) {
-            new FinSightHomeScreen(context).openProductsTab();
-        }
-        sleep(200);
         return isDisplayed();
     }
 
