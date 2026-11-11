@@ -61,7 +61,9 @@ public class HomeScreen extends BaseScreen {
         String src = safeSource();
         if (src.contains("Login With Mobile Number") || src.contains("Enter 10-Digit Number")
                 || src.contains("Send OTP") || src.contains("Accept consent")
-                || src.contains("Authentication required") || src.contains("Enable biometric")) {
+                || src.contains("Enter OTP") || src.contains("Verify OTP") || src.contains("One time password")
+                || src.contains("Authentication required") || src.contains("Enable biometric")
+                || src.contains("without enabling biometric") || src.contains("Use biometric")) {
             return false;
         }
         return sourceContains("Personal Loan", "Home Loan", "Dashboard",

@@ -43,8 +43,6 @@ public class FhcSheetSteps {
     public void openPersonal() {
         fhc.openPersonalDetails();
         waitPersonalFields();
-        ScenarioSkip.unlessPresent(fhc.onPersonal(),
-                "Personal Details fields (Full Name / Pincode)");
         Assertions.assertThat(fhc.onPersonal())
                 .as("Personal Details must show the title, Full Name, and Pincode. Visible: " + fhc.visibleLabels())
                 .isTrue();
@@ -53,11 +51,8 @@ public class FhcSheetSteps {
     @When("I verify the Personal Details fields")
     public void verifyPersonalFields() {
         fhc.fillPersonalDetails();
-        if (!fhc.shows("Full Name")) {
-            fhc.scrollIntoDescription("Full Name");
-        }
-        Assertions.assertThat(fhc.shows("Full Name")).as("Full Name should be displayed").isTrue();
-        Assertions.assertThat(fhc.shows("Pincode")).as("Pincode should be displayed").isTrue();
+        Assertions.assertThat(fhc.reveal("Full Name")).as("Full Name should be displayed").isTrue();
+        Assertions.assertThat(fhc.reveal("Pincode")).as("Pincode should be displayed").isTrue();
     }
 
     @When("I tap Next on Personal Details")
@@ -68,8 +63,6 @@ public class FhcSheetSteps {
     @Then("the Personal Details page is displayed")
     public void personalDisplayed() {
         waitPersonalFields();
-        ScenarioSkip.unlessPresent(fhc.onPersonal(),
-                "Personal Details fields (Full Name / Pincode)");
         Assertions.assertThat(fhc.onPersonal())
                 .as("Personal Details must show the title, Full Name, and Pincode. Visible: " + fhc.visibleLabels())
                 .isTrue();
@@ -77,14 +70,10 @@ public class FhcSheetSteps {
 
     private void waitPersonalFields() {
         for (int i = 0; i < 5 && !fhc.onPersonal(); i++) {
-            if (!fhc.shows("Full Name")) {
-                fhc.scrollIntoDescription("Full Name");
-            }
-            if (!fhc.shows("Pincode")) {
-                fhc.scrollIntoDescription("Pincode");
-            }
+            fhc.reveal("Full Name");
+            fhc.reveal("Pincode");
             try {
-                Thread.sleep(800);
+                Thread.sleep(400);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
@@ -193,8 +182,6 @@ public class FhcSheetSteps {
 
     @Then("No is selected for the running loan question")
     public void noSelected() {
-        ScenarioSkip.unlessPresent(fhc.runningLoanQuestionDisplayed(),
-                "the running loan Yes or No question");
         Assertions.assertThat(fhc.shows("Add Loan"))
                 .as("No is selected, so Add Loan should not be displayed")
                 .isFalse();
@@ -987,7 +974,7 @@ public class FhcSheetSteps {
     }
 
     private void shows(String label, String name) {
-        Assertions.assertThat(fhc.shows(label))
+        Assertions.assertThat(fhc.reveal(label))
                 .as(name + " must show \"" + label + "\". Visible: " + fhc.visibleLabels())
                 .isTrue();
     }

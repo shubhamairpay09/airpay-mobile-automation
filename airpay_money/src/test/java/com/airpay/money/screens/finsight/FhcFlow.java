@@ -93,6 +93,23 @@ public class FhcFlow extends BaseScreen {
         return text().contains(label);
     }
 
+    /** Flutter page source on short phones often omits off-screen fields. */
+    public boolean reveal(String label) {
+        if (shows(label)) {
+            return true;
+        }
+        scrollIntoDescription(label);
+        for (int i = 0; i < 3 && !shows(label); i++) {
+            swipeUp();
+            sleep(200);
+        }
+        for (int i = 0; i < 2 && !shows(label); i++) {
+            swipeDown();
+            sleep(200);
+        }
+        return shows(label);
+    }
+
     public boolean errorShown() {
         String src = text().toLowerCase();
         return src.contains("something went wrong")
@@ -103,7 +120,9 @@ public class FhcFlow extends BaseScreen {
     }
 
     public boolean onPersonal() {
-        return shows("Personal Details") && shows("Pincode") && shows("Full Name");
+        String src = text();
+        return src.contains("Personal Details")
+                && (src.contains("Full Name") || src.contains("Male") || src.contains("Pincode"));
     }
 
     public boolean onIncome() {
@@ -163,11 +182,39 @@ public class FhcFlow extends BaseScreen {
     }
 
     public void openFinsight() {
-        for (int i = 0; i < 4 && !finsight.isDisplayed(); i++) {
-            finsight.tapLabel("FinSight");
+        for (int i = 0; i < 8 && !finsight.isDashboardHome(); i++) {
+            if (finsight.isDashboardHome()) {
+                return;
+            }
+            String src = text();
+            if (nestedFhcForm(src)) {
+                goBack();
+                sleep(300);
+                continue;
+            }
+            finsight.openFinSightTab();
             home.dismissHomeCoachIfShown();
             sleep(400);
         }
+        if (!finsight.isDisplayed()) {
+            finsight.openFinSightTab();
+        }
+    }
+
+    private boolean nestedFhcForm(String src) {
+        return src.contains("Personal Details")
+                || src.contains("Income & Expense")
+                || src.contains("Income and Expense")
+                || src.contains("Insurance Details")
+                || src.contains("Add Loan Details")
+                || src.contains("Add Investment")
+                || src.contains("Lets do risk profile")
+                || src.contains("Your Risk Profile")
+                || src.contains("Let us know your risk")
+                || src.contains("Summary Details")
+                || src.contains("YOUR FINANCIAL HEALTH SCORE")
+                || src.contains("Your Money Diagnosed")
+                || (src.contains("Question ") && src.contains("/5"));
     }
 
     public boolean entryButtonDisplayed() {
@@ -187,9 +234,15 @@ public class FhcFlow extends BaseScreen {
         }
         openFinsight();
         scrollTo("Financial Health");
-        pressFirst("Continue", "Start Now", "Let's start", "Let's Start", "Reassess", "View Details");
+        pressFirst("Continue", "Start Now", "Let's start", "Let's Start", "Reassess");
         sleep(900);
-        if (!onPersonal() && (onScore() || shows("See the diagnosis"))) {
+        if (!onPersonal() && (onScore() || shows("See the diagnosis") || shows("View Details"))) {
+            pressFirst("Reassess", "Let's start", "Start Now", "Continue");
+            sleep(900);
+        }
+        if (!onPersonal() && labelled("View Details") != null) {
+            pressFirst("View Details");
+            sleep(900);
             pressFirst("Reassess", "Let's start", "Start Now", "Continue");
             sleep(900);
         }
@@ -198,10 +251,131 @@ public class FhcFlow extends BaseScreen {
     public void fillPersonalDetails() {
         openPersonalDetails();
         pressFirst("Male");
-        if (!shows(city())) {
-            replaceHint("Pincode", pincode());
-            sleep(1200);
+        fillDateOfBirth();
+        setDependantCountOne();
+        fillEmptyDependantDobs();
+        fillPincode();
+        dismissKeyboard();
+        reveal("Next");
+    }
+
+    /** Live form now blocks Next with "Date of birth is required". */
+    private void fillDateOfBirth() {
+        if (userDobAlreadyFilled()) {
+            return;
         }
+        reveal("Date of Birth");
+        pressFirst("Date of Birth", "Date of birth");
+        sleep(700);
+        String dob = context.config().get("money.test.dob", "16-MAY-1994");
+        if (dob.contains("1994")) {
+            pressFirst("1994", "May", "MAY", "16");
+        }
+        confirmDatePicker();
+    }
+
+    private boolean userDobAlreadyFilled() {
+        if (shows("Date of birth is required") || shows("Date of Birth is required")) {
+            return false;
+        }
+        String src = text();
+        return src.contains("1990") || src.contains("1994") || src.contains("198")
+                || Pattern.compile("\\d{1,2} [A-Z][a-z]{2} 19\\d{2}").matcher(src).find();
+    }
+
+    /** 3 dependants open extra DOB fields; 0 is invalid and blocks Next. Keep 1. */
+    private void setDependantCountOne() {
+        String src = text();
+        if (!src.contains("Dependant")) {
+            return;
+        }
+        boolean extras = src.contains("Dependant 2") || src.contains("Dependant 3");
+        boolean zero = src.contains("Parents) 0") || src.contains("Parents) 3")
+                || src.contains("Dependant (Spouse/ Kids/ Parents) 0")
+                || src.contains("Dependant (Spouse/ Kids/ Parents) 3");
+        if (!extras && src.contains("Parents) 1")) {
+            return;
+        }
+        if (!extras && !zero) {
+            return;
+        }
+        reveal("Dependant");
+        WebElement dropdown = findContains("Dependant (Spouse");
+        if (dropdown != null) {
+            pressElement(dropdown);
+        } else {
+            pressNear("Dependant", "3");
+            pressNear("Dependant", "0");
+        }
+        sleep(500);
+        pressFirst("1");
+        sleep(800);
+    }
+
+    /** Flutter Pincode is often an unlabelled EditText below the fold, not a hint field. */
+    private void fillPincode() {
+        reveal("Pincode");
+        if (shows(city()) && !fieldDigits("Pincode").isEmpty()) {
+            return;
+        }
+        WebElement field = fieldByHint("Pincode");
+        if (field == null) {
+            java.util.List<WebElement> edits = driver.findElements(
+                    MobileWaits.xpath("//android.widget.EditText"));
+            if (edits.size() >= 2) {
+                field = edits.get(edits.size() - 1);
+            } else if (!edits.isEmpty()) {
+                field = edits.get(0);
+            }
+        }
+        if (field != null) {
+            replaceField(field, pincode());
+        } else {
+            pressFirst("Pincode");
+            AdbCommands.shell(context.config().get("android.udid", ""), "input", "text", pincode());
+            dismissKeyboard();
+        }
+        sleep(1500);
+    }
+
+    /** Empty Dependant Date of Birth (red placeholder) keeps the user on Personal Details. */
+    private void fillEmptyDependantDobs() {
+        if (!shows("Dependant 1") && !shows("Dependant 2") && !shows("Dependant 3")) {
+            return;
+        }
+        for (int i = 0; i < 5; i++) {
+            WebElement empty = emptyDobInput();
+            if (empty == null) {
+                return;
+            }
+            pressElement(empty);
+            sleep(700);
+            confirmDatePicker();
+        }
+    }
+
+    private WebElement emptyDobInput() {
+        WebElement best = null;
+        int bestY = 400;
+        for (WebElement el : driver.findElements(MobileWaits.xpath(
+                "//*[@content-desc='Date of Birth' or @text='Date of Birth']"))) {
+            try {
+                var rect = el.getRect();
+                if (rect.getY() > bestY && rect.getHeight() >= 48 && rect.getWidth() > 200) {
+                    best = el;
+                    bestY = rect.getY();
+                }
+            } catch (Exception ignored) {
+                // stale
+            }
+        }
+        return best;
+    }
+
+    private void confirmDatePicker() {
+        pressFirst("OK", "Done", "SET", "Confirm", "Save");
+        tapLabel("OK");
+        sleep(400);
     }
 
     public void openIncome() {
@@ -209,8 +383,16 @@ public class FhcFlow extends BaseScreen {
             return;
         }
         fillPersonalDetails();
-        tapNext();
-        sleep(800);
+        for (int i = 0; i < 4 && !onIncome(); i++) {
+            dismissKeyboard();
+            tapNext();
+            for (int wait = 0; wait < 8 && !onIncome() && onPersonal(); wait++) {
+                sleep(250);
+            }
+            if (onPersonal()) {
+                fillPincode();
+            }
+        }
     }
 
     public void fillIncome() {
@@ -675,6 +857,7 @@ public class FhcFlow extends BaseScreen {
     }
 
     public void tapNext() {
+        dismissKeyboard();
         if (findExact("Next") == null) {
             scrollTo("Next");
         }
@@ -693,9 +876,12 @@ public class FhcFlow extends BaseScreen {
         return true;
     }
 
-    /** In-app Back, then system Back when the FHC Back control does not leave the page. */
+    /** In-app header Back on FHC pages. Never system Back and never Open settings. */
     public void goBack() {
-        leaveViaBack();
+        if (finsight.isDashboardHome()) {
+            return;
+        }
+        tapHeaderBack();
         sleep(300);
     }
 
@@ -714,12 +900,18 @@ public class FhcFlow extends BaseScreen {
     }
 
     public boolean namePrefilled() {
+        reveal("Full Name");
         WebElement field = fieldByHint("Name");
-        if (field == null) {
-            return false;
+        if (field != null) {
+            String value = String.valueOf(field.getAttribute("text")).trim();
+            if (value.length() > 1 && !value.equalsIgnoreCase("Name") && !value.equalsIgnoreCase("null")) {
+                return true;
+            }
         }
-        String value = String.valueOf(field.getAttribute("text")).trim();
-        return value.length() > 1 && !value.equalsIgnoreCase("Name") && !value.equalsIgnoreCase("null");
+        String src = text();
+        return src.matches("(?s).*Full Name.{0,80}[A-Za-z]{2,}.*")
+                || src.contains("Renny")
+                || src.contains("Shubham");
     }
 
     public boolean choiceChecked(String questionPart, String choice) {

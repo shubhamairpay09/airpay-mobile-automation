@@ -293,6 +293,7 @@ public final class MoneyExcel {
         put(book, "Mutual Fund", "TC_009", "ListName", "Emergency Fund", "");
         put(book, "Mutual Fund", "TC_010", "ListName", "Bluechip Fund", "");
         put(book, "Mutual Fund", "TC_011", "ListName", "Nifty 50", "");
+        put(book, "Mutual Fund", "TC_011", "FundName", "Navi Nifty 50 Index Fund", "");
         put(book, "Mutual Fund", "TC_012", "ListName", "Nifty Mid Cap", "");
         put(book, "Mutual Fund", "TC_013", "ListName", "Nifty 100", "");
         put(book, "Mutual Fund", "TC_014", "ListName", "Nifty Small Cap 50", "");

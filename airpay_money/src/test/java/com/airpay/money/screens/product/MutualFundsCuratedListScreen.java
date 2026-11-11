@@ -115,10 +115,12 @@ public class MutualFundsCuratedListScreen extends BaseScreen {
         if (!betterThanFdsListVisible()) {
             return false;
         }
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
         for (int attempt = 0; attempt < 3; attempt++) {
             int[] point = filterTapPoint();
-            int x = point == null ? 962 : point[0];
-            int y = point == null ? 174 : point[1];
+            int x = point == null ? (int) (size[0] * 0.90) : point[0];
+            int y = point == null ? (int) (size[1] * 0.11) : point[1];
             shellTap(x, y);
             sleep(1100);
             if (filterSheetOpen()) {
@@ -148,7 +150,9 @@ public class MutualFundsCuratedListScreen extends BaseScreen {
                     continue;
                 }
                 var rect = node.getRect();
-                if (rect.getY() < 360 && rect.getX() > 700 && rect.getWidth() < 280
+                int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                        context.config().get("android.udid", ""));
+                if (rect.getY() < size[1] * 0.24 && rect.getX() > size[0] * 0.70 && rect.getWidth() < 280
                         && rect.getHeight() < 280 && rect.getX() > rightmost) {
                     point = new int[] {
                             rect.getX() + rect.getWidth() / 2,

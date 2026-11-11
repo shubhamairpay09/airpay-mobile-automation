@@ -40,24 +40,61 @@ public class MutualFundsRecommendationScreen extends BaseScreen {
     }
 
     public boolean isDisplayed() {
-        return firstPresent(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.view.View[contains(@content-desc,'Funds basis on your risk')]"),
-                MobileWaits.xpath("//android.widget.EditText[@content-desc='']")) != null;
+        String src = pageSource().replace('\n', ' ').replace('\r', ' ')
+                .replace("&#10;", " ").replaceAll("\\s+", " ");
+        return src.contains("Funds basis on your")
+                || src.contains("Funds based on your");
     }
 
     public boolean openFundCard() {
-        for (WebElement card : driver.findElements(MobileWaits.xpath(
-                "//android.view.View[@clickable='true' and contains(@content-desc,'Fund')]"))) {
-            try {
-                String desc = String.valueOf(card.getAttribute("content-desc"));
-                if (card.isDisplayed() && desc.length() > 24) {
-                    card.click();
-                    sleep(800);
-                    return true;
-                }
-            } catch (Exception ignored) {
-                // stale
+        String[] names = {
+                "DSP Liquidity Fund",
+                "Aditya Birla Sun Life Liquid",
+                "Aditya Birla Sun Life Pharma",
+                "PGIM India Liquid",
+                "WhiteOak Capital",
+                "Nippon India Multi",
+                "UTI Liquid",
+                "UTI Healthcare"
+        };
+        for (String name : names) {
+            if (tapNamedFund(name) && waitFundDetails(4000)) {
+                return true;
             }
+        }
+        if (tapFirstAny(Duration.ofSeconds(3),
+                MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc,'Fund')"
+                        + " and (contains(@content-desc,'Growth') or contains(@content-desc,'Plan'))"
+                        + " and not(contains(@content-desc,'Funds basis'))"
+                        + " and not(contains(@content-desc,'Funds based'))"
+                        + " and not(contains(@content-desc,'Mutual Funds'))]"))) {
+            return waitFundDetails(4000);
+        }
+        return waitFundDetails(500);
+    }
+
+    private boolean tapNamedFund(String name) {
+        if (tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath("//*[contains(@content-desc," + xpathLiteral(name) + ")]"))) {
+            return true;
+        }
+        WebElement card = firstPresent(Duration.ofMillis(700),
+                MobileWaits.xpath("//*[contains(@content-desc," + xpathLiteral(name) + ")]"));
+        if (card == null) {
+            return false;
+        }
+        pressElement(card);
+        return true;
+    }
+
+    private boolean waitFundDetails(int timeoutMs) {
+        long end = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < end) {
+            String src = pageSource();
+            if (src.contains("One Time") || src.contains("Monthly") || src.contains("Fund Details")) {
+                return true;
+            }
+            sleep(250);
         }
         return false;
     }

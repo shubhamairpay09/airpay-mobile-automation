@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public final class AdbCommands {
@@ -91,17 +92,20 @@ public final class AdbCommands {
             ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            String out;
-            try (InputStream in = process.getInputStream()) {
-                out = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            }
+            CompletableFuture<String> stdout = CompletableFuture.supplyAsync(() -> {
+                try (InputStream in = process.getInputStream()) {
+                    return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                } catch (Exception e) {
+                    return "";
+                }
+            });
             boolean finished = process.waitFor(timeoutSec, TimeUnit.SECONDS);
             if (!finished) {
                 process.destroyForcibly();
                 LOG.warn("adb timed out: {}", String.join(" ", cmd));
-                return new Result(1, out);
+                return new Result(1, stdout.getNow(""));
             }
-            return new Result(process.exitValue(), out);
+            return new Result(process.exitValue(), stdout.get(2, TimeUnit.SECONDS));
         } catch (Exception e) {
             LOG.warn("adb failed: {} | {}", String.join(" ", cmd), e.toString());
             return new Result(1, "");

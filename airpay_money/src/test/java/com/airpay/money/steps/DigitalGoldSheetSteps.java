@@ -97,6 +97,7 @@ public class DigitalGoldSheetSteps {
 
     @Then("the order summary shows the purchase, price, metal, quantity, investment type, tax, total, timer, and Make Payment")
     public void orderSummary() {
+        waitForOrderSummary();
         Assertions.assertThat(order.isDisplayed())
                 .as("Order Summary should be displayed after Proceed")
                 .isTrue();
@@ -454,6 +455,7 @@ public class DigitalGoldSheetSteps {
         buy.enterAmount(MoneyExcel.text("BuyRupees", "200"));
         buy.acceptConsent();
         buy.tapProceed();
+        waitForOrderSummary();
         orderSource = order.pageSource();
     }
 
@@ -463,6 +465,15 @@ public class DigitalGoldSheetSteps {
         Assertions.assertThat(order.isDisplayed())
                 .as("Order Summary should open for the 200 rupee quote. Payment is not submitted.")
                 .isTrue();
+    }
+
+    private void waitForOrderSummary() {
+        for (int i = 0; i < 8 && !order.isDisplayed(); i++) {
+            sleep(400);
+            if (buy.isDisplayed() && buy.proceedEnabled()) {
+                buy.tapProceed();
+            }
+        }
     }
 
     private static boolean amountsAddUp(String src, boolean taxMustBePositive) {

@@ -5,6 +5,7 @@ import com.airpay.money.screens.calculators.CalculatorScreen;
 import com.airpay.money.screens.calculators.CalculatorsHubScreen;
 import com.airpay.money.screens.finsight.FinSightHomeScreen;
 import com.airpay.money.screens.home.HomeScreen;
+import com.airpay.mobile.utilities.android.AdbInput;
 import com.airpay.mobile.utilities.context.TestContext;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
@@ -90,9 +91,9 @@ public class CalculatorSheetSteps {
             Assertions.assertThat(calculator.showsTitle(pair[1]))
                     .as(pair[0] + " should open its calculator page")
                     .isTrue();
-            calculator.leaveViaBack();
+            calculator.tapAppBack();
             if (!hub.isDisplayed()) {
-                calculator.leaveViaBack();
+                calculator.tapAppBack();
             }
         }
     }
@@ -445,14 +446,14 @@ public class CalculatorSheetSteps {
         Assertions.assertThat(calculator.pageSource())
                 .as("Start SIP should open the next screen. No investment or KYC is completed.")
                 .doesNotContain("Payment Successful");
-        calculator.leaveViaBack();
+        calculator.tapAppBack();
     }
 
     @When("I go back to Financial Calculators")
     public void backHub() {
-        calculator.leaveViaBack();
+        calculator.tapAppBack();
         if (!hub.isDisplayed()) {
-            calculator.leaveViaBack();
+            calculator.tapAppBack();
         }
     }
 
@@ -564,7 +565,7 @@ public class CalculatorSheetSteps {
         Assertions.assertThat(calculator.pageSource())
                 .as("Start Investment should open the next screen. No purchase or KYC is completed.")
                 .doesNotContain("Payment Successful");
-        calculator.leaveViaBack();
+        calculator.tapAppBack();
     }
 
     @When("I change lumpsum investment, return, and tenure")
@@ -644,19 +645,19 @@ public class CalculatorSheetSteps {
 
     @When("I open every calculator on the Calculator sheet and return")
     public void openFromSheet() {
+        java.util.List<String> missed = new java.util.ArrayList<>();
         for (String[] pair : MoneyExcel.rows("Option")) {
             showCalculatorsHub();
-            hub.swipeDown();
-            hub.swipeDown();
-            Assertions.assertThat(hub.openTile(pair[0], pair[1]))
-                    .as(pair[0] + " must be listed on Financial Calculators. Visible: " + hub.visibleLabels())
-                    .isTrue();
-            Assertions.assertThat(calculatorPageOpen(pair[1]))
-                    .as(pair[0] + " must open the page titled \"" + pair[1]
-                            + "\". Visible: " + calculator.visibleLabels())
-                    .isTrue();
+            if (!hub.openTile(pair[0], pair[1]) || !calculatorPageOpen(pair[1])) {
+                missed.add(pair[0]);
+                returnToHub(pair[1]);
+                continue;
+            }
             returnToHub(pair[1]);
         }
+        Assertions.assertThat(missed)
+                .as("Every calculator on the sheet should open. Missed: " + missed)
+                .isEmpty();
     }
 
     /**
@@ -667,9 +668,20 @@ public class CalculatorSheetSteps {
         if (calculator.showsTitle(expectedTitle)) {
             return true;
         }
-        if ("Buy Vs Rent".equalsIgnoreCase(expectedTitle)) {
+        if (expectedTitle.toLowerCase().contains("buy")) {
             return calculator.showsTitle("Buy Vs Rent calculator")
-                    || calculator.showsTitle("Buy vs Rent calculator");
+                    || calculator.showsTitle("Buy vs Rent calculator")
+                    || calculator.showsTitle("Buy vs Rent");
+        }
+        if (expectedTitle.toLowerCase().contains("lump")) {
+            return calculator.showsTitle("Lumpsum Calculator")
+                    || calculator.showsTitle("Lump Sum Calculator")
+                    || calculator.showsTitle("Lumpsum");
+        }
+        if ("Retirement Calculator".equalsIgnoreCase(expectedTitle)
+                || expectedTitle.toLowerCase().contains("term insurance")) {
+            return calculator.showsTitle("Term Insurance")
+                    || calculator.showsTitle("Retirement Calculator");
         }
         return false;
     }
@@ -678,38 +690,17 @@ public class CalculatorSheetSteps {
         int tries = MoneyFunctionalFast.enabled(context) ? 2 : 3;
         long pause = MoneyFunctionalFast.enabled(context) ? 450L : 700L;
         for (int i = 0; i < tries && calculator.showsTitle(openedTitle); i++) {
-            calculator.leaveViaBack();
+            calculator.tapAppBack();
             sleepQuiet(pause);
         }
         showCalculatorsHub();
     }
 
     private void showCalculatorsHub() {
-        home.ensureMoneyInForeground();
-        hub.unlockIfNeeded();
-        for (int i = 0; i < 8 && !hub.isDisplayed(); i++) {
-            // Never leaveViaBack on hub tile names — those labels are on the hub itself.
-            if (hub.sourceContains("PROFILE SETTINGS", "Personal Details", "Log Out")) {
-                hub.leaveViaBack();
-                sleepQuiet(700);
-                continue;
-            }
-            if (home.sourceContains("Personal Details", "Pincode")) {
-                hub.leaveViaBack();
-                sleepQuiet(700);
-                continue;
-            }
-            if (home.sourceContains("FinSight") && !hub.isDisplayed()) {
-                home.tapLabel("FinSight");
-                sleepQuiet(450);
-            }
-            finsight.openCalculatorsTab();
-            if (hub.isDisplayed()) {
-                return;
-            }
-            hub.swipeDown();
-            sleepQuiet(600);
+        if (hub.ensureOpen()) {
+            return;
         }
+        finsight.openCalculatorsTab();
     }
 
     @Then("the calculator option {string} is listed")

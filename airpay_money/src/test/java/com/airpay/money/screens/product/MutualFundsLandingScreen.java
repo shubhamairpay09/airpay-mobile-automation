@@ -82,9 +82,15 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     public boolean isDisplayed() {
-        return firstPresent(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.view.View[@content-desc='Mutual Funds']"),
-                MobileWaits.xpath("//android.widget.Button[@content-desc='Dashboard']")) != null;
+        String src = pageSource();
+        // Products/Home hub also has a Mutual Funds tile — that is not this dashboard.
+        if (src.contains("Investments") && (src.contains("Digital Gold") || src.contains("NPS"))) {
+            return false;
+        }
+        return src.contains("Mutual Funds")
+                && (src.contains("Create Goal") || src.contains("Add Goal")
+                || src.contains("My Goals") || src.contains("View all Mutual Funds")
+                || src.contains("Your Risk Profile") || src.contains("Start eKYC"));
     }
 
     /** Scroll MF dashboard to top then find {@code label} without requiring a tap. */
@@ -163,56 +169,129 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     /**
-     * Recommendation and View all are one button. A center tap stays on the dashboard.
-     * View all is the right side of that row.
+     * After My Goals the Recommendation heading has a separate View all chip on the right
+     * (2.1.4 dump: View all [552,1330]-[680,1372], clickable). A center tap of that row
+     * stays on the dashboard. Never match "View all Mutual Funds".
      */
     public boolean openRecommendationList() {
+        if (recommendationListOpen()) {
+            return true;
+        }
+        String start = pageSource();
+        if (start.contains("Fund Details") || (start.contains("One Time") && start.contains("Monthly"))) {
+            leaveViaBack();
+            sleep(500);
+            if (recommendationListOpen()) {
+                return true;
+            }
+            start = pageSource();
+        }
+        if (!start.contains("Recommendation")) {
+            scrollToTop();
+        }
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
         for (int i = 0; i < 5; i++) {
-            WebElement row = firstPresent(Duration.ofMillis(800),
-                    MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc,'Recommendation') and contains(@content-desc,'View all')]"));
-            if (row != null) {
-                var rect = row.getRect();
-                tapAt(rect.getX() + rect.getWidth() - 70, rect.getY() + rect.getHeight() / 2);
-                sleep(200);
-                if (pageSource().contains("Funds basis on your risk")) {
+            String src = pageSource();
+            if (recommendationListOpen(src)) {
+                return true;
+            }
+            if (src.contains("Recommendation")) {
+                tapRecommendationViewAll(size);
+                if (waitRecommendationList(2000)) {
                     return true;
                 }
+                // W3C can report a click without Flutter navigation — press the chip on the right.
+                pressViewAllOnRecommendationRow(size);
+                if (waitRecommendationList(2000)) {
+                    return true;
+                }
+                swipeUpSmall();
+                continue;
             }
             swipeUpSmall();
+        }
+        return recommendationListOpen();
+    }
+
+    /** Exact content-desc View all — not "View all Mutual Funds". */
+    private boolean tapRecommendationViewAll(int[] size) {
+        return tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath("//*[@content-desc='View all']"),
+                accessibility("View all"))
+                || pressViewAllOnRecommendationRow(size);
+    }
+
+    /** View all sits on the right of the Recommendation heading (same row, ~86% of width). */
+    private boolean pressViewAllOnRecommendationRow(int[] size) {
+        WebElement viewAll = firstPresent(Duration.ofMillis(600),
+                MobileWaits.xpath("//*[@content-desc='View all']"));
+        if (viewAll != null) {
+            pressElement(viewAll);
+            return true;
+        }
+        WebElement heading = firstPresent(Duration.ofMillis(600),
+                MobileWaits.xpath("//*[@content-desc='Recommendation']"));
+        if (heading != null) {
+            var rect = heading.getRect();
+            shellPress((int) (size[0] * 0.86), rect.getY() + Math.max(20, rect.getHeight() / 2));
+            return true;
         }
         return false;
     }
 
+    private boolean waitRecommendationList(int timeoutMs) {
+        long end = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < end) {
+            if (recommendationListOpen()) {
+                return true;
+            }
+            sleep(250);
+        }
+        return recommendationListOpen();
+    }
+
+    public boolean recommendationListOpen() {
+        return recommendationListOpen(pageSource());
+    }
+
+    private boolean recommendationListOpen(String src) {
+        // Title wraps: "Funds basis on your" / "risk profile"
+        String flat = src.replace('\n', ' ').replace('\r', ' ')
+                .replace("&#10;", " ").replaceAll("\\s+", " ");
+        return flat.contains("Funds basis on your")
+                || flat.contains("Funds based on your");
+    }
+
     public void openTab(String label) {
-        tapFirst(Duration.ofSeconds(2),
+        tapFirstAny(Duration.ofSeconds(3),
                 MobileWaits.xpath("//android.widget.Button[@content-desc=" + xpathLiteral(label) + "]"),
                 accessibility(label));
-        sleep(120);
+        sleep(400);
     }
 
     /**
-     * MF tab Back must stay inside Mutual Funds. System Back often exits to the Products hub.
+     * From Portfolio / Transactions / Profile: in-app Back first (W3C, then header chip).
+     * If Back does not leave the tab, tap the Dashboard tab — stay inside Mutual Funds.
+     * System Back is not used here; it leaves Mutual Funds or stays on Portfolio.
      */
     public boolean returnToDashboardFromTab() {
-        if (!isDisplayed()) {
-            return false;
-        }
         if (onDashboardTab()) {
             return true;
         }
-        for (int i = 0; i < 3; i++) {
-            WebElement backBtn = firstPresent(Duration.ofMillis(800),
-                    MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
-                    MobileWaits.xpath("//*[@content-desc='Back']"));
-            if (backBtn != null) {
-                pressElement(backBtn);
-            } else {
-                tapHeaderBack();
-            }
-            sleep(700);
+        if (tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
+                MobileWaits.xpath("//*[@content-desc='Back']"),
+                accessibility("Back"))) {
+            sleep(500);
             if (onDashboardTab()) {
                 return true;
             }
+        }
+        pressHeaderBackChip();
+        sleep(500);
+        if (onDashboardTab()) {
+            return true;
         }
         openTab("Dashboard");
         sleep(500);
@@ -220,18 +299,48 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     public boolean onDashboardTab() {
-        if (!isDisplayed()) {
+        String src = pageSource();
+        if (src.contains("Investments") && (src.contains("Digital Gold") || src.contains("NPS"))) {
             return false;
         }
-        String src = pageSource();
-        return src.contains("Mutual Funds")
-                && !src.contains("Current Value")
-                && (src.contains("Create Goal") || src.contains("Your Risk Profile")
-                || src.contains("View all Mutual Funds") || src.contains("Start eKYC"));
+        boolean dashboardCues = src.contains("Add Goal") || src.contains("My Goals")
+                || src.contains("Create Goal") || src.contains("View all Mutual Funds")
+                || src.contains("Your Risk Profile") || src.contains("Start eKYC")
+                || src.contains("Recommendation");
+        boolean portfolioOnly = src.contains("Current Value") && !dashboardCues;
+        return src.contains("Mutual Funds") && dashboardCues && !portfolioOnly;
+    }
+
+    /** Nested MF pages (fund details / recommendation list) Back until the dashboard. */
+    public boolean ensureDashboard() {
+        for (int i = 0; i < 5; i++) {
+            if (onDashboardTab() || isDisplayed()) {
+                return true;
+            }
+            String src = pageSource();
+            if (src.contains("Fund Details") || src.contains("Funds basis on your")
+                    || src.contains("Funds based on your")
+                    || (src.contains("One Time") && src.contains("Monthly"))
+                    || (src.contains("Delete") && src.contains("Monthly SIP"))) {
+                leaveViaBack();
+                continue;
+            }
+            if (src.contains("Current Value") || src.contains("Transactions")
+                    || (src.contains("Profile") && src.contains("Mutual Funds"))) {
+                openTab("Dashboard");
+                continue;
+            }
+            break;
+        }
+        return onDashboardTab() || isDisplayed();
     }
 
     public boolean goalListed(String name, String amount) {
         String grouped = groupedAmount(amount);
+        if (goalDetailsOpen(name)) {
+            String src = pageSource();
+            return src.contains(amount) || src.contains(grouped);
+        }
         for (int i = 0; i < 3; i++) {
             swipeDownSmall();
         }
@@ -251,14 +360,36 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     public boolean openGoal(String name) {
-        for (int i = 0; i < 6; i++) {
-            if (tapArrowBeside(name)) {
-                sleep(150);
-                return true;
+        if (goalDetailsOpen(name)) {
+            return true;
+        }
+        scrollToTop();
+        String needle = name.toLowerCase();
+        String titled = name.isEmpty() ? name
+                : Character.toUpperCase(name.charAt(0)) + name.substring(1);
+        for (int i = 0; i < 12; i++) {
+            String src = pageSource();
+            if (src.toLowerCase().contains(needle)) {
+                if (tapFirstAny(Duration.ofSeconds(3),
+                        accessibility(titled),
+                        accessibility(name),
+                        MobileWaits.xpath("//*[contains(@content-desc," + xpathLiteral(titled) + ")]"),
+                        MobileWaits.xpath("//*[contains(@content-desc," + xpathLiteral(name) + ")]"))) {
+                    sleep(800);
+                    return true;
+                }
             }
             swipeUpSmall();
         }
-        return tapLabel(name);
+        return goalDetailsOpen(name);
+    }
+
+    private boolean goalDetailsOpen(String name) {
+        String src = pageSource();
+        return src.contains("Delete")
+                && src.toLowerCase().contains(name.toLowerCase())
+                && (src.contains("Monthly SIP") || src.contains("Goal created on")
+                || src.contains("Desired goal value"));
     }
 
     private boolean tapArrowBeside(String name) {
@@ -299,7 +430,7 @@ public class MutualFundsLandingScreen extends BaseScreen {
                 }
             }
             if (arrow != null) {
-                arrow.click();
+                pressElement(arrow);
                 return true;
             }
             tapAt(rect.getX() + Math.min(rect.getWidth() / 2, 200), rect.getY() + rect.getHeight() / 2);
@@ -324,8 +455,9 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     private void swipeDownSmall() {
-        var size = driver.manage().window().getSize();
-        drag(size.width / 2, (int) (size.height * 0.35), size.width / 2, (int) (size.height * 0.72));
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        drag(size[0] / 2, (int) (size[1] * 0.35), size[0] / 2, (int) (size[1] * 0.72));
         sleep(350);
     }
 
@@ -334,21 +466,51 @@ public class MutualFundsLandingScreen extends BaseScreen {
      * A center click stays on the dashboard. The Add Goal label is on the right.
      */
     public boolean openAddGoal() {
+        if (createGoalOpen()) {
+            return true;
+        }
+        String here = pageSource();
+        if (here.contains("Delete") && (here.contains("Monthly SIP") || here.contains("Desired goal value"))) {
+            leaveViaBack();
+            sleep(700);
+        }
+        scrollToTop();
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
         for (int i = 0; i < 8; i++) {
-            WebElement row = firstPresent(Duration.ofMillis(800),
-                    MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Add Goal')]"));
+            if (tapQuick("Add Goal") || tapLabel("Add Goal")
+                    || tapQuick("Create Goal") || tapLabel("Create Goal")) {
+                sleep(350);
+                if (createGoalOpen()) {
+                    return true;
+                }
+            }
+            WebElement row = firstPresent(Duration.ofMillis(600),
+                    MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Add Goal')]"),
+                    MobileWaits.xpath("//*[contains(@content-desc,'Add Goal')]"));
             if (row != null) {
                 var rect = row.getRect();
-                tapAt(rect.getX() + rect.getWidth() - 90, rect.getY() + rect.getHeight() / 2);
-                sleep(200);
-                String src = pageSource();
-                if (src.contains("Create Goal") && src.contains("Bike")) {
+                int x = rect.getWidth() > 40
+                        ? rect.getX() + rect.getWidth() - Math.max(40, rect.getWidth() / 8)
+                        : (int) (size[0] * 0.88);
+                int y = rect.getHeight() > 8
+                        ? rect.getY() + rect.getHeight() / 2
+                        : (int) (size[1] * 0.38);
+                tapAt(x, y);
+                sleep(350);
+                if (createGoalOpen()) {
                     return true;
                 }
             }
             swipeUpSmall();
         }
-        return false;
+        return createGoalOpen();
+    }
+
+    private boolean createGoalOpen() {
+        String src = pageSource();
+        return (src.contains("Create Goal") && (src.contains("Bike") || src.contains("Select Tenure")))
+                || (src.contains("Select Tenure") && src.contains("year"));
     }
 
     /**
@@ -438,44 +600,32 @@ public class MutualFundsLandingScreen extends BaseScreen {
         return false;
     }
 
-    /** The portfolio eye icon has no content description. It is the small control beside the values. */
+    /**
+     * Portfolio header eye — unlabeled ImageView top-right (dump: [622,64]-[690,146]).
+     * Not Help (named) and not the Dashboard bookmark.
+     */
     public boolean toggleEye() {
-        WebElement eye = smallestIcon(
-                "//*[@clickable='true' and (self::android.widget.ImageView or self::android.widget.ImageButton or self::android.view.View)]");
-        if (eye == null) {
-            eye = smallestIcon("//android.widget.ImageView");
+        if (!pageSource().contains("Current Value")) {
+            openTab("Portfolio");
+            sleep(600);
         }
-        if (eye == null) {
-            return false;
+        if (tapFirstAny(Duration.ofSeconds(3),
+                MobileWaits.xpath("//android.widget.ImageView[@clickable='true']"))) {
+            sleep(500);
+            return true;
         }
-        eye.click();
-        sleep(120);
+        WebElement eye = firstPresent(Duration.ofSeconds(2),
+                MobileWaits.xpath("//android.widget.ImageView[@clickable='true']"));
+        if (eye != null) {
+            pressElement(eye);
+            sleep(500);
+            return true;
+        }
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        shellPress((int) (size[0] * 0.91), (int) (size[1] * 0.066));
+        sleep(500);
         return true;
-    }
-
-    private WebElement smallestIcon(String xpath) {
-        WebElement eye = null;
-        int bestArea = Integer.MAX_VALUE;
-        for (WebElement icon : driver.findElements(MobileWaits.xpath(xpath))) {
-            try {
-                if (!icon.isDisplayed()) {
-                    continue;
-                }
-                int y = icon.getLocation().getY();
-                int x = icon.getLocation().getX();
-                int height = icon.getSize().getHeight();
-                int width = icon.getSize().getWidth();
-                int area = width * height;
-                if (y > 180 && y < 1100 && x > 400 && height > 16 && width > 16
-                        && height < 160 && width < 160 && area < bestArea) {
-                    eye = icon;
-                    bestArea = area;
-                }
-            } catch (Exception ignored) {
-                // stale node while the dashboard is scrolling
-            }
-        }
-        return eye;
     }
 
     private boolean tapQuick(String label) {
@@ -528,7 +678,8 @@ public class MutualFundsLandingScreen extends BaseScreen {
 
     private boolean fullyVisible(WebElement el) {
         var rect = el.getRect();
-        int screenBottom = driver.manage().window().getSize().getHeight();
+        int screenBottom = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""))[1];
         int bottom = rect.getY() + rect.getHeight();
         return rect.getHeight() > 160 && rect.getY() > 160 && bottom < screenBottom - 180;
     }
@@ -542,15 +693,17 @@ public class MutualFundsLandingScreen extends BaseScreen {
     }
 
     private void swipeUpSmall() {
-        var size = driver.manage().window().getSize();
-        drag(size.width / 2, (int) (size.height * 0.72), size.width / 2, (int) (size.height * 0.46));
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        drag(size[0] / 2, (int) (size[1] * 0.72), size[0] / 2, (int) (size[1] * 0.46));
         sleep(80);
     }
 
     private void swipeLeft() {
-        var size = driver.manage().window().getSize();
-        int y = (int) (size.height * 0.55);
-        drag((int) (size.width * 0.86), y, (int) (size.width * 0.16), y);
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        int y = (int) (size[1] * 0.55);
+        drag((int) (size[0] * 0.86), y, (int) (size[0] * 0.16), y);
         sleep(80);
     }
 

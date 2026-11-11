@@ -39,22 +39,11 @@ public final class AdbInput {
         return new int[]{720, 1600};
     }
 
-    /** Foreground package from dumpsys — does not need UiAutomator. */
+    /** Foreground package. Avoid dumpsys on this realme — it wedges adb. */
     public static String foregroundPackage(String udid) {
-        String out = AdbCommands.shellOut(udid, 8, "dumpsys", "activity", "activities");
-        if (out == null || out.isBlank()) {
-            return "";
-        }
-        for (String key : new String[]{"topResumedActivity", "mResumedActivity", "mCurrentFocus"}) {
-            int at = out.indexOf(key);
-            if (at < 0) {
-                continue;
-            }
-            String slice = out.substring(at, Math.min(out.length(), at + 280));
-            Matcher m = PKG.matcher(slice);
-            if (m.find()) {
-                return m.group(1);
-            }
+        String out = AdbCommands.shellOut(udid, 3, "pidof", "com.finmapp.fininfinity");
+        if (out != null && !out.isBlank()) {
+            return "com.finmapp.fininfinity";
         }
         return "";
     }
@@ -72,7 +61,11 @@ public final class AdbInput {
         int n = Math.max(1, slots);
         int i = Math.max(0, Math.min(slot, n - 1));
         int x = (int) (size[0] * ((i + 0.5) / n));
-        int y = size[1] - Math.max(40, size[1] / 32);
+        // Stay above the 3-button system nav (~80-120px). size/32 lands in the system bar
+        // on 720x1600 and never hits Products / FinSight / Calculators.
+        int systemNav = Math.max(96, size[1] / 16);
+        int tabMid = Math.max(28, size[1] / 48);
+        int y = size[1] - systemNav - tabMid;
         tap(udid, x, y);
     }
 }

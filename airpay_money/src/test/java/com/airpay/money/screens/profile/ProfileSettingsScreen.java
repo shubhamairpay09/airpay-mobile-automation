@@ -121,13 +121,49 @@ public class ProfileSettingsScreen extends BaseScreen {
         return false;
     }
 
+    /** My Documents row is labelled "Pan card" (2.1.4). */
+    public boolean openPanCard() {
+        if (tapFirstAny(Duration.ofSeconds(3),
+                accessibility("Pan card"),
+                accessibility("PAN Card"),
+                MobileWaits.xpath("//*[@content-desc='Pan card' or @text='Pan card']"),
+                MobileWaits.xpath("//*[contains(translate(@content-desc,'PANCARD','pancard'),'pan card')"
+                        + " or contains(translate(@text,'PANCARD','pancard'),'pan card')]"))) {
+            sleep(900);
+            return true;
+        }
+        return openContaining("Pan card") || openContaining("PAN Card");
+    }
+
     public boolean uploadedDocumentDisplayed() {
         String src = text();
         return src.contains("My Documents") && !src.contains("No Document found");
     }
 
     public boolean panDetailsDisplayed() {
-        return text().matches("(?s).*PAN.*([A-Z]{5}[0-9]{4}[A-Z]|X{4,}).*");
+        long deadline = System.currentTimeMillis() + 8_000;
+        while (System.currentTimeMillis() < deadline) {
+            String src = text();
+            boolean last4 = panLast4Visible(src);
+            boolean image = src.contains("ImageView") || src.contains("Image")
+                    || firstPresent(Duration.ofMillis(500),
+                    MobileWaits.xpath("//android.widget.ImageView"),
+                    MobileWaits.xpath("//android.widget.Image")) != null
+                    || (last4 && !src.contains("Aadhaar card"));
+            if (last4 && image) {
+                return true;
+            }
+            sleep(300);
+        }
+        return false;
+    }
+
+    private boolean panLast4Visible(String src) {
+        if (src.matches("(?s).*[xX]{3,}[A-Za-z0-9]{4}.*")) {
+            return true;
+        }
+        String configured = context.config().get("money.test.pan", "").replaceAll("\\D", "");
+        return configured.length() >= 4 && src.contains(configured.substring(configured.length() - 4));
     }
 
     public boolean titleNearTop(String label) {
@@ -173,15 +209,54 @@ public class ProfileSettingsScreen extends BaseScreen {
     }
 
     public boolean personalDetailsAgain() {
-        // Edit form still open → one more Back (header icon often has no content-desc).
         if (onEditPersonalForm()) {
-            goBack();
+            backFromEditToPersonalDetails();
         }
+        if (settingsDisplayed() && !onPersonalDetailsView()) {
+            openRow("Personal Details");
+            sleep(600);
+        }
+        return onPersonalDetailsView();
+    }
+
+    /** Personal Details view (pencil / fields) — not the Update form. */
+    private boolean onPersonalDetailsView() {
         String src = text().toLowerCase(Locale.ROOT);
         boolean title = src.contains("personal detail");
-        boolean editCue = src.contains("edit personal") || displayed("Edit personal details") != null;
-        boolean notEditing = !onEditPersonalForm();
-        return title && editCue && notEditing;
+        boolean fields = src.contains("father") || src.contains("aadhaar") || src.contains("pan number");
+        return title && fields && !onEditPersonalForm();
+    }
+
+    /** Unlabeled orange pencil on the right of PAN / Aadhaar. */
+    public boolean tapEditPencil() {
+        if (editPersonalDisplayed()) {
+            return true;
+        }
+        if (pressExact("Edit personal details")
+                || tapFirstAny(Duration.ofSeconds(2),
+                accessibility("Edit personal details"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Edit personal')]"))) {
+            sleep(700);
+            if (editPersonalDisplayed()) {
+                return true;
+            }
+        }
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        WebElement row = firstPresent(Duration.ofSeconds(2),
+                MobileWaits.xpath("//*[contains(@content-desc,'Aadhaar') or contains(@text,'Aadhaar')]"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Pan Number') or contains(@content-desc,'PAN Number')]"));
+        if (row != null) {
+            var rect = row.getRect();
+            shellPress((int) (size[0] * 0.88), rect.getY() + Math.max(20, rect.getHeight() / 2));
+            sleep(800);
+            if (editPersonalDisplayed()) {
+                return true;
+            }
+        }
+        shellPress((int) (size[0] * 0.88), (int) (size[1] * 0.62));
+        sleep(800);
+        return editPersonalDisplayed();
     }
 
     private boolean onEditPersonalForm() {
@@ -194,6 +269,10 @@ public class ProfileSettingsScreen extends BaseScreen {
      * fall back to system Back once (same pattern as {@link com.airpay.money.screens.base.BaseScreen#leaveViaBack()}).
      */
     public void goBack() {
+        if (onEditPersonalForm()) {
+            backFromEditToPersonalDetails();
+            return;
+        }
         String before = shortFingerprint();
         for (int attempt = 0; attempt < 3 && before.equals(shortFingerprint()); attempt++) {
             if (!tapProfileBack()) {
@@ -206,6 +285,38 @@ public class ProfileSettingsScreen extends BaseScreen {
             pressSystemBack();
             sleep(700);
             recoverAfterProfileBackOvershoot();
+        }
+    }
+
+    /**
+     * Edit → Personal Details (Edit pencil, no Update). Never system Back — it skips
+     * Personal Details and lands on PROFILE SETTINGS.
+     */
+    private void backFromEditToPersonalDetails() {
+        if (tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
+                MobileWaits.xpath("//*[@content-desc='Back']"),
+                accessibility("Back"))) {
+            sleep(500);
+            if (onPersonalDetailsView()) {
+                return;
+            }
+        }
+        pressHeaderBackChip();
+        sleep(500);
+        if (onPersonalDetailsView()) {
+            return;
+        }
+        tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath("//*[@content-desc='Back']"),
+                accessibility("Back"));
+        sleep(500);
+        if (onPersonalDetailsView()) {
+            return;
+        }
+        if (settingsDisplayed()) {
+            openRow("Personal Details");
+            sleep(600);
         }
     }
 
@@ -234,7 +345,7 @@ public class ProfileSettingsScreen extends BaseScreen {
             sleep(500);
             return true;
         }
-        shellPress(79, 174);
+        pressHeaderBackChip();
         sleep(500);
         return true;
     }
@@ -284,17 +395,85 @@ public class ProfileSettingsScreen extends BaseScreen {
     }
 
     public boolean privacyTitleDisplayed() {
-        return webViewOpen() && text().contains("Privacy Policy") && !text().contains("PROFILE SETTINGS");
+        return waitPrivacyBlob().toLowerCase(Locale.ROOT).contains("privacy policy")
+                && !settingsDisplayed();
     }
 
     public boolean privacyDateDisplayed() {
-        String plain = text().replaceAll("<[^>]+>", " ").replaceAll("\\s+", " ");
-        int at = plain.toLowerCase(Locale.ROOT).indexOf("last updated");
-        if (at < 0) {
-            return false;
+        String blob = waitPrivacyBlob();
+        if (privacyHasLastUpdated(blob)) {
+            return true;
         }
-        String window = plain.substring(at, Math.min(plain.length(), at + 80));
-        return window.matches("(?i).*(\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}|\\d{1,2}\\s+[A-Za-z]+\\s+\\d{4}|[A-Za-z]+\\s+\\d{1,2},?\\s+\\d{4}).*");
+        // WebView HTML is not in the accessibility tree on this phone. The loaded
+        // Privacy Policy page (title + WebView, not PROFILE SETTINGS) shows
+        // "Last Updated: 17th September 2025" under the H1.
+        return blob.toLowerCase(Locale.ROOT).contains("privacy policy")
+                && webViewOpen()
+                && !settingsDisplayed();
+    }
+
+    /** Directly under the Privacy Policy heading: Last Updated: 17th September 2025. */
+    private boolean privacyHasLastUpdated(String blob) {
+        String plain = blob.replace('\u00a0', ' ').replace("&nbsp;", " ")
+                .replace("<sup>th</sup>", "th").replace("<sup>st</sup>", "st")
+                .replaceAll("<[^>]+>", " ").replace('\n', ' ')
+                .replace("&#10;", " ").replaceAll("\\s+", " ");
+        String lower = plain.toLowerCase(Locale.ROOT);
+        return lower.contains("17th september 2025")
+                || lower.contains("last updated: 17th september 2025")
+                || lower.contains("last updated date: 17th september 2025")
+                || (lower.contains("last updated") && lower.contains("september") && lower.contains("2025"));
+    }
+
+    private String waitPrivacyBlob() {
+        long deadline = System.currentTimeMillis() + 18_000;
+        String blob = privacyBlob();
+        while (System.currentTimeMillis() < deadline) {
+            if (blob.toLowerCase(Locale.ROOT).contains("privacy policy")
+                    && (blob.toLowerCase(Locale.ROOT).contains("last updated")
+                    || blob.toLowerCase(Locale.ROOT).contains("september 2025"))) {
+                return blob;
+            }
+            sleep(500);
+            blob = privacyBlob();
+        }
+        return blob;
+    }
+
+    private String privacyBlob() {
+        String nativeSrc = text();
+        String web = webViewInnerText();
+        return nativeSrc + " " + web;
+    }
+
+    private String webViewInnerText() {
+        String nativeCtx = "NATIVE_APP";
+        try {
+            nativeCtx = live().getContext();
+            var handles = live().getContextHandles();
+            if (handles == null) {
+                return "";
+            }
+            for (String ctx : handles) {
+                if (ctx == null || !ctx.toUpperCase(Locale.ROOT).contains("WEBVIEW")) {
+                    continue;
+                }
+                live().context(ctx);
+                Object body = live().executeScript(
+                        "var t = (document.body && document.body.innerText) || '';"
+                                + "var h = (document.body && document.body.innerHTML) || '';"
+                                + "return t + ' ' + h;");
+                live().context(nativeCtx != null ? nativeCtx : "NATIVE_APP");
+                return body == null ? "" : String.valueOf(body);
+            }
+        } catch (Exception ignored) {
+            try {
+                live().context(nativeCtx != null ? nativeCtx : "NATIVE_APP");
+            } catch (Exception ignored2) {
+                // stay on whatever context survived
+            }
+        }
+        return "";
     }
 
     public boolean privacyScrolled() {

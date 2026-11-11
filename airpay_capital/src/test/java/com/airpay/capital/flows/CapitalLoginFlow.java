@@ -18,7 +18,7 @@ import java.time.Duration;
 /**
  * Login flow for functional E2E.
  * Mobile from Capital Excel / capital.test.mobile (default 8802729089).
- * OTP is read from device notifications unless capital.test.otp is set.
+ * OTP comes from capital.test.otp (1234 on staging). Notifications are used only when that value is blank.
  */
 public class CapitalLoginFlow {
 
@@ -52,6 +52,7 @@ public class CapitalLoginFlow {
 
     public void loginWithMobile(String mobile) {
         allowDialogs(Duration.ofSeconds(8));
+        biometric.dismissIfShown();
         if (home.looksLoggedIn()) {
             LOG.info("Already logged in — skipping login");
             return;
@@ -188,6 +189,7 @@ public class CapitalLoginFlow {
         if (otp != null && !otp.isBlank()) {
             otpScreen.enterOtp(otp);
         }
+        biometric.dismissIfShown();
         otpScreen.waitUntilGone(Duration.ofSeconds(20));
     }
 

@@ -142,15 +142,32 @@ public class FinSightHomeScreen extends BaseScreen {
     }
 
     public boolean openCalculatorsTab() {
-        WebElement tab = firstPresent(Duration.ofSeconds(6),
-                MobileWaits.xpath("//android.widget.Button[@content-desc='Calculators']"),
-                MobileWaits.xpath("//android.view.View[@content-desc='Calculators']"),
-                AppiumBy.accessibilityId("Calculators"));
-        if (tab == null) {
-            return false;
+        return pressBottomNavSlot(2);
+    }
+
+    /** 2.1.4 bottom nav: Home | FinSight | Calculators. Never tap the header (Open settings). */
+    public boolean openFinSightTab() {
+        if (isDashboardHome()) {
+            return true;
         }
-        pressElement(tab);
-        sleep(900);
-        return true;
+        if (tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath("//android.widget.Button[@content-desc='FinSight']"),
+                accessibility("FinSight"))) {
+            sleep(500);
+            return isDashboardHome() || isDisplayed();
+        }
+        return pressBottomNavSlot(1);
+    }
+
+    private boolean pressBottomNavSlot(int slot) {
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        int n = 3;
+        int i = Math.max(0, Math.min(slot, n - 1));
+        int systemNav = Math.max(96, size[1] / 16);
+        int tabMid = Math.max(28, size[1] / 48);
+        shellPress((int) (size[0] * ((i + 0.5) / n)), size[1] - systemNav - tabMid);
+        sleep(700);
+        return isDisplayed() || isDashboardHome();
     }
 }

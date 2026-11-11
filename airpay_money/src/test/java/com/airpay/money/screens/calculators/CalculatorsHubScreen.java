@@ -4,7 +4,6 @@ import com.airpay.money.data.MoneyExcel;
 import com.airpay.money.screens.auth.BiometricScreen;
 import com.airpay.money.screens.auth.PinUnlockScreen;
 import com.airpay.mobile.utilities.waits.MobileWaits;
-import org.openqa.selenium.By;
 
 import java.time.Duration;
 
@@ -34,7 +33,7 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
     }
 
     public boolean isDisplayed() {
-        return sourceContains("Financial Calculators");
+        return stillOnHubGrid();
     }
 
     public boolean listsAllTiles() {
@@ -99,38 +98,273 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
         return openTile(label, null);
     }
 
+    /**
+     * Scroll the 3-column grid until {@code label} is in view, then tap the tile
+     * <em>label</em> (or icon) — the geometric centre is a dead gap (analysis F3).
+     * Lower rows (Retirement through Budget) sit below the first viewport on 720x1600.
+     */
     public boolean openTile(String label, String expectedPageTitle) {
         unlockIfNeeded();
+        CalculatorScreen detail = new CalculatorScreen(context);
+        if (openedCalculator(detail, expectedPageTitle)) {
+            return true;
+        }
         if (!isDisplayed()) {
             return false;
         }
-        scrollIntoDescription(label);
-        CalculatorScreen detail = new CalculatorScreen(context);
-        By tile = MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(label) + "]");
-        for (int i = 0; i < 5; i++) {
-            org.openqa.selenium.WebElement el = firstPresent(Duration.ofSeconds(2), tile, accessibility(label));
-            if (el != null) {
-                pressElementLong(el, 320);
-                sleep(900);
-                if (expectedPageTitle != null && detail.showsTitle(expectedPageTitle)) {
+        for (int i = 0; i < 2; i++) {
+            swipeHub(false);
+        }
+        sleep(200);
+        for (int attempt = 0; attempt < 8; attempt++) {
+            if (tileInTree(label) && tapNamedTile(label)) {
+                sleep(500);
+                if (openedCalculator(detail, expectedPageTitle)) {
                     return true;
                 }
                 if (!stillOnHubGrid()) {
-                    return true;
-                }
-                pressElementLong(el, 450);
-                sleep(900);
-                if (expectedPageTitle != null && detail.showsTitle(expectedPageTitle)) {
-                    return true;
-                }
-                if (!stillOnHubGrid()) {
-                    return true;
+                    new CalculatorScreen(context).tapAppBack();
+                    sleep(400);
                 }
             }
-            swipeUp();
-            sleep(200);
+            swipeHub(true);
+            sleep(250);
         }
-        return expectedPageTitle != null && detail.showsTitle(expectedPageTitle);
+        for (int i = 0; i < 3; i++) {
+            swipeHub(false);
+        }
+        sleep(200);
+        if (tapNamedTile(label)) {
+            sleep(500);
+        }
+        return openedCalculator(detail, expectedPageTitle);
+    }
+
+    /** Leave leftover product/calculator pages, then open the Calculators tab. */
+    public boolean ensureOpen() {
+        unlockIfNeeded();
+        if (isDisplayed()) {
+            return true;
+        }
+        for (int i = 0; i < 6 && !isDisplayed(); i++) {
+            String src = pageSource();
+            if (stillOnHubGrid()) {
+                return true;
+            }
+            boolean rootTab = src.contains("Calculators")
+                    && (src.contains("FinSight") || src.contains("Products") || src.contains("Home"));
+            boolean inProfile = src.toUpperCase().contains("PROFILE SETTINGS")
+                    || src.contains("Personal Details") || src.contains("My Documents");
+            if (rootTab && !inProfile) {
+                // Top-left on Home / FinSight / Calculators is Open settings — never Back.
+                tapCalculatorsNav();
+                sleep(500);
+                continue;
+            }
+            if (inProfile || src.contains("Privacy Policy")) {
+                new CalculatorScreen(context).tapAppBack();
+                sleep(400);
+                continue;
+            }
+            if (!src.contains("Financial Calculators")) {
+                new CalculatorScreen(context).tapAppBack();
+                sleep(400);
+            }
+            tapCalculatorsNav();
+            sleep(400);
+            unlockIfNeeded();
+        }
+        tapCalculatorsNav();
+        sleep(700);
+        return isDisplayed();
+    }
+
+    private void tapCalculatorsNav() {
+        if (tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath("//android.widget.Button[@content-desc='Calculators']"),
+                accessibility("Calculators"))) {
+            return;
+        }
+        pressCalculatorsTab();
+    }
+
+    private void pressCalculatorsTab() {
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        int systemNav = Math.max(96, size[1] / 16);
+        int tabMid = Math.max(28, size[1] / 48);
+        shellPress((int) (size[0] * 5.0 / 6.0), size[1] - systemNav - tabMid);
+    }
+
+    private static String[] tileAliases(String label) {
+        String lower = label.toLowerCase();
+        if (lower.contains("buy") && lower.contains("rent")) {
+            return new String[]{
+                    label,
+                    "Buy vs Rent Calculator",
+                    "Buy Vs Rent Calculator",
+                    "Buy vs Rent calculator",
+                    "Buy Vs Rent calculator",
+                    "Buy vs Rent",
+                    "Buy Vs Rent"
+            };
+        }
+        if (lower.contains("lump")) {
+            return new String[]{
+                    label,
+                    "Lumpsum Calculator",
+                    "Lump Sum Calculator",
+                    "Lumpsum",
+                    "Lump Sum"
+            };
+        }
+        return new String[]{label};
+    }
+
+    private boolean tileInTree(String label) {
+        String src = pageSource();
+        for (String alias : tileAliases(label)) {
+            if (src.contains(alias)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean tapNamedTile(String label) {
+        for (String alias : tileAliases(label)) {
+            if (tapTileOnLabel(alias)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Icon (top ~20%) and label (bottom ~80%) are tappable. The vertical gap at
+     * the tile centre is not. W3C {@code click()} hits that gap, so press the label.
+     */
+    private boolean tapTileOnLabel(String name) {
+        int[] box = tileBox(name);
+        if (box == null) {
+            return tapFirstAny(Duration.ofSeconds(1),
+                    MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(name) + "]//android.widget.ImageView"),
+                    MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(name) + "]"),
+                    accessibility(name));
+        }
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        int x = (box[0] + box[2]) / 2;
+        int h = Math.max(1, box[3] - box[1]);
+        int labelY = box[1] + (int) (h * 0.82);
+        int iconY = box[1] + (int) (h * 0.18);
+        if (onScreen(x, labelY, size)) {
+            shellPress(x, labelY);
+            return true;
+        }
+        if (onScreen(x, iconY, size)) {
+            shellPress(x, iconY);
+            return true;
+        }
+        return false;
+    }
+
+    private int[] tileBox(String name) {
+        org.openqa.selenium.WebElement el = firstPresent(Duration.ofMillis(600),
+                MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(name) + "]"),
+                accessibility(name));
+        if (el != null) {
+            try {
+                var rect = el.getRect();
+                if (rect.getWidth() >= 8 && rect.getHeight() >= 8) {
+                    return new int[]{rect.getX(), rect.getY(),
+                            rect.getX() + rect.getWidth(), rect.getY() + rect.getHeight()};
+                }
+            } catch (Exception ignored) {
+                // parse dump
+            }
+        }
+        return boundsFromSource(name);
+    }
+
+    private int[] boundsFromSource(String name) {
+        String src = pageSource();
+        String needle = "content-desc=\"" + name + "\"";
+        int at = src.indexOf(needle);
+        if (at < 0) {
+            return null;
+        }
+        int tagEnd = src.indexOf('>', at);
+        int boundsAt = src.indexOf("bounds=\"[", at);
+        if (boundsAt < 0 || (tagEnd >= 0 && boundsAt > tagEnd)) {
+            return null;
+        }
+        int start = boundsAt + "bounds=\"[".length();
+        int end = src.indexOf(']', start);
+        if (end < 0) {
+            return null;
+        }
+        String first = src.substring(start, end);
+        int secondOpen = src.indexOf('[', end);
+        int secondClose = src.indexOf(']', secondOpen);
+        if (secondOpen < 0 || secondClose < 0) {
+            return null;
+        }
+        String second = src.substring(secondOpen + 1, secondClose);
+        String[] a = first.split(",");
+        String[] b = second.split(",");
+        if (a.length != 2 || b.length != 2) {
+            return null;
+        }
+        return new int[]{
+                Integer.parseInt(a[0].trim()), Integer.parseInt(a[1].trim()),
+                Integer.parseInt(b[0].trim()), Integer.parseInt(b[1].trim())
+        };
+    }
+
+    private static boolean onScreen(int x, int y, int[] size) {
+        return x >= 8 && x <= size[0] - 8 && y >= 80 && y <= size[1] - 160;
+    }
+
+    /** Hub list: swipe at the left gutter so a tile centre is not dragged. */
+    private void swipeHub(boolean up) {
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        int x = Math.max(24, (int) (size[0] * 0.08));
+        int startY = (int) (size[1] * (up ? 0.72 : 0.34));
+        int endY = (int) (size[1] * (up ? 0.40 : 0.70));
+        adbSwipe(x, startY, x, endY, 280);
+    }
+
+    private boolean openedCalculator(CalculatorScreen detail, String expectedPageTitle) {
+        if (stillOnHubGrid()) {
+            return false;
+        }
+        if (expectedPageTitle == null || expectedPageTitle.isBlank()) {
+            return true;
+        }
+        if (detail.showsTitle(expectedPageTitle)) {
+            return true;
+        }
+        String lower = expectedPageTitle.toLowerCase();
+        if (lower.contains("buy")) {
+            return detail.showsTitle("Buy Vs Rent calculator")
+                    || detail.showsTitle("Buy vs Rent calculator")
+                    || detail.showsTitle("Buy Vs Rent");
+        }
+        if (lower.contains("lump")) {
+            return detail.showsTitle("Lumpsum Calculator")
+                    || detail.showsTitle("Lump Sum Calculator")
+                    || detail.showsTitle("Lumpsum");
+        }
+        if (lower.contains("term insurance") || lower.contains("retirement")) {
+            return detail.showsTitle("Retirement Calculator")
+                    || detail.showsTitle("Term Insurance");
+        }
+        if (lower.contains("fixed deposit") || "fd calculator".equals(lower)) {
+            return detail.showsTitle("Fixed Deposit");
+        }
+        return false;
     }
 
     private void pressElementLong(org.openqa.selenium.WebElement element, int holdMs) {
@@ -145,8 +379,11 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
 
     /** Hub catalog still showing — tile tap did not open a calculator page. */
     private boolean stillOnHubGrid() {
-        return sourceContains("Financial Calculators") && sourceContains("EMI Calculator")
-                && sourceContains("SIP Calculator");
+        String src = pageSource();
+        // 2.1.4 hub shows Hello + tiles; the "Financial Calculators" heading is often absent.
+        return src.contains("EMI Calculator") && src.contains("SIP Calculator")
+                && (src.contains("Hello") || src.contains("Financial Calculators")
+                || src.contains("Budget Calculator"));
     }
 
     /**

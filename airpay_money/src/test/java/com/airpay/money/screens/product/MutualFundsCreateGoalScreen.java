@@ -72,14 +72,16 @@ public class MutualFundsCreateGoalScreen extends BaseScreen {
     }
 
     public boolean isDisplayed() {
-        return firstPresent(Duration.ofSeconds(8),
-                MobileWaits.xpath("//android.view.View[@content-desc='Create Goal']"),
-                MobileWaits.xpath("//*[contains(@content-desc,'Bike')]"),
-                MobileWaits.xpath("//*[contains(@content-desc,'Child Education')]"),
-                MobileWaits.xpath("//*[contains(@content-desc,'Car')]")) != null;
+        String src = pageSource();
+        return src.contains("Create Goal")
+                || (src.contains("Select Tenure") && src.contains("year"))
+                || (src.contains("Bike") && src.contains("Car"));
     }
 
     public boolean showsGoalIcons() {
+        if (tenurePickerOpen()) {
+            closeTenurePicker();
+        }
         if (!isDisplayed()) {
             return false;
         }
@@ -88,7 +90,7 @@ public class MutualFundsCreateGoalScreen extends BaseScreen {
     }
 
     public void selectBike() {
-        tapLabel("Bike");
+        tapLabelFast("Bike");
         sleep(400);
     }
 
@@ -109,32 +111,111 @@ public class MutualFundsCreateGoalScreen extends BaseScreen {
     }
 
     public boolean selectYears(String years) {
-        tapFirst(Duration.ofSeconds(4),
-                MobileWaits.xpath("//*[@clickable='true' and @content-desc='Select Tenure']"),
-                MobileWaits.xpath("//*[@content-desc='Select Tenure']"));
-        sleep(700);
-        for (int i = 0; i < 5; i++) {
-            WebElement year = firstPresent(Duration.ofMillis(600),
-                    MobileWaits.xpath("//*[@clickable='true' and @content-desc=" + xpathLiteral(years) + "]"));
-            if (year != null) {
-                year.click();
-                sleep(800);
-                return !pageSource().contains("1 year");
+        hideKeyboardQuiet();
+        if (tenureChosen(years)) {
+            return true;
+        }
+        int year = tenureYearNumber(years);
+        String label = year + " year";
+        if (tenurePickerOpen()) {
+            if (tapTenureYear(label)) {
+                hideKeyboardQuiet();
+                return tenureChosen(years);
             }
-            swipeUp();
+        }
+        tapSelectTenure();
+        if (tapTenureYear(label)) {
+            hideKeyboardQuiet();
+            return tenureChosen(years);
+        }
+        return tenureChosen(years);
+    }
+
+    private void tapSelectTenure() {
+        tapFirstAny(Duration.ofSeconds(3),
+                accessibility("Select Tenure"),
+                MobileWaits.xpath("//*[@content-desc='Select Tenure']"));
+        sleep(800);
+    }
+
+    /**
+     * ADB input tap is ignored by this Flutter year list. Click the accessibility
+     * node even when isDisplayed is false. Exact "3 year" — not a substring of "13 year".
+     */
+    private boolean tapTenureYear(String label) {
+        if (tapFirstAny(Duration.ofSeconds(8),
+                accessibility(label),
+                MobileWaits.xpath("//*[@content-desc=" + xpathLiteral(label) + "]"),
+                io.appium.java_client.AppiumBy.androidUIAutomator(
+                        "new UiSelector().description(" + '"' + label + '"' + ")"))) {
+            sleep(800);
+            return true;
         }
         return false;
     }
 
+    private static int tenureYearNumber(String years) {
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("(\\d+)")
+                .matcher(years == null ? "" : years);
+        return m.find() ? Integer.parseInt(m.group(1)) : 3;
+    }
+
+    private void closeTenurePicker() {
+        tapLabelFast("Back");
+        shellPress(54, 108);
+        sleep(400);
+        if (tenurePickerOpen()) {
+            pressSystemBack();
+            sleep(500);
+        }
+    }
+
+    private boolean tenurePickerOpen() {
+        String src = pageSource();
+        return src.contains("10 year") || src.contains("11 year")
+                || src.contains("content-desc=\"2 year\"")
+                || src.contains("content-desc=\"1 year\"");
+    }
+
+    private boolean tenureListAtTop() {
+        String src = pageSource();
+        return src.contains("content-desc=\"1 year\"")
+                || src.contains("content-desc='1 year'");
+    }
+
+    private boolean tenureChosen(String years) {
+        if (tenurePickerOpen()) {
+            return false;
+        }
+        String src = pageSource();
+        int year = tenureYearNumber(years);
+        String label = year + " year";
+        boolean hasYear = src.contains(label) || src.contains(year + " years");
+        if (year < 10) {
+            hasYear = hasYear && !src.contains("1" + label) && !src.contains("2" + label);
+        }
+        return hasYear;
+    }
+
     public boolean submit() {
+        hideKeyboardQuiet();
         for (int i = 0; i < 3; i++) {
-            if (tapLabel("Continue")) {
+            if (tapLabel("Continue") || tapLabel("Create Goal") || tapLabel("Done")) {
                 sleep(1200);
-                return true;
+                if (!pageSource().contains("Select Tenure") || pageSource().contains("My Goals")
+                        || pageSource().contains("Goal created") || pageSource().contains("Mutual Funds")) {
+                    return true;
+                }
             }
             swipeUp();
         }
-        return false;
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        tapAt((int) (size[0] * 0.50), (int) (size[1] * 0.90));
+        sleep(1200);
+        return !pageSource().contains("Select Tenure")
+                || pageSource().contains("My Goals")
+                || pageSource().contains("Mutual Funds");
     }
 
     private void replace(WebElement field, String value) {
@@ -149,11 +230,16 @@ public class MutualFundsCreateGoalScreen extends BaseScreen {
         }
         field.sendKeys(value);
         sleep(300);
+        hideKeyboardQuiet();
+    }
+
+    private void hideKeyboardQuiet() {
         try {
             driver.hideKeyboard();
         } catch (Exception ignored) {
             // keyboard already closed
         }
+        sleep(200);
     }
 
 }

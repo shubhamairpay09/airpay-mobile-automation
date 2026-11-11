@@ -63,9 +63,11 @@ public class FixedDepositsLandingScreen extends BaseScreen {
     }
 
     public boolean isDisplayed() {
-        return firstPresent(Duration.ofSeconds(4),
-                MobileWaits.xpath("//android.view.View[@content-desc='Discover Fixed Deposits']"),
-                MobileWaits.xpath("//android.view.View[@clickable='true' and contains(@content-desc,'Interest Rate %')]")) != null;
+        if (sourceContains("Discover Fixed Deposits")) {
+            return true;
+        }
+        return sourceContains("Senior Citizen") && sourceContains("Women Benefits")
+                && sourceContains("Interest Rate");
     }
 
     public boolean isSeniorCitizenOn() {

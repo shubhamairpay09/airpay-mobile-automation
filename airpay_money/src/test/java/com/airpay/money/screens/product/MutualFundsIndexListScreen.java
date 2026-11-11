@@ -56,6 +56,83 @@ public class MutualFundsIndexListScreen extends BaseScreen {
     }
 
     public boolean openFundCard() {
+        return openNamedFund("Navi Nifty 50 Index Fund") || tapAnyFundCard();
+    }
+
+    public boolean openNamedFund(String name) {
+        String needle = name == null ? "" : name.trim();
+        if (needle.isBlank()) {
+            return tapAnyFundCard();
+        }
+        search(shortQuery(needle));
+        for (int pass = 0; pass < 8; pass++) {
+            if (tapFundNamed(needle)) {
+                sleep(900);
+                return true;
+            }
+            swipeUp();
+            sleep(350);
+        }
+        return tapFundNamed(needle);
+    }
+
+    private void search(String text) {
+        WebElement field = firstPresent(Duration.ofSeconds(4),
+                MobileWaits.xpath("//android.widget.EditText"));
+        if (field == null || text == null || text.isBlank()) {
+            return;
+        }
+        field.click();
+        try {
+            field.clear();
+        } catch (Exception ignored) {
+            // Flutter fields often reject clear()
+        }
+        field.sendKeys(text);
+        sleep(900);
+        try {
+            driver.hideKeyboard();
+        } catch (Exception ignored) {
+            // keyboard already closed
+        }
+    }
+
+    private static String shortQuery(String name) {
+        String lower = name.toLowerCase();
+        if (lower.contains("navi")) {
+            return "Navi";
+        }
+        String[] parts = name.split("\\s+");
+        return parts.length == 0 ? name : parts[0];
+    }
+
+    private boolean tapFundNamed(String name) {
+        String needle = squash(name);
+        String naviNifty = "navi nifty 50";
+        for (WebElement card : driver.findElements(MobileWaits.xpath("//*[@clickable='true' and @content-desc]"))) {
+            try {
+                String desc = String.valueOf(card.getAttribute("content-desc"));
+                String squashed = squash(desc);
+                if (!card.isDisplayed() || squashed.isBlank()) {
+                    continue;
+                }
+                if (squashed.contains("back") || squashed.contains("filter") || squashed.contains("search")) {
+                    continue;
+                }
+                if (squashed.contains(needle) || squashed.contains(naviNifty)
+                        || (squashed.contains("navi") && squashed.contains("nifty 50")
+                        && squashed.contains("index"))) {
+                    pressElement(card);
+                    return true;
+                }
+            } catch (Exception ignored) {
+                // stale
+            }
+        }
+        return tapLabel(name) || tapLabel("Navi Nifty 50 Index Fund") || tapLabel("Navi Nifty 50");
+    }
+
+    private boolean tapAnyFundCard() {
         for (int pass = 0; pass < 3; pass++) {
             if (tapFundCard()) {
                 return true;
@@ -78,7 +155,7 @@ public class MutualFundsIndexListScreen extends BaseScreen {
                     continue;
                 }
                 if (lower.contains("fund") || lower.contains("investment") || desc.contains("%")) {
-                    card.click();
+                    pressElement(card);
                     sleep(800);
                     return true;
                 }
@@ -87,5 +164,13 @@ public class MutualFundsIndexListScreen extends BaseScreen {
             }
         }
         return false;
+    }
+
+    private static String squash(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("&#10;", " ").replace('\n', ' ')
+                .replaceAll("\\s+", " ").trim().toLowerCase();
     }
 }

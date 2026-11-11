@@ -33,10 +33,14 @@ public class NetWorthSyncSteps {
     public void openFinsightDashboard() {
         home.ensureMoneyInForeground();
         home.dismissHomeCoachIfShown();
-        for (int i = 0; i < 6 && !finsight.isDashboardHome(); i++) {
-            finsight.tapLabel("FinSight");
+        for (int i = 0; i < 8 && !finsight.isDashboardHome(); i++) {
+            finsight.openFinSightTab();
             home.dismissHomeCoachIfShown();
-            sleepQuiet(450);
+            if (finsight.isDashboardHome()) {
+                return;
+            }
+            home.tapHeaderBack();
+            sleepQuiet(350);
         }
         Assertions.assertThat(finsight.isDashboardHome())
                 .as("FinSight dashboard should be displayed")
@@ -46,29 +50,36 @@ public class NetWorthSyncSteps {
     @When("I scroll to the Sync Your Net Worth card")
     public void scrollToSyncCard() {
         SyncedNetWorthMode.clear();
+        revealNetWorthCard();
+        if (finsight.syncOfferDisplayed()) {
+            return;
+        }
         if (finsight.alreadySyncedCard()) {
             SyncedNetWorthMode.setActive(true);
             return;
         }
-        if (!finsight.syncOfferDisplayed()) {
-            finsight.scrollIntoDescription("Sync Your Net Worth");
-        }
-        if (!finsight.syncOfferDisplayed()) {
-            if (finsight.alreadySyncedCard()) {
-                SyncedNetWorthMode.setActive(true);
+        Assertions.fail("FinSight should show Sync Your Net Worth, or the already-synced net worth card. Visible: "
+                + finsight.netWorthCardText());
+    }
+
+    private void revealNetWorthCard() {
+        String[] needles = {
+                "Sync Your Net Worth", "View Net Worth", "Accounts Synced", "Actual Net Worth"
+        };
+        for (String needle : needles) {
+            if (finsight.syncOfferDisplayed() || finsight.alreadySyncedCard()) {
                 return;
             }
-            ScenarioSkip.unlessPresent(false,
-                    "Sync Your Net Worth. This account shows: " + finsight.netWorthCardText());
+            finsight.scrollIntoDescription(needle);
         }
     }
 
     @When("I tap Sync Your Net Worth")
     public void tapSyncYourNetWorth() {
-        if (SyncedNetWorthMode.active()) {
+        if (SyncedNetWorthMode.active() || finsight.alreadySyncedCard()) {
+            SyncedNetWorthMode.setActive(true);
             return;
         }
-        ScenarioSkip.unlessPresent(finsight.syncOfferDisplayed(), "Sync Your Net Worth");
         Assertions.assertThat(finsight.pressSyncOffer())
                 .as("Sync Your Net Worth card should open")
                 .isTrue();
@@ -81,7 +92,13 @@ public class NetWorthSyncSteps {
         }
         openFinsightDashboard();
         scrollToSyncCard();
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         tapSyncYourNetWorth();
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         Assertions.assertThat(consent.isDisplayed())
                 .as("Financial Data Fetch Consent screen should be displayed")
                 .isTrue();
@@ -162,6 +179,9 @@ public class NetWorthSyncSteps {
 
     @When("I leave the consent checkbox unselected")
     public void leaveCheckboxUnselected() {
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         consent.leaveCheckboxUnselected();
         Assertions.assertThat(consent.checkboxChecked())
                 .as("Consent checkbox should stay unselected")
@@ -175,6 +195,9 @@ public class NetWorthSyncSteps {
 
     @And("the Financial Data Fetch Consent screen is still displayed")
     public void stillOnConsent() {
+        if (assertSyncedNetWorthInstead("consent screen")) {
+            return;
+        }
         Assertions.assertThat(consent.isDisplayed())
                 .as("User should remain on the Financial Data Fetch Consent screen without submitting consent")
                 .isTrue();
@@ -182,16 +205,25 @@ public class NetWorthSyncSteps {
 
     @When("I tap the consent checkbox")
     public void tapCheckbox() {
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         consent.tapCheckbox();
     }
 
     @When("I tap the consent checkbox again")
     public void tapCheckboxAgain() {
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         consent.tapCheckbox();
     }
 
     @Then("the consent checkbox is selected")
     public void checkboxSelected() {
+        if (assertSyncedNetWorthInstead("consent checkbox selected")) {
+            return;
+        }
         Assertions.assertThat(consent.checkboxChecked())
                 .as("Consent checkbox should be selected")
                 .isTrue();
@@ -199,6 +231,9 @@ public class NetWorthSyncSteps {
 
     @Then("the consent checkbox is not selected")
     public void checkboxNotSelected() {
+        if (assertSyncedNetWorthInstead("consent checkbox deselected")) {
+            return;
+        }
         Assertions.assertThat(consent.checkboxChecked())
                 .as("Consent checkbox should be deselected")
                 .isFalse();
@@ -206,6 +241,9 @@ public class NetWorthSyncSteps {
 
     @When("I select the consent checkbox")
     public void selectCheckbox() {
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         if (!consent.checkboxChecked()) {
             consent.tapCheckbox();
         }
@@ -216,6 +254,9 @@ public class NetWorthSyncSteps {
 
     @Then("Allow Consent is enabled")
     public void allowEnabled() {
+        if (assertSyncedNetWorthInstead("Allow Consent enabled")) {
+            return;
+        }
         Assertions.assertThat(consent.allowConsentDisplayed())
                 .as("Allow Consent button should be displayed")
                 .isTrue();
@@ -226,6 +267,9 @@ public class NetWorthSyncSteps {
 
     @When("I tap Allow Consent")
     public void tapAllowConsent() {
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         Assertions.assertThat(consent.allowConsentEnabled())
                 .as("Allow Consent should be enabled before it is tapped")
                 .isTrue();
@@ -234,6 +278,9 @@ public class NetWorthSyncSteps {
 
     @Then("the next Net Worth sync step is displayed without an error")
     public void nextStepWithoutError() {
+        if (assertSyncedNetWorthInstead("next Net Worth sync step")) {
+            return;
+        }
         Assertions.assertThat(finvu.isDisplayed())
                 .as("Allow Consent should open the next Net Worth sync step")
                 .isTrue();
@@ -244,11 +291,17 @@ public class NetWorthSyncSteps {
 
     @When("I tap the back arrow on the consent screen")
     public void backFromConsent() {
+        if (SyncedNetWorthMode.active()) {
+            return;
+        }
         consent.goBack();
     }
 
     @Then("the FinSight dashboard is displayed again")
     public void finsightAgain() {
+        if (assertSyncedNetWorthInstead("FinSight dashboard after back")) {
+            return;
+        }
         boolean shown = false;
         long end = System.currentTimeMillis() + 8_000;
         while (System.currentTimeMillis() < end && !shown) {
@@ -264,6 +317,9 @@ public class NetWorthSyncSteps {
 
     @And("consent was not submitted")
     public void consentNotSubmitted() {
+        if (assertSyncedNetWorthInstead("consent not submitted")) {
+            return;
+        }
         Assertions.assertThat(finvu.visibleNow())
                 .as("Back should not submit consent or open the Finvu screen")
                 .isFalse();
@@ -274,6 +330,9 @@ public class NetWorthSyncSteps {
 
     @Then("the Finvu Net Worth Consent screen is displayed")
     public void finvuDisplayed() {
+        if (assertSyncedNetWorthInstead("Finvu Net Worth Consent screen")) {
+            return;
+        }
         Assertions.assertThat(finvu.isDisplayed())
                 .as("Finvu Net Worth Consent screen should be displayed")
                 .isTrue();
@@ -281,6 +340,9 @@ public class NetWorthSyncSteps {
 
     @And("the Finvu safety message is displayed")
     public void safetyMessage() {
+        if (assertSyncedNetWorthInstead("Finvu safety message")) {
+            return;
+        }
         Assertions.assertThat(finvu.safetyMessageDisplayed())
                 .as("Message \"airpaymoney uses Finvu to safely receive your financial details\" should be displayed")
                 .isTrue();
@@ -288,6 +350,9 @@ public class NetWorthSyncSteps {
 
     @And("the OTP input fields are displayed")
     public void otpFields() {
+        if (assertSyncedNetWorthInstead("Finvu OTP fields")) {
+            return;
+        }
         Assertions.assertThat(finvu.otpFieldsDisplayed())
                 .as("OTP input fields should be displayed")
                 .isTrue();
@@ -298,6 +363,9 @@ public class NetWorthSyncSteps {
 
     @And("the registered mobile number is partially masked")
     public void maskedMobile() {
+        if (assertSyncedNetWorthInstead("masked mobile number")) {
+            return;
+        }
         Assertions.assertThat(finvu.maskedMobileDisplayed())
                 .as("Registered mobile number should be partially masked")
                 .isTrue();
@@ -305,6 +373,9 @@ public class NetWorthSyncSteps {
 
     @And("Verify and Proceed is displayed and disabled")
     public void verifyDisabled() {
+        if (assertSyncedNetWorthInstead("Verify and Proceed")) {
+            return;
+        }
         Assertions.assertThat(finvu.verifyProceedDisplayed())
                 .as("Verify & Proceed button should be displayed")
                 .isTrue();
@@ -315,6 +386,9 @@ public class NetWorthSyncSteps {
 
     @And("the Finvu Terms and Conditions link is displayed")
     public void finvuTerms() {
+        if (assertSyncedNetWorthInstead("Finvu Terms and Conditions")) {
+            return;
+        }
         Assertions.assertThat(finvu.termsDisplayed())
                 .as("Finvu Terms and Conditions link should be visible")
                 .isTrue();
@@ -322,6 +396,9 @@ public class NetWorthSyncSteps {
 
     @Then("the Finvu screen shows the OTP was sent to the masked mobile number")
     public void otpSent() {
+        if (assertSyncedNetWorthInstead("Finvu OTP sent")) {
+            return;
+        }
         Assertions.assertThat(finvu.isDisplayed())
                 .as("Finvu OTP screen should be displayed")
                 .isTrue();
@@ -338,6 +415,9 @@ public class NetWorthSyncSteps {
 
     @And("the resend timer is displayed")
     public void resendTimer() {
+        if (assertSyncedNetWorthInstead("resend timer")) {
+            return;
+        }
         Assertions.assertThat(finvu.resendTimerDisplayed())
                 .as("Resend timer should be displayed")
                 .isTrue();

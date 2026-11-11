@@ -4,7 +4,7 @@ Feature: Sync Your Net Worth after login
   Sheet: sync your networth.
   Login is already done. These cases start on the logged-in home screen and open the FinSight dashboard.
   Every case runs when Sync Your Net Worth is on the dashboard. If this account is already synced,
-  the cases are skipped. KYC is not run.
+  the cases assert the already-synced FinSight card instead of the consent flow. KYC is not run.
   Coverage stops on the Finvu OTP screen. The OTP is not entered. Verify & Proceed is not tapped.
   The sheet lists "consent is submitted when the user clicks Allow Consent" twice with the same steps. That case is automated once.
 

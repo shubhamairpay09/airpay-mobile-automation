@@ -135,7 +135,10 @@ public class FdPlanBookingScreen extends BaseScreen {
                     continue;
                 }
                 var rect = node.getRect();
-                if (rect.getY() > 400 && rect.getY() < 750 && rect.getX() > 700 && rect.getX() > rightmost) {
+                int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                        context.config().get("android.udid", ""));
+                if (rect.getY() > 180 && rect.getY() < size[1] * 0.55
+                        && rect.getX() > size[0] * 0.70 && rect.getX() > rightmost) {
                     pencil = node;
                     rightmost = rect.getX();
                 }

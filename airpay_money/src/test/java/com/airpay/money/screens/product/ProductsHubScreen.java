@@ -142,29 +142,21 @@ public class ProductsHubScreen extends BaseScreen {
     }
 
     public boolean open() {
-        new HomeScreen(context).dismissHomeCoachIfShown();
         if (isDisplayed()) {
             return true;
         }
-        long deadline = System.currentTimeMillis() + 12_000;
-        while (System.currentTimeMillis() < deadline && !isDisplayed()) {
-            if (sourceContains("Products", "FinSight", "Calculators") && !isDisplayed()) {
-                tapFirst(Duration.ofMillis(500),
-                        MobileWaits.xpath("//android.widget.Button[@content-desc='Products']"),
-                        MobileWaits.xpath("//android.view.View[@content-desc='Products']"),
-                        accessibility("Products"));
-                new FinSightHomeScreen(context).openProductsTab();
-                sleep(200);
-                if (isDisplayed()) {
-                    return true;
-                }
-            }
-            if (!tapLabel("Back") && !tapFirst(Duration.ofMillis(400),
-                    MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"))) {
-                pressSystemBack();
-            }
-            sleep(200);
+        String udid = context.config().get("android.udid", "");
+        tapLabelFast("Home");
+        tapLabelFast("Back");
+        com.airpay.mobile.utilities.android.AdbInput.tapBottomNav(udid, 0, 3);
+        sleep(600);
+        if (isDisplayed()) {
+            return true;
         }
+        tapLabelFast("Home");
+        tapLabelFast("Back");
+        com.airpay.mobile.utilities.android.AdbInput.tapBottomNav(udid, 0, 3);
+        sleep(600);
         return isDisplayed();
     }
 
@@ -177,6 +169,13 @@ public class ProductsHubScreen extends BaseScreen {
     }
 
     public boolean openMutualFunds() {
+        for (int i = 0; i < 6; i++) {
+            String src = pageSource();
+            if (src.contains("Mutual Funds") && src.contains("Investments")) {
+                break;
+            }
+            swipeDown();
+        }
         return openModule("Mutual Funds");
     }
 

@@ -109,6 +109,9 @@ public final class AppiumManager {
         options.setCapability("appium:adbExecTimeout", adbTimeoutMs);
         options.setCapability("appium:uiautomator2ServerInstallTimeout", adbTimeoutMs);
         options.setCapability("appium:uiautomator2ServerLaunchTimeout", config.getInt("android.uiautomator2ServerLaunchTimeoutMs", 60_000));
+        // Caps a hung getPageSource. Default stays at Appium's 240s; a run can override it.
+        options.setCapability("appium:uiautomator2ServerReadTimeout",
+                config.getInt("android.uiautomator2ServerReadTimeoutMs", 240_000));
 
         LOG.info("Starting Appium session | server={} | udid={} | pkg={} | activity={}",
                 server, this.udid.isBlank() ? "(first device)" : this.udid, this.appPackage, this.appActivity);

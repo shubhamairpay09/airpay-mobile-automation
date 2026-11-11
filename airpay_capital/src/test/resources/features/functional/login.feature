@@ -1,9 +1,7 @@
 @airpay-capital @capital @functional @android @login
 Feature: Airpay Capital Login
   Mobile is Login sheet key Mobile (8802729089).
-  Valid OTP is read from the phone notification shade / SMS inbox via NotificationOtpReader.
-  InvalidOTP / ExpiredOTP still come from the Excel sheet for negative cases.
-  Leave capital.test.otp blank so notifications are used.
+  Valid OTP is capital.test.otp (1234). InvalidOTP / ExpiredOTP still come from the Excel sheet.
 
   Background:
     Given the Airpay Capital app is ready

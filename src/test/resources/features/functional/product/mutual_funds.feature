@@ -77,8 +77,11 @@ Feature: Mutual Funds after login
   Scenario: TC_011 Nifty 50 opens that fund list and a fund can be viewed
     When I open the mutual fund list "Nifty 50"
     Then the mutual fund list "Nifty 50" is displayed
-    When I open a fund from the current list
+    When I open "Navi Nifty 50 Index Fund" from the current list
     Then the fund details page is displayed
+    And the fund chart shows the NAV price
+    When I open Returns on the fund details page
+    Then the fund return details are displayed
 
   @MF_TC_012
   Scenario: TC_012 Nifty Mid Cap opens that fund list

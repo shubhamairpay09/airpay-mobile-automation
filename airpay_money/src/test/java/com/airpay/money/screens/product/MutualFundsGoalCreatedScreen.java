@@ -52,16 +52,61 @@ public class MutualFundsGoalCreatedScreen extends BaseScreen {
     }
 
     public boolean deleteGoal() {
-        boolean tapped = tapLabel("Delete");
-        sleep(700);
-        if (sourceContains("Delete", "Yes", "Confirm", "Remove")) {
-            if (!tapLabel("Delete")) {
-                tapLabel("Yes");
-                tapLabel("Confirm");
-                tapLabel("Remove");
-            }
-            sleep(800);
+        if (!(tapLabel("Delete") || tapLabelFast("Delete") || tapFirstAny(Duration.ofSeconds(3),
+                accessibility("Delete"),
+                MobileWaits.xpath("//*[contains(@content-desc,'Delete')]")))) {
+            tapTopRightDelete();
         }
-        return tapped;
+        sleep(800);
+        confirmDeleteIfAsked();
+        sleep(1000);
+        long deadline = System.currentTimeMillis() + 8_000;
+        while (System.currentTimeMillis() < deadline) {
+            if (backOnMutualFundsHome()) {
+                return true;
+            }
+            sleep(400);
+        }
+        return backOnMutualFundsHome();
+    }
+
+    /** Unlabelled trash in the goal header, top-right, opposite Back. */
+    private void tapTopRightDelete() {
+        String udid = context.config().get("android.udid", "");
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(udid);
+        int width = size[0] > 0 ? size[0] : 720;
+        int height = size[1] > 0 ? size[1] : 1600;
+        // Header Back on this 720x1600 realme is ~[54,108]. Trash is the opposite corner.
+        int x = (int) (width * 0.92);
+        int y = Math.max(96, Math.min(120, (int) (height * 0.07)));
+        com.airpay.mobile.utilities.android.AdbCommands.shell(udid, "input", "swipe",
+                Integer.toString(x), Integer.toString(y),
+                Integer.toString(x), Integer.toString(y), "160");
+    }
+
+    private void confirmDeleteIfAsked() {
+        String src = pageSource();
+        if (!src.contains("Cancel") && !src.contains("Are you sure") && !src.contains("Remove")
+                && !src.contains("Delete this") && !src.contains("delete this")) {
+            if (!src.contains("Yes") || !src.contains("Delete")) {
+                return;
+            }
+        }
+        if (tapLabel("Delete") || tapLabel("Remove") || tapLabel("Yes") || tapLabel("Confirm")) {
+            sleep(700);
+            return;
+        }
+        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
+                context.config().get("android.udid", ""));
+        tapAt((int) (size[0] * 0.50), (int) (size[1] * 0.72));
+        sleep(700);
+    }
+
+    private boolean backOnMutualFundsHome() {
+        String src = pageSource();
+        return src.contains("Mutual Funds")
+                && (src.contains("Add Goal") || src.contains("My Goals")
+                || src.contains("View all Mutual Funds") || src.contains("Dashboard"))
+                && !src.contains("Goal created on");
     }
 }

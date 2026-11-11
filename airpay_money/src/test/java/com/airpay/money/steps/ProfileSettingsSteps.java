@@ -43,8 +43,8 @@ public class ProfileSettingsSteps {
 
     @When("I tap Edit personal details")
     public void editPersonal() {
-        Assertions.assertThat(profile.openRow("Edit personal details"))
-                .as("The Edit personal details pencil should be tapped")
+        Assertions.assertThat(profile.tapEditPencil())
+                .as("The Edit pencil on Personal Details should open the Update form")
                 .isTrue();
     }
 
@@ -218,7 +218,7 @@ public class ProfileSettingsSteps {
 
     @When("I open the PAN Card document")
     public void openPan() {
-        Assertions.assertThat(profile.openContaining("PAN"))
+        Assertions.assertThat(profile.openPanCard())
                 .as("The PAN Card row should be tapped")
                 .isTrue();
     }
@@ -226,7 +226,7 @@ public class ProfileSettingsSteps {
     @Then("the PAN Card details are displayed")
     public void panDetails() {
         Assertions.assertThat(profile.panDetailsDisplayed())
-                .as("PAN Card details should show PAN and the PAN number")
+                .as("PAN Card should show the last 4 digits with the PAN image")
                 .isTrue();
     }
 
@@ -317,7 +317,7 @@ public class ProfileSettingsSteps {
     @And("the Privacy Policy last updated date is displayed")
     public void privacyDate() {
         Assertions.assertThat(profile.privacyDateDisplayed())
-                .as("Privacy Policy should show Last Updated and a date")
+                .as("Below the Privacy Policy heading: Last Updated: 17th September 2025")
                 .isTrue();
     }
 

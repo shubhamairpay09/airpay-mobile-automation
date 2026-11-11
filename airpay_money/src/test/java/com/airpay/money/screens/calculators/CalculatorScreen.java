@@ -311,13 +311,30 @@ public class CalculatorScreen extends com.airpay.money.screens.base.BaseScreen {
     public static final String BUDGET_SAVINGS_INPUT = "(//android.widget.EditText)[3]";
     // No call to action on this screen.
 
+    /**
+     * In-app header Back chevron on a calculator page. Unlabeled on 2.1.4.
+     * Never uses Android system Back.
+     */
+    public void tapAppBack() {
+        if (tapFirstAny(Duration.ofSeconds(2),
+                MobileWaits.xpath(BACK),
+                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
+                MobileWaits.xpath("//*[@content-desc='Back']"))) {
+            sleep(500);
+            return;
+        }
+        pressHeaderBackChip();
+        sleep(500);
+    }
+
     public boolean showsTitle(String screenTitle) {
         if (!sourceContains(screenTitle)) {
             return false;
         }
-        // Hub grid lists the same labels as tiles — that is not an open calculator page.
-        if (sourceContains("Financial Calculators") && sourceContains("EMI Calculator")
-                && sourceContains("SIP Calculator")) {
+        // Hub lists the same names as tiles (Hello + EMI + SIP). That is not a detail page.
+        if (sourceContains("EMI Calculator") && sourceContains("SIP Calculator")
+                && (sourceContains("Hello") || sourceContains("Financial Calculators")
+                || sourceContains("Budget Calculator"))) {
             return false;
         }
         return true;

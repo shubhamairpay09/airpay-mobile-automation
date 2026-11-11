@@ -55,7 +55,15 @@ public class ExcelPostLoginSteps {
 
     @Given("the logged-in airpay money home screen is open")
     public void loggedInHome() {
+        if ("true".equalsIgnoreCase(System.getProperty("android.keep.session", ""))) {
+            LOG.info("Background: keep.session — skip Appium home probe");
+            return;
+        }
         home.ensureMoneyInForeground();
+        unlockPinAndSkipBiometric();
+        if (alreadyOnLoggedInShell()) {
+            return;
+        }
         home.dismissHomeCoachIfShown();
         unlockPinAndSkipBiometric();
         Assertions.assertThat(onPinOrLogin())
@@ -422,13 +430,13 @@ public class ExcelPostLoginSteps {
 
     @And("I go back to the Fixed Deposit dashboard")
     public void backFd() {
-        for (int i = 0; i < 3 && !fixedDeposit.isDisplayed(); i++) {
-            fixedDeposit.tapBack();
-            try {
-                Thread.sleep(600);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+        for (int i = 0; i < 4 && !fixedDeposit.isDisplayed(); i++) {
+            fixedDeposit.leaveViaBack();
+            sleepQuiet(500);
+        }
+        if (!fixedDeposit.isDisplayed()) {
+            products.open();
+            openFd();
         }
         Assertions.assertThat(fixedDeposit.isDisplayed())
                 .as("Back should return to the Fixed Deposit dashboard")
@@ -590,8 +598,8 @@ public class ExcelPostLoginSteps {
             if (!nestedPersonal && !nestedFhc) {
                 return;
             }
-            if (!home.tapBack() && !home.tapLabel("Back")) {
-                home.pressSystemBack();
+            if (!home.leaveViaBack()) {
+                return;
             }
             sleepQuiet(500);
             unlockPinAndSkipBiometric();
