@@ -8,12 +8,16 @@ import io.appium.java_client.AppiumBy;
 import io.appium.java_client.android.nativekey.AndroidKey;
 import io.appium.java_client.android.nativekey.KeyEvent;
 import io.appium.java_client.pagefactory.AndroidFindBy;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.WebElement;
 
 import java.time.Duration;
 import java.util.Map;
 
 public class OtpScreen extends BaseScreen {
+
+    private static final Logger LOG = LogManager.getLogger(OtpScreen.class);
 
     @AndroidFindBy(xpath = "//android.view.View[@content-desc='Mobile Number Verification']")
     private WebElement title;
@@ -62,7 +66,8 @@ public class OtpScreen extends BaseScreen {
                         + " or contains(@hint,'digit')]"),
                 AppiumBy.className("android.widget.EditText"));
         if (field == null) {
-            waitUntilGone(Duration.ofSeconds(120));
+            LOG.info("OTP field not found — waiting for OTP to be entered on the phone");
+            waitUntilGone(otpTimeout());
             return;
         }
         field.click();
@@ -106,15 +111,28 @@ public class OtpScreen extends BaseScreen {
                 accessibility("Verify"));
     }
 
+    /**
+     * Type Excel/config OTP when provided. Otherwise wait until the user types OTP on the phone.
+     */
+    public boolean completeFromExcelOrUser(String otp) {
+        if (otp != null && !otp.isBlank()) {
+            enterOtp(otp);
+        } else {
+            LOG.info("Excel OTP is blank — waiting for OTP to be entered on the phone");
+        }
+        return waitUntilGone(otpTimeout());
+    }
+
     public boolean waitUntilGone(Duration timeout) {
         HomeScreen home = new HomeScreen(context);
-        long end = System.currentTimeMillis() + timeout.toMillis();
-        while (System.currentTimeMillis() < end) {
-            if (!isDisplayed() && home.looksLoggedIn()) {
-                return true;
-            }
-            sleep(2000);
-        }
-        return home.looksLoggedIn();
+        return waitUntil(() -> home.looksLoggedIn() || !otpVisibleNow(), timeout);
+    }
+
+    private boolean otpVisibleNow() {
+        String src = safeSource();
+        return src.contains("Mobile Number Verification")
+                || src.contains("Verify OTP")
+                || src.contains("Enter OTP")
+                || src.contains("Resend OTP");
     }
 }

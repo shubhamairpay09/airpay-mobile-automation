@@ -312,19 +312,78 @@ public class CalculatorScreen extends com.airpay.money.screens.base.BaseScreen {
     // No call to action on this screen.
 
     /**
-     * In-app header Back chevron on a calculator page. Unlabeled on 2.1.4.
-     * Never uses Android system Back.
+     * In-app header Back on a calculator detail page only — never system Back, never hub header.
      */
-    public void tapAppBack() {
-        if (tapFirstAny(Duration.ofSeconds(2),
-                MobileWaits.xpath(BACK),
-                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
-                MobileWaits.xpath("//*[@content-desc='Back']"))) {
-            sleep(500);
-            return;
+    public boolean leaveToHub() {
+        if (onCalculatorsHubGrid()) {
+            return true;
         }
-        pressHeaderBackChip();
-        sleep(500);
+        if (isTabHub(safeSource())) {
+            return false;
+        }
+        for (int i = 0; i < 2; i++) {
+            if (pressHeaderBackChip()) {
+                sleep(300);
+                if (onCalculatorsHubGrid()) {
+                    return true;
+                }
+            }
+            if (tapUnlabeledTopLeftBackBounds()) {
+                sleep(300);
+                if (onCalculatorsHubGrid()) {
+                    return true;
+                }
+            }
+        }
+        return onCalculatorsHubGrid();
+    }
+
+    /** @deprecated use {@link #leaveToHub()} */
+    public void tapAppBack() {
+        leaveToHub();
+    }
+
+    /** Title on screen and not still on the Calculators grid. */
+    public boolean verifyDetailPage(String expectedPageTitle) {
+        if (!matchesExpectedTitle(expectedPageTitle)) {
+            return false;
+        }
+        return !onCalculatorsHubGrid();
+    }
+
+    public boolean matchesExpectedTitle(String expectedPageTitle) {
+        if (expectedPageTitle == null || expectedPageTitle.isBlank()) {
+            return !onCalculatorsHubGrid();
+        }
+        if (showsTitle(expectedPageTitle)) {
+            return true;
+        }
+        String lower = expectedPageTitle.toLowerCase();
+        if (lower.contains("buy")) {
+            return showsTitle("Buy Vs Rent calculator")
+                    || showsTitle("Buy vs Rent calculator")
+                    || showsTitle("Buy Vs Rent");
+        }
+        if (lower.contains("lump")) {
+            return showsTitle("Lumpsum Calculator")
+                    || showsTitle("Lump Sum Calculator")
+                    || showsTitle("Lumpsum");
+        }
+        if (lower.contains("term insurance") || lower.contains("retirement")) {
+            return showsTitle("Retirement Calculator")
+                    || showsTitle("Term Insurance");
+        }
+        if (lower.contains("fixed deposit")) {
+            return showsTitle("Fixed Deposit");
+        }
+        return false;
+    }
+
+    private boolean onCalculatorsHubGrid() {
+        String src = safeSource();
+        return src.contains("EMI Calculator") && src.contains("SIP Calculator")
+                && (src.contains("Hello") || src.contains("Financial Calculators")
+                || src.contains("Budget Calculator"));
     }
 
     public boolean showsTitle(String screenTitle) {

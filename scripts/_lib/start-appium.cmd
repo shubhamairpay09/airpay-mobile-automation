@@ -22,11 +22,16 @@ if not exist "%ANDROID_HOME%\platform-tools\adb.exe" (
 set "ANDROID_SDK_ROOT=%ANDROID_HOME%"
 set "PATH=%ANDROID_HOME%\platform-tools;%ANDROID_HOME%\emulator;%PATH%"
 
-rem ---- Appium CLI ----
+rem ---- Appium CLI (keep a command the caller already resolved) ----
+if exist "%LOCALAPPDATA%\airpay-mobile-tools\node\node.exe" set "PATH=%LOCALAPPDATA%\airpay-mobile-tools\node;%PATH%"
+if exist "%LOCALAPPDATA%\airpay-mobile-tools\npm\appium.cmd" set "PATH=%LOCALAPPDATA%\airpay-mobile-tools\npm;%PATH%"
+if defined APPIUM_CMD if exist "%APPIUM_CMD%" goto :haveAppium
 set "APPIUM_CMD="
 if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_CMD=%APPDATA%\npm\appium.cmd"
 if not defined APPIUM_CMD if exist "%LOCALAPPDATA%\npm\appium.cmd" set "APPIUM_CMD=%LOCALAPPDATA%\npm\appium.cmd"
+if not defined APPIUM_CMD if exist "%LOCALAPPDATA%\airpay-mobile-tools\npm\appium.cmd" set "APPIUM_CMD=%LOCALAPPDATA%\airpay-mobile-tools\npm\appium.cmd"
 if not defined APPIUM_CMD set "APPIUM_CMD=appium"
+:haveAppium
 if defined USERPROFILE if exist "%USERPROFILE%\.appium" set "APPIUM_HOME=%USERPROFILE%\.appium"
 
 echo Using ANDROID_HOME=%ANDROID_HOME%

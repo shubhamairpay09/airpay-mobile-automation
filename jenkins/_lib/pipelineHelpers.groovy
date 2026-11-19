@@ -55,12 +55,61 @@ def writeCiOverrides(Map cfg) {
 
 def suiteTags(String productTag, String suite, String extraTags) {
     def tags = productTag ?: '@airpay-capital'
-    if (suite == 'smoke') tags += ' and @smoke and not @a11y'
-    if (suite == 'functional') tags += ' and @functional and not @a11y'
+    if (suite == 'smoke') tags += ' and @smoke and not @a11y and not @lms'
+    if (suite == 'functional') tags += ' and @functional and not @a11y and not @lms'
     if (suite == 'a11y') tags += ' and @a11y'
-    if (suite == 'regression') tags += ' and @regression and not @a11y'
+    if (suite == 'regression') tags += ' and @regression and not @a11y and not @lms'
     if (extraTags?.trim()) tags += " and ${extraTags.trim()}"
     return tags
+}
+
+/**
+ * One Windows command: install any missing JDK, Maven, Android SDK, Appium, and
+ * UiAutomator2 driver, start Appium when port 4723 is closed, then run the suite.
+ * cfg keys: module, product, productTag, test, envName, suite, udid, otp,
+ * cucumberTags, extraTags, extraMaven, cleanReports.
+ */
+def runMobile(Map cfg) {
+    if (isUnix()) {
+        error('This job uses the Windows setup scripts. Run it on a Windows agent with the phone attached.')
+    }
+    def product = (cfg.product ?: 'capital').toString()
+    def suite = (cfg.suite ?: 'smoke').toString()
+    def otp = (cfg.otp ?: '').toString().replaceAll('[^0-9A-Za-z]', '')
+    def extra = '-DforkCount=0 -Dandroid.newCommandTimeout=120 -Dandroid.uiautomator2ServerReadTimeoutMs=30000'
+    if (cfg.extraMaven) {
+        extra = "${extra} ${cfg.extraMaven}"
+    }
+    if (otp) {
+        extra = "${extra} -D${product}.test.otp=${otp}"
+    }
+    def clean = cfg.cleanReports ? 'Yes' : 'No'
+    def udid = (cfg.udid ?: '').toString().replace('"', '')
+    def cucumberTags = (cfg.cucumberTags ?: '').toString().replace('"', '')
+    def extraTags = (cfg.extraTags ?: '').toString().replace('"', '')
+    def script = """@echo off
+set \"MODULE=${cfg.module}\"
+set \"PRODUCT=${product}\"
+set \"PRODUCT_TAG=${cfg.productTag}\"
+set \"TEST=${cfg.test}\"
+set \"ENV=${cfg.envName ?: 'live'}\"
+set \"SUITE=${suite}\"
+set \"OPEN_ALLURE=No\"
+set \"CLEAN_PREVIOUS_REPORTS=${clean}\"
+set \"PREFERRED_UDID=${udid}\"
+set \"CUCUMBER_TAGS=${cucumberTags}\"
+set \"EXTRA_TAGS=${extraTags}\"
+set \"EXTRA_MAVEN=${extra}\"
+call scripts\\_lib\\run-mobile-product.bat
+"""
+    return runCmdStatus(script)
+}
+
+def publishAllure(String product) {
+    def code = runCmdStatus("call scripts\\reports\\open-allure.bat ${product}")
+    if (code != 0) {
+        echo "Allure HTML was not generated (exit ${code}). Results stay under target/${product}/allure-results."
+    }
 }
 
 return this

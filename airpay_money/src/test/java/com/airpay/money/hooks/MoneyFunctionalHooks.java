@@ -17,22 +17,55 @@ public class MoneyFunctionalHooks {
     }
 
     @Before(order = 1, value = "@functional and not @login")
-    public void leaveNestedBeforeFunctionalScenario() {
-        // Do not call Appium here. getPageSource / getCurrentPackage / system Back
-        // wedge UiAutomator2 on this realme until newCommandTimeout (4h).
-        // ExcelPostLoginSteps.loggedInHome already leaves nested product screens.
+    public void leaveNestedBeforeFunctionalScenario(Scenario scenario) {
+        FunctionalModuleReset.leaveForeignProfile(testContext, scenario);
+    }
+
+    @After(order = 2, value = "@functional and not @login")
+    public void returnToModuleAfterFunctionalScenario(Scenario scenario) {
+        FunctionalModuleReset.returnToModule(testContext, scenario);
     }
 
     @Before(order = 0, value = "@functional and not @login")
     public void keepMoneyForegroundForFunctional() {
-        // Session start already confirmed Money in the foreground.
-        // dumpsys / getCurrentPackage hang this realme and block Given.
+        if (!testContext.hasDriver()) {
+            return;
+        }
+        new com.airpay.money.screens.home.HomeScreen(testContext).ensureMoneyInForeground();
+    }
+
+    @Before(order = -2, value = "@profile-settings")
+    public void allowProfileNavigation() {
+        ProfileNavigationGate.allow();
+    }
+
+    @After(order = 0, value = "@functional")
+    public void clearProfileNavigationGate() {
+        ProfileNavigationGate.clear();
+    }
+
+    @Before(order = -1, value = "@fhc")
+    public void stopFhcAfterSystemError(Scenario scenario) {
+        FunctionalModuleReset.markFhcScenario(!scenario.getSourceTagNames().contains("@FHC_TC_001"));
+        if (FhcSystemError.tripped()) {
+            throw new AssertionError(
+                    "FHC stopped after a system error. Raise this: " + FhcSystemError.message());
+        }
+    }
+
+    @After(order = 5, value = "@fhc")
+    public void clearFhcContinue() {
+        FunctionalModuleReset.markFhcScenario(false);
     }
 
     @After(order = 1)
     public void tally(Scenario scenario) {
         if (scenario.getSourceTagNames().contains("@functional")) {
             FunctionalRunStats.record(scenario);
+        }
+        if (scenario.getSourceTagNames().contains("@fhc") && scenario.isFailed()
+                && !FhcErrorLog.last().contains(scenario.getName())) {
+            FhcErrorLog.record(scenario.getName(), "FAILED", scenario.getStatus().name());
         }
     }
 }

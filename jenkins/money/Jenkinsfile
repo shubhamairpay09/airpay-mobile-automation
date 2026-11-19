@@ -1,6 +1,9 @@
 /**
- * Jenkins job: Airpay_Money (mobile)
+ * Jenkins job: Airpay Money (phone)
  * Script Path: jenkins/money/Jenkinsfile
+ *
+ * Windows agent with the phone attached. Missing JDK, Maven, Android SDK, Appium,
+ * and the UiAutomator2 driver are installed, and Appium is started when it is down.
  */
 def helpers
 
@@ -9,12 +12,12 @@ pipeline {
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '6', daysToKeepStr: '14'))
-        timeout(time: 3, unit: 'HOURS')
+        timeout(time: 4, unit: 'HOURS')
     }
 
     parameters {
         choice(name: 'ENV', choices: ['live', 'staging'], description: '-Denv')
-        choice(name: 'SUITE', choices: ['smoke', 'functional', 'custom'])
+        choice(name: 'SUITE', choices: ['functional', 'smoke', 'a11y', 'custom'])
         string(name: 'EXTRA_TAGS', defaultValue: '')
         string(name: 'CUCUMBER_TAGS', defaultValue: '')
         string(name: 'ANDROID_UDID', defaultValue: '')
@@ -38,42 +41,27 @@ pipeline {
             }
         }
 
-        stage('Clean previous reports') {
-            when { expression { params.CLEAN_PREVIOUS_REPORTS } }
-            steps {
-                script { helpers.cleanReportDirs(env.MODULE) }
-            }
-        }
-
-        stage('CI overrides') {
-            steps {
-                script {
-                    helpers.writeCiOverrides([
-                            envName     : params.ENV,
-                            product     : env.PRODUCT,
-                            androidUdid : params.ANDROID_UDID,
-                            otp         : params.OTP
-                    ])
-                }
-            }
-        }
-
-        stage('Install utilities') {
-            steps {
-                script { helpers.runCmd('mvn -pl utilities -am install -DskipTests -q') }
-            }
-        }
-
         stage('Run tests') {
             steps {
                 script {
-                    def tags = (params.CUCUMBER_TAGS ?: '').trim()
-                    if (!tags) {
-                        tags = helpers.suiteTags(env.PRODUCT_TAG, params.SUITE, params.EXTRA_TAGS)
+                    def extra = ''
+                    if (params.SUITE == 'a11y') {
+                        extra = '-Da11y.crawl.exhaustive=true -Dandroid.keep.session=true -Da11y.fresh.run=true'
                     }
-                    echo "Cucumber tags: ${tags}"
-                    def cmd = "mvn -pl ${env.MODULE} -am test -Denv=${params.ENV} -Dairpay.product=${env.PRODUCT} \"-Dcucumber.filter.tags=${tags}\""
-                    def code = helpers.runCmdStatus(cmd)
+                    def code = helpers.runMobile([
+                            module        : env.MODULE,
+                            product       : env.PRODUCT,
+                            productTag    : env.PRODUCT_TAG,
+                            test          : 'MoneyRunner',
+                            envName       : params.ENV,
+                            suite         : params.SUITE,
+                            udid          : params.ANDROID_UDID,
+                            otp           : params.OTP,
+                            cucumberTags  : params.CUCUMBER_TAGS,
+                            extraTags     : params.EXTRA_TAGS,
+                            extraMaven    : extra,
+                            cleanReports  : params.CLEAN_PREVIOUS_REPORTS
+                    ])
                     if (code != 0) {
                         currentBuild.result = 'UNSTABLE'
                         error "Tests failed (exit ${code})"
@@ -85,6 +73,7 @@ pipeline {
 
     post {
         always {
+            script { if (helpers) { helpers.publishAllure(env.PRODUCT) } }
             archiveArtifacts artifacts: 'target/money/**', allowEmptyArchive: true
             junit testResults: 'target/surefire-reports/airpay_money/*.xml', allowEmptyResults: true
         }

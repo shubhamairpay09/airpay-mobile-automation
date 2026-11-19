@@ -29,21 +29,24 @@ public class NetWorthSyncSteps {
         this.finvu = new FinvuNetWorthScreen(context);
     }
 
+    private boolean onFinsightForFhc() {
+        return finsight.isDashboardHome() || finsight.isDisplayed();
+    }
+
     @When("I open the FinSight dashboard")
     public void openFinsightDashboard() {
         home.ensureMoneyInForeground();
         home.dismissHomeCoachIfShown();
-        for (int i = 0; i < 8 && !finsight.isDashboardHome(); i++) {
+        for (int i = 0; i < 4 && !onFinsightForFhc(); i++) {
             finsight.openFinSightTab();
             home.dismissHomeCoachIfShown();
-            if (finsight.isDashboardHome()) {
+            if (onFinsightForFhc()) {
                 return;
             }
-            home.tapHeaderBack();
-            sleepQuiet(350);
+            sleepQuiet(250);
         }
-        Assertions.assertThat(finsight.isDashboardHome())
-                .as("FinSight dashboard should be displayed")
+        Assertions.assertThat(onFinsightForFhc())
+                .as("FinSight dashboard should show Financial Health Score or the health-check card")
                 .isTrue();
     }
 
@@ -424,10 +427,6 @@ public class NetWorthSyncSteps {
     }
 
     private static void sleepQuiet(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // The next page read is the wait.
     }
 }

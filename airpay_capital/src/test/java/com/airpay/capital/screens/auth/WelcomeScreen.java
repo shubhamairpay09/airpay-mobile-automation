@@ -5,6 +5,7 @@ import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.waits.MobileWaits;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import io.appium.java_client.pagefactory.iOSXCUITFindBy;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import java.time.Duration;
@@ -38,9 +39,12 @@ public class WelcomeScreen extends BaseScreen {
     }
 
     public void tapLoginWithMobile() {
-        if (!tapFirst(Duration.ofSeconds(12),
-                MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Login With Mobile Number')]"),
-                accessibility(LOGIN_LABEL))) {
+        By login = MobileWaits.xpath(
+                "//android.widget.Button[contains(@content-desc,'Login With Mobile Number')]");
+        if (tapCenter(login)) {
+            return;
+        }
+        if (!tapFirst(Duration.ofSeconds(8), login, accessibility(LOGIN_LABEL))) {
             throw new IllegalStateException("Welcome Login button not found.");
         }
     }

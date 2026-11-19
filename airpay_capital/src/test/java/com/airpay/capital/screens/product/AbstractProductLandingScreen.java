@@ -7,8 +7,6 @@ import com.airpay.capital.screens.base.BaseScreen;
 import com.airpay.capital.screens.home.HomeScreen;
 import com.airpay.mobile.utilities.context.TestContext;
 
-import com.airpay.mobile.utilities.crawl.DummyFormFiller;
-
 /**
  * Shared apply-flow actions for all loan/card products.
  * Product-specific landing screens only define the product label.
@@ -39,9 +37,6 @@ public abstract class AbstractProductLandingScreen extends BaseScreen {
         if (sourceContains("Tell us about your work", "Select your occupation",
                 "Your loan journey is in progress", "Resume Application",
                 "offers available", "offer available", "No Offers Available")) {
-            return true;
-        }
-        if (sourceContains("Salaried") && (sourceContains("Self-Employed") || sourceContains("Self Employed"))) {
             return true;
         }
         boolean stillHomeGrid = sourceContains("Personal Loan") && sourceContains("Home Loan")
@@ -90,21 +85,21 @@ public abstract class AbstractProductLandingScreen extends BaseScreen {
         return false;
     }
 
+    /** One Continue after the form is filled. Does not retype the fields. */
     public void advanceFormsUntilEligibility() {
-        DummyFormFiller filler = new DummyFormFiller(driver);
         EligibilityScreen eligibility = new EligibilityScreen(context);
         ApplyDetailsScreen details = new ApplyDetailsScreen(context);
-        for (int step = 0; step < 14; step++) {
-            if (eligibility.checkEligibilityVisible()
-                    || eligibility.offersAreVisible()
-                    || eligibility.noOffersAreVisible()) {
-                return;
-            }
-            filler.fillVisibleFields(3);
-            details.tapContinue();
-            tapAny(java.util.List.of("Continue", "Next", "Proceed", "Save & Continue"));
-            waitUntilSourceContains(java.time.Duration.ofSeconds(6),
-                    "Check Eligib", "offers available", "No Offers", "Continue", "Work Details");
+        if (eligibility.offersAreVisible() || eligibility.noOffersAreVisible()) {
+            return;
         }
+        if (details.isDisplayed() || eligibility.checkEligibilityVisible()) {
+            if (eligibility.checkEligibilityVisible()) {
+                eligibility.tapCheckEligibility();
+            } else {
+                details.tapContinue();
+            }
+        }
+        waitUntilSourceContains(java.time.Duration.ofSeconds(20),
+                "offers available", "offer available", "No Offers", "Check Eligib", "Apply now for");
     }
 }

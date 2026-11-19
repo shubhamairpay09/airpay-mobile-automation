@@ -11,7 +11,6 @@ import com.airpay.money.screens.auth.PinUnlockScreen;
 import com.airpay.money.screens.auth.SetNewPinScreen;
 import com.airpay.money.screens.auth.WelcomeScreen;
 import com.airpay.money.screens.home.HomeScreen;
-import com.airpay.mobile.utilities.android.NotificationOtpReader;
 import com.airpay.mobile.utilities.android.PermissionDialogHandler;
 import com.airpay.mobile.utilities.context.TestContext;
 import org.apache.logging.log4j.LogManager;
@@ -68,7 +67,6 @@ public class MoneyLoginFlow {
         if (guest.isDisplayed()) {
             LOG.info("Guest landing — tap header Login beside hamburger");
             guest.tapHeaderLogin();
-            sleep(1000);
             if (!mobileLogin.waitUntilDisplayed(Duration.ofSeconds(15))) {
                 throw new IllegalStateException("Mobile login screen did not appear after header Login.");
             }
@@ -80,7 +78,6 @@ public class MoneyLoginFlow {
             allowDialogs(Duration.ofSeconds(5));
         }
         welcome.tapLoginWithMobile();
-        sleep(1000);
         if (!mobileLogin.waitUntilDisplayed(Duration.ofSeconds(15))) {
             throw new IllegalStateException("Mobile login screen did not appear after welcome.");
         }
@@ -94,15 +91,19 @@ public class MoneyLoginFlow {
     private void submitMobileAndOtp(String mobile) {
         mobileLogin.enterMobile(mobile);
         mobileLogin.acceptConsentIfShown();
-        sleep(400);
         mobileLogin.tapSendOtp();
-        sleep(1500);
+        home.waitUntil(() -> home.looksLoggedIn()
+                || home.sourceContains("Mobile Number Verification", "Resend OTP", "Verify OTP"),
+                Duration.ofSeconds(8));
         allowDialogs(Duration.ofSeconds(6));
         if (!otpScreen.isDisplayed() && !home.looksLoggedIn()) {
             throw new IllegalStateException("OTP screen not shown after Send OTP.");
         }
-        otpScreen.enterOtp(resolveOtp(mobile));
-        sleep(2000);
+        String otp = resolveOtp(mobile);
+        if (!otpScreen.completeFromExcelOrUser(otp) && !home.looksLoggedIn()) {
+            throw new IllegalStateException(
+                    "OTP was not entered. Put OTP in the Login sheet, or type it on the phone.");
+        }
         enterPinIfShown();
     }
 
@@ -120,7 +121,10 @@ public class MoneyLoginFlow {
         }
         LOG.info("Entering session PIN from the Login sheet");
         pinUnlock.enterPin(pin);
-        sleep(1500);
+        home.waitUntil(() -> home.looksLoggedIn()
+                || sourceContains("Incorrect PIN")
+                || sourceLooksLocked()
+                || !pinUnlock.isDisplayed(), Duration.ofSeconds(4));
         biometric.dismissIfShown();
         if (sourceLooksLocked() || sourceContains("Incorrect PIN")) {
             resetPinViaForgot(pin);
@@ -160,51 +164,50 @@ public class MoneyLoginFlow {
         }
         String mobile = MoneyTestData.mobile(context.config());
         String otp = resolveOtp(mobile);
-        if (!forgot.isOtpDisplayed() && otp == null) {
-            throw new IllegalStateException("Forgot-PIN OTP screen not shown.");
+        if (!otp.isBlank()) {
+            forgot.enterOtp(otp);
+        } else {
+            LOG.info("Forgot-PIN OTP — waiting for the user to enter it on the phone");
         }
-        forgot.enterOtp(otp);
-        if (!setNew.isDisplayed()) {
+        long waitMs = context.config().getLong("timeout.otp.wait.ms", 120_000);
+        if (!setNew.waitUntil(setNew::isDisplayed, Duration.ofMillis(waitMs))) {
             throw new IllegalStateException("Set New PIN screen not shown after OTP.");
         }
         LOG.info("Setting new session PIN via Forgot PIN");
         setNew.enterPin(newPin);
-        sleep(600);
-        setNew.enterPin(newPin);
+        home.waitUntil(() -> sourceContains("Confirm your PIN", "Success!"), Duration.ofSeconds(4));
+        if (!sourceContains("Success!")) {
+            setNew.enterPin(newPin);
+        }
         if (setNew.isSuccessDisplayed()) {
             setNew.tapContinue();
         }
         if (pinUnlock.waitUntilDisplayed(Duration.ofSeconds(8))) {
             pinUnlock.enterPin(newPin);
-            sleep(1200);
+            home.waitUntil(() -> home.looksLoggedIn() || !pinUnlock.isDisplayed(), Duration.ofSeconds(4));
         }
         allowDialogs(Duration.ofSeconds(6));
     }
 
     private String resolveOtp(String mobile) {
-        String configured = context.config().get("money.test.otp", "").trim();
-        if (!configured.isBlank()) {
-            return configured;
+        String fromExcel = MoneyTestData.otp(context.config());
+        if (!fromExcel.isBlank()) {
+            LOG.info("Using OTP from the Login Excel sheet or money.test.otp");
+            return fromExcel;
         }
-        long waitMs = context.config().getLong("timeout.otp.wait.ms", 120_000);
-        String fromDevice = NotificationOtpReader.poll(
-                context.driver(), context.config(), mobile, Duration.ofMillis(waitMs),
-                6, home::looksLoggedIn);
-        if (fromDevice != null && !fromDevice.isBlank()) {
-            return fromDevice;
+        LOG.info("OTP is blank in Excel — waiting for the user to enter it on the phone for {}", mask(mobile));
+        return "";
+    }
+
+    private static String mask(String mobile) {
+        if (mobile == null || mobile.length() < 4) {
+            return "****";
         }
-        return MoneyTestData.otp(context.config());
+        return "******" + mobile.substring(mobile.length() - 4);
     }
 
     private void allowDialogs(Duration timeout) {
         PermissionDialogHandler.allowAll(context.driver(), timeout);
     }
 
-    private static void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-    }
 }

@@ -138,7 +138,10 @@ public class DigitalGoldSheetSteps {
     public void timerCounts() {
         String first = firstClock(order.pageSource());
         Assertions.assertThat(first).as("Price validity timer should be displayed").isNotBlank();
-        sleep(3000);
+        order.waitUntil(() -> {
+            String now = firstClock(order.pageSource());
+            return !now.isBlank() && !now.equals(first);
+        }, Duration.ofSeconds(8));
         String second = firstClock(order.pageSource());
         Assertions.assertThat(second).as("Timer should still be displayed").isNotBlank();
         Assertions.assertThat(second).as("Countdown should decrease").isNotEqualTo(first);
@@ -273,15 +276,13 @@ public class DigitalGoldSheetSteps {
 
     @When("I wait for the price validity timer to expire")
     public void waitTimer() {
-        long end = System.currentTimeMillis() + Duration.ofMinutes(6).toMillis();
-        while (System.currentTimeMillis() < end) {
+        boolean shown = order.waitUntil(() -> {
             String src = order.pageSource();
-            if (src.contains(TIMEOUT) || src.contains("timed out")) {
-                return;
-            }
-            sleep(2000);
+            return src.contains(TIMEOUT) || src.contains("timed out");
+        }, Duration.ofMinutes(6));
+        if (!shown) {
+            Assertions.fail("The session timeout message was not displayed within 6 minutes");
         }
-        Assertions.fail("The session timeout message was not displayed within 6 minutes");
     }
 
     @Then("the session timeout message is displayed")
@@ -536,10 +537,6 @@ public class DigitalGoldSheetSteps {
     }
 
     private static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
+        // The next page read is the wait.
     }
 }

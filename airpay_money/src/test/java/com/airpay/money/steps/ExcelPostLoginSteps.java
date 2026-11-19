@@ -1,6 +1,7 @@
 package com.airpay.money.steps;
 
 import com.airpay.money.data.MoneyExcel;
+import com.airpay.money.hooks.FunctionalModuleReset;
 import com.airpay.money.screens.auth.BiometricScreen;
 import com.airpay.money.screens.auth.PinUnlockScreen;
 import com.airpay.money.screens.finsight.FhcFlow;
@@ -8,6 +9,7 @@ import com.airpay.money.screens.finsight.FinSightHomeScreen;
 import com.airpay.money.screens.home.HomeScreen;
 import com.airpay.money.screens.product.DigitalGoldBuyScreen;
 import com.airpay.money.screens.product.DigitalGoldDashboardScreen;
+import com.airpay.money.screens.product.DigitalGoldIntroScreen;
 import com.airpay.money.screens.product.DigitalGoldSellScreen;
 import com.airpay.money.screens.product.FdPlanBookingScreen;
 import com.airpay.money.screens.product.FixedDepositsLandingScreen;
@@ -38,8 +40,10 @@ public class ExcelPostLoginSteps {
     private final PinUnlockScreen pinUnlock;
     private final BiometricScreen biometric;
     private final FhcFlow fhc;
+    private final TestContext context;
 
     public ExcelPostLoginSteps(TestContext context) {
+        this.context = context;
         this.home = new HomeScreen(context);
         this.finsight = new FinSightHomeScreen(context);
         this.products = new ProductsHubScreen(context);
@@ -55,12 +59,18 @@ public class ExcelPostLoginSteps {
 
     @Given("the logged-in airpay money home screen is open")
     public void loggedInHome() {
-        if ("true".equalsIgnoreCase(System.getProperty("android.keep.session", ""))) {
-            LOG.info("Background: keep.session — skip Appium home probe");
+        home.ensureMoneyInForeground();
+        waitOutSpinner();
+        if (home.sourceContains("Enter your Airpay Money PIN", "Forgot PIN")) {
+            unlockPinAndSkipBiometric();
+        }
+        if (FunctionalModuleReset.fhcContinue() && FunctionalModuleReset.onFhcPage(home.pageSource())) {
             return;
         }
-        home.ensureMoneyInForeground();
-        unlockPinAndSkipBiometric();
+        if (com.airpay.money.hooks.ProfileNavigationGate.allowed()
+                && home.pageSource().toUpperCase().contains("PROFILE SETTINGS")) {
+            return;
+        }
         if (alreadyOnLoggedInShell()) {
             return;
         }
@@ -235,7 +245,8 @@ public class ExcelPostLoginSteps {
 
     @Then("the Digital Gold dashboard is displayed")
     public void goldDashboard() {
-        Assertions.assertThat(gold.isDisplayed())
+        boolean onDashboard = gold.waitUntil(gold::isDisplayed, Duration.ofSeconds(8));
+        Assertions.assertThat(onDashboard)
                 .as("Digital Gold dashboard should show Buy and the locker or coins section")
                 .isTrue();
     }
@@ -247,7 +258,8 @@ public class ExcelPostLoginSteps {
 
     @Then("the Buy Gold and Silver screen is displayed")
     public void buyDisplayed() {
-        Assertions.assertThat(buy.isDisplayed())
+        boolean shown = buy.waitUntil(buy::isDisplayed, Duration.ofSeconds(10));
+        Assertions.assertThat(shown)
                 .as("Buy Gold and Silver screen should be displayed")
                 .isTrue();
     }
@@ -388,12 +400,14 @@ public class ExcelPostLoginSteps {
             return;
         }
         ensureProductsHub();
-        if (!products.isDisplayed() && !products.open()) {
-            home.tapLabel("Products");
-            sleepQuiet(400);
+        products.ensureInvestmentsSectionVisible();
+        boolean onHub = products.waitUntil(products::isDisplayed, Duration.ofSeconds(6));
+        if (!onHub) {
+            products.open();
+            onHub = products.waitUntil(products::isDisplayed, Duration.ofSeconds(6));
         }
-        Assertions.assertThat(products.isDisplayed() || products.open())
-                .as("Products hub should open")
+        Assertions.assertThat(onHub)
+                .as("Products hub should open (Investments section with Fixed Deposit tile)")
                 .isTrue();
         Assertions.assertThat(products.openFixedDeposit())
                 .as("Fixed Deposit tile should open the dashboard")
@@ -554,9 +568,9 @@ public class ExcelPostLoginSteps {
         }
     }
 
-    /** Tab bar present — cheap check, no full Products hub content match. */
+    /** Tab bar present — 2.1.4 is Home | FinSight | Calculators (Products is the old label). */
     private boolean onMainChrome() {
-        return home.sourceContains("Products")
+        return (home.sourceContains("Home") || home.sourceContains("Products"))
                 && home.sourceContains("FinSight")
                 && home.sourceContains("Calculators");
     }
@@ -601,7 +615,7 @@ public class ExcelPostLoginSteps {
             if (!home.leaveViaBack()) {
                 return;
             }
-            sleepQuiet(500);
+            home.waitUntil(() -> onFinSightDashboardHome() || !insideHealthCheck(), Duration.ofSeconds(3));
             unlockPinAndSkipBiometric();
         }
     }
@@ -620,22 +634,15 @@ public class ExcelPostLoginSteps {
             if (products.open()) {
                 return;
             }
-            home.tapHeaderBack();
         }
     }
 
     private void passGoldIntro() {
-        for (int i = 0; i < 6 && !gold.isDisplayed(); i++) {
-            if (!gold.tapLabel("Next") && !gold.tapLabel("Skip") && !gold.tapLabel("Get Started")) {
-                break;
-            }
-            try {
-                Thread.sleep(700);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            }
+        DigitalGoldIntroScreen intro = new DigitalGoldIntroScreen(context);
+        if (intro.isDisplayed()) {
+            intro.completeIfShown();
         }
+        gold.waitUntil(gold::isDisplayed, Duration.ofSeconds(6));
     }
 
     private void openFinsight() {
@@ -668,6 +675,14 @@ public class ExcelPostLoginSteps {
         }
     }
 
+    /** "Please Wait" is a blank spinner. The hub check fails if it is still up. */
+    private void waitOutSpinner() {
+        if (!home.sourceContains("Please Wait")) {
+            return;
+        }
+        home.waitUntil(() -> !home.sourceContains("Please Wait"), Duration.ofSeconds(8));
+    }
+
     private boolean insideHealthCheck() {
         return home.sourceContains(
                 "Question ", "Lets do risk profile", "I already know",
@@ -677,26 +692,26 @@ public class ExcelPostLoginSteps {
     }
 
     private void unlockPinAndSkipBiometric() {
+        if (!home.sourceContains("Enter your Airpay Money PIN", "Forgot PIN", "Unlock faster with Biometrics")) {
+            return;
+        }
         biometric.dismissIfShown();
-        for (int attempt = 0; attempt < 3; attempt++) {
-            if (!pinUnlock.waitUntilDisplayed(Duration.ofSeconds(4))
-                    && !home.sourceContains("Enter your Airpay Money PIN", "Welcome Back")) {
-                biometric.dismissIfShown();
-                return;
-            }
-            String pin = MoneyExcel.pin("880272");
+        if (!home.sourceContains("Enter your Airpay Money PIN", "Forgot PIN")) {
+            return;
+        }
+        for (int attempt = 0; attempt < 2; attempt++) {
+            String pin = MoneyExcel.pin("123698");
             LOG.info("Entering session PIN from the Login sheet (attempt {})", attempt + 1);
             try {
                 pinUnlock.enterPin(pin);
             } catch (RuntimeException e) {
                 LOG.warn("PIN key tap failed: {}", e.toString());
             }
-            sleepQuiet(1500);
+            sleepQuiet(800);
             biometric.dismissIfShown();
             if (!onPinOrLogin()) {
                 return;
             }
-            sleepQuiet(800);
         }
     }
 
@@ -709,11 +724,7 @@ public class ExcelPostLoginSteps {
     }
 
     private static void sleepQuiet(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // The next page read is the wait. A fixed sleep only stacks on the dump.
     }
 
     private void swipeUntil(String... fragments) {

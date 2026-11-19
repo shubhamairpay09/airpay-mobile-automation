@@ -53,6 +53,9 @@ public class CapitalLoginFlow {
     public void loginWithMobile(String mobile) {
         allowDialogs(Duration.ofSeconds(8));
         biometric.dismissIfShown();
+        if (otpScreen.isDisplayed() && !otpScreen.tapEditMobile()) {
+            home.tapBack();
+        }
         if (home.looksLoggedIn()) {
             LOG.info("Already logged in — skipping login");
             return;
@@ -60,15 +63,21 @@ public class CapitalLoginFlow {
         if (mobileLogin.waitUntilDisplayed(Duration.ofSeconds(5))) {
             submitMobileAndOtp(mobile);
             biometric.dismissIfShown();
+            if (!home.looksLoggedIn()) {
+                throw new IllegalStateException("Login failed — Home screen not visible after OTP for " + mobile);
+            }
             return;
         }
-        if (!welcome.waitForLoginButton(Duration.ofSeconds(12))) {
+        if (!welcome.waitForLoginButton(Duration.ofSeconds(2))) {
             home.openHome();
             if (home.looksLoggedIn()) {
                 LOG.info("Already logged in after returning home — skipping login");
                 return;
             }
-            allowDialogs(Duration.ofSeconds(5));
+            allowDialogs(Duration.ofSeconds(3));
+        }
+        if (!welcome.waitForLoginButton(Duration.ofSeconds(6))) {
+            throw new IllegalStateException("Welcome Login button not found.");
         }
         welcome.tapLoginWithMobile();
         if (!mobileLogin.waitUntilDisplayed(Duration.ofSeconds(15))) {
@@ -97,8 +106,8 @@ public class CapitalLoginFlow {
             }
         }
         if (home.looksLoggedIn()) {
-            LOG.info("Already on Home — opening welcome path via app relaunch is not required for product steps");
-            return;
+            LOG.info("Already on Home — logging out so login can start from Welcome");
+            home.logOut();
         }
         if (!welcome.waitForLoginButton(Duration.ofSeconds(20))) {
             allowDialogs(Duration.ofSeconds(5));
@@ -140,38 +149,36 @@ public class CapitalLoginFlow {
     }
 
     /**
-     * Prefers {@code capital.test.otp} only when explicitly set.
-     * Otherwise polls SMS / notification shade via {@link NotificationOtpReader}.
-     * Excel {@code OTP} is used only as a last-resort fallback (e.g. staging stub).
+     * Excel OTP first. Then {@code capital.test.otp} if set.
+     * Otherwise wait for the user to type OTP on the phone (notifications are used if they arrive).
      */
     public String resolveOtpFromNotifications(String mobile) {
+        String fromExcel = CapitalExcel.otp("");
+        if (!fromExcel.isBlank()) {
+            LOG.info("Using OTP from the Capital Excel Login sheet");
+            return fromExcel;
+        }
         String configured = context.config().get("capital.test.otp", "").trim();
         if (!configured.isBlank()) {
             LOG.info("Using OTP from capital.test.otp");
             return configured;
         }
         long waitMs = context.config().getLong("timeout.otp.wait.ms", 120_000);
-        LOG.info("Waiting up to {}s for OTP in device notifications for {}", waitMs / 1000, mask(mobile));
+        LOG.info("Excel OTP is blank — waiting up to {}s for OTP on the phone for {}",
+                waitMs / 1000, mask(mobile));
         int expectedLen = otpScreen.isDisplayed() ? otpScreen.expectedLength() : 0;
         String fromDevice = NotificationOtpReader.poll(
                 context.driver(), context.config(), mobile, Duration.ofMillis(waitMs),
                 expectedLen, home::looksLoggedIn);
         if (fromDevice != null && !fromDevice.isBlank()) {
-            // dumpsys/SMS OTP reads stay in-app — do not activateApp (that backgrounds/refocuses).
             return fromDevice;
         }
         if (home.looksLoggedIn()) {
-            LOG.info("Already past OTP screen (app may have auto-consumed SMS)");
+            LOG.info("Already past OTP screen");
             return "";
         }
-        String excelFallback = CapitalExcel.otp("");
-        if (!excelFallback.isBlank()) {
-            LOG.warn("Notification OTP not found — falling back to Excel OTP for {}", mask(mobile));
-            return excelFallback;
-        }
-        throw new IllegalStateException(
-                "Could not read OTP from device notifications for " + mask(mobile)
-                        + ". Ensure SMS notifications are enabled, or set capital.test.otp.");
+        otpScreen.waitUntilGone(Duration.ofMillis(waitMs));
+        return "";
     }
 
     private void submitMobileAndOtp(String mobile) {
@@ -190,7 +197,14 @@ public class CapitalLoginFlow {
             otpScreen.enterOtp(otp);
         }
         biometric.dismissIfShown();
-        otpScreen.waitUntilGone(Duration.ofSeconds(20));
+        if (!otpScreen.waitUntilGone(otpScreenTimeout()) && !home.looksLoggedIn()) {
+            throw new IllegalStateException(
+                    "OTP was not entered. Put OTP in the Login sheet, or type it on the phone.");
+        }
+    }
+
+    private Duration otpScreenTimeout() {
+        return Duration.ofMillis(context.config().getLong("timeout.otp.wait.ms", 120_000));
     }
 
     private void allowDialogs(Duration timeout) {

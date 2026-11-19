@@ -54,7 +54,7 @@ public class CalculatorSheetSteps {
 
     @When("I open the Calculators tab")
     public void openTab() {
-        showCalculatorsHub();
+        openCalculatorsHubOnly();
         Assertions.assertThat(hub.isDisplayed())
                 .as("Financial Calculators screen should open from the bottom navigation")
                 .isTrue();
@@ -62,8 +62,9 @@ public class CalculatorSheetSteps {
 
     @Then("the Financial Calculators screen is displayed")
     public void hubShown() {
-        Assertions.assertThat(hub.isDisplayed())
-                .as("Financial Calculators screen should be displayed")
+        boolean onHub = hub.waitUntil(hub::isDisplayed, java.time.Duration.ofSeconds(8));
+        Assertions.assertThat(onHub)
+                .as("Financial Calculators screen should be displayed (Hello + calculator grid on Calculators tab)")
                 .isTrue();
     }
 
@@ -71,7 +72,9 @@ public class CalculatorSheetSteps {
     public void greeting() {
         String src = hub.pageSource();
         Assertions.assertThat(src).as("User greeting should be displayed").contains("Hello");
-        Assertions.assertThat(src).as("Financial Calculators header should be displayed").contains("Financial Calculators");
+        Assertions.assertThat(hub.heroTitleDisplayed())
+                .as("Financial Calculators hero (title or subtitle) should be displayed")
+                .isTrue();
         Assertions.assertThat(src).as("EMI Calculator option should be visible").contains("EMI Calculator");
     }
 
@@ -603,9 +606,10 @@ public class CalculatorSheetSteps {
 
     @Then("the Financial Calculators header is displayed")
     public void headerDisplayed() {
-        Assertions.assertThat(hub.pageSource())
-                .as("Financial Calculators header should be displayed")
-                .contains("Financial Calculators");
+        hub.waitUntil(hub::isDisplayed, java.time.Duration.ofSeconds(5));
+        Assertions.assertThat(hub.heroTitleDisplayed())
+                .as("Financial Calculators hero (title or subtitle) should be displayed on the Calculators hub")
+                .isTrue();
     }
 
     @And("the calculator greeting Hello is displayed")
@@ -643,64 +647,51 @@ public class CalculatorSheetSteps {
         }
     }
 
+    /**
+     * Calculators tab → each tile (scroll grid) → verify detail page → top-left in-app Back → hub.
+     */
     @When("I open every calculator on the Calculator sheet and return")
     public void openFromSheet() {
+        openCalculatorsHubOnly();
         java.util.List<String> missed = new java.util.ArrayList<>();
         for (String[] pair : MoneyExcel.rows("Option")) {
-            showCalculatorsHub();
-            if (!hub.openTile(pair[0], pair[1]) || !calculatorPageOpen(pair[1])) {
-                missed.add(pair[0]);
-                returnToHub(pair[1]);
+            String tile = pair[0];
+            String pageTitle = pair[1];
+            if (!hub.isDisplayed()) {
+                openCalculatorsHubOnly();
+            }
+            if (!hub.openTile(tile, pageTitle)) {
+                missed.add(tile + " (open)");
+                hub.backToHubFromCalculator();
                 continue;
             }
-            returnToHub(pair[1]);
+            if (!calculator.verifyDetailPage(pageTitle)) {
+                missed.add(tile + " (verify)");
+                hub.backToHubFromCalculator();
+                continue;
+            }
+            if (!hub.backToHubFromCalculator()) {
+                missed.add(tile + " (back)");
+                openCalculatorsHubOnly();
+                continue;
+            }
+            if (!hub.isDisplayed()) {
+                openCalculatorsHubOnly();
+            }
         }
         Assertions.assertThat(missed)
-                .as("Every calculator on the sheet should open. Missed: " + missed)
+                .as("Every calculator should open, show its page, and return via in-app Back. Missed: " + missed)
                 .isEmpty();
     }
 
-    /**
-     * Leave the calculator page (in-app Back, then system Back when app Back is dead),
-     * then reopen the Calculators tab if needed.
-     */
-    private boolean calculatorPageOpen(String expectedTitle) {
-        if (calculator.showsTitle(expectedTitle)) {
-            return true;
-        }
-        if (expectedTitle.toLowerCase().contains("buy")) {
-            return calculator.showsTitle("Buy Vs Rent calculator")
-                    || calculator.showsTitle("Buy vs Rent calculator")
-                    || calculator.showsTitle("Buy vs Rent");
-        }
-        if (expectedTitle.toLowerCase().contains("lump")) {
-            return calculator.showsTitle("Lumpsum Calculator")
-                    || calculator.showsTitle("Lump Sum Calculator")
-                    || calculator.showsTitle("Lumpsum");
-        }
-        if ("Retirement Calculator".equalsIgnoreCase(expectedTitle)
-                || expectedTitle.toLowerCase().contains("term insurance")) {
-            return calculator.showsTitle("Term Insurance")
-                    || calculator.showsTitle("Retirement Calculator");
-        }
-        return false;
-    }
-
-    private void returnToHub(String openedTitle) {
-        int tries = MoneyFunctionalFast.enabled(context) ? 2 : 3;
-        long pause = MoneyFunctionalFast.enabled(context) ? 450L : 700L;
-        for (int i = 0; i < tries && calculator.showsTitle(openedTitle); i++) {
-            calculator.tapAppBack();
-            sleepQuiet(pause);
-        }
-        showCalculatorsHub();
-    }
-
-    private void showCalculatorsHub() {
-        if (hub.ensureOpen()) {
+  /** Bottom-nav Calculators only — no {@link CalculatorsHubScreen#ensureOpen()} profile loops. */
+    private void openCalculatorsHubOnly() {
+        if (hub.isDisplayed()) {
             return;
         }
+        home.ensureMoneyInForeground();
         finsight.openCalculatorsTab();
+        hub.waitUntil(hub::isDisplayed, java.time.Duration.ofSeconds(3));
     }
 
     @Then("the calculator option {string} is listed")
@@ -725,10 +716,6 @@ public class CalculatorSheetSteps {
     }
 
     private static void sleepQuiet(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-        }
+        // The next page read is the wait.
     }
 }

@@ -10,6 +10,6 @@ Each app has its own accessibility bat and its own functional bat.
 
 Optional first argument is a phone serial when more than one phone is plugged in.
 
-`_lib` is shared setup (Java, Maven, Android SDK, Appium). It is not a third test runner.
+`_lib` is shared setup. It is not a third test runner.
 
-Set these with no quotes, then open a new CMD: `JAVA_HOME`, `M2_HOME` (or `mvn` on PATH), `ANDROID_HOME` and `ANDROID_SDK_ROOT`. Install Appium and `appium driver install uiautomator2`.
+Each bat checks JDK 21 or newer, Maven, Android platform-tools, build-tools, Node.js, Appium, and the UiAutomator2 driver. `C:\Program Files\Java\jdk-27.0.1.0.3` is used when it is installed. Anything missing is downloaded into `%LOCALAPPDATA%\airpay-mobile-tools`. Appium is started when nothing is listening on `http://127.0.0.1:4723`. Set `RESTART_APPIUM=Yes` to replace an Appium that was started before `ANDROID_HOME` existed.

@@ -42,10 +42,25 @@ call "%~dp0prepare-device.bat" %PRODUCT% %PREFERRED_UDID%
 if errorlevel 1 exit /b 1
 set "UDID="
 for /f "usebackq tokens=1,* delims==" %%A in ("target\%PRODUCT%\prepare.env") do set "%%A=%%B"
+if defined ANDROID_HOME (
+  set "ANDROID_SDK_ROOT=%ANDROID_HOME%"
+  set "PATH=%ANDROID_HOME%\platform-tools;%PATH%"
+)
+if defined JAVA_HOME set "PATH=%JAVA_HOME%\bin;%PATH%"
+if defined M2_HOME set "PATH=%M2_HOME%\bin;%PATH%"
+echo Java:    %JAVA_HOME%
+echo Maven:   %M2_HOME%
+echo Android: %ANDROID_HOME%
+echo Appium:  %APPIUM_CMD%
 set "DEVICE_ARG=-Dandroid.udid=%UDID%"
 echo %EXTRA_MAVEN% | findstr /i /c:"android.udid" >nul
 if not errorlevel 1 set "DEVICE_ARG="
 echo Phone: %UDID%
+
+if exist "target\%PRODUCT%\allure-results" (
+  echo Clearing previous Allure results for %PRODUCT%
+  rmdir /s /q "target\%PRODUCT%\allure-results" 2>nul
+)
 
 call :deriveTags
 if "%TAGS%"=="" (
@@ -65,7 +80,10 @@ if not "%TEST%"=="" set "TEST_ARG=-Dtest=%TEST% -Dsurefire.failIfNoSpecifiedTest
 
 echo Tags: %TAGS%
 call :mvnInstall
-if errorlevel 1 exit /b 1
+if errorlevel 1 (
+  echo Maven install of utilities failed.
+  exit /b 1
+)
 
 call :mvnTest
 set "EXIT_CODE=%ERRORLEVEL%"
@@ -107,6 +125,11 @@ if defined CLASSWORLDS_JAR (
 exit /b %ERRORLEVEL%
 
 :deriveTags
+if /i "%SUITE%"=="custom" if "%CUCUMBER_TAGS%"=="" (
+  echo SUITE=custom needs CUCUMBER_TAGS, for example @airpay-capital and @functional and not @a11y and not @lms
+  set "TAGS="
+  goto :eof
+)
 if not "%CUCUMBER_TAGS%"=="" (
   set "TAGS=%CUCUMBER_TAGS%"
   goto :eof
@@ -117,7 +140,7 @@ if not "%PRODUCT_TAG%"=="" (
   set "TAGS=@airpay-%PRODUCT%"
 )
 if /i "%SUITE%"=="smoke" set "TAGS=%TAGS% and @smoke and not @a11y"
-if /i "%SUITE%"=="functional" set "TAGS=%TAGS% and @functional and not @a11y"
+if /i "%SUITE%"=="functional" set "TAGS=%TAGS% and @functional and not @a11y and not @lms"
 if /i "%SUITE%"=="a11y" set "TAGS=%TAGS% and @a11y"
 if /i "%SUITE%"=="regression" set "TAGS=%TAGS% and @regression and not @a11y"
 if not "%EXTRA_TAGS%"=="" set "TAGS=%TAGS% and %EXTRA_TAGS%"

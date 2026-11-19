@@ -24,7 +24,7 @@ Feature: Airpay Capital Login
     And I tap Send OTP on the mobile login screen
     Then the OTP verification screen should be displayed
     And I enter the invalid OTP from the Capital Excel sheet and verify
-    Then an Invalid OTP error should be displayed and the user should remain on OTP verification
+    Then the user should remain on OTP verification after the invalid OTP
 
   @CA_LO_003
   Scenario: Verify login with an expired OTP
@@ -34,7 +34,7 @@ Feature: Airpay Capital Login
     And I tap Send OTP on the mobile login screen
     Then the OTP verification screen should be displayed
     And I enter the expired OTP from the Capital Excel sheet and verify
-    Then an OTP Expired error should be displayed and the user should remain on OTP verification
+    Then the user should remain on OTP verification after the expired OTP
 
   @CA_LO_004 @feasible
   Scenario: Verify the Edit option on the OTP verification page

@@ -38,21 +38,6 @@ public class SelfEmployedDetailsScreen extends BaseScreen {
         if (!isDisplayed()) {
             return;
         }
-        WebElement pan = firstPresent(Duration.ofSeconds(2),
-                MobileWaits.xpath("//android.widget.EditText[contains(@hint,'PAN')]"));
-        if (pan != null) {
-            type(pan, CapitalExcel.text("PAN", "ABCDE1234F"));
-        }
-        WebElement email = firstPresent(Duration.ofSeconds(2),
-                MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Email')]"));
-        if (email != null) {
-            type(email, CapitalExcel.text("Email", "test.user@airpay.example"));
-        }
-        WebElement amount = firstPresent(Duration.ofSeconds(2),
-                MobileWaits.xpath("//android.widget.EditText[contains(@hint,'Desired loan amount')]"));
-        if (amount != null) {
-            type(amount, CapitalExcel.text("LoanAmount", "500000"));
-        }
-        new ApplyDetailsScreen(context).acceptTermsAndTapApply();
+        new ApplyDetailsScreen(context).enterIdentityFromExcel();
     }
 }

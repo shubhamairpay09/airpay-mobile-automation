@@ -26,16 +26,19 @@ public final class MoneyTestData {
     }
 
     public static String otp(FrameworkConfig config) {
-        String otp = config.get("money.test.otp", "1234").trim();
-        return otp.isBlank() ? "1234" : otp;
-    }
-
-    public static String pin(FrameworkConfig config) {
-        String fromSheet = MoneyExcel.pin("");
+        String fromSheet = MoneyExcel.otp("");
         if (!fromSheet.isBlank()) {
             return fromSheet;
         }
-        return config.get("money.test.pin", "").trim();
+        return config.get("money.test.otp", "").trim();
+    }
+
+    public static String pin(FrameworkConfig config) {
+        String configured = config == null ? "" : config.get("money.test.pin", "").trim();
+        if (!configured.isBlank()) {
+            return configured;
+        }
+        return MoneyExcel.pin("123698");
     }
 
     public static String pan(FrameworkConfig config) {
@@ -43,7 +46,18 @@ public final class MoneyTestData {
     }
 
     public static String name(FrameworkConfig config) {
-        return config.get("money.test.name", "Shubham Verma").trim();
+        return lettersOnlyName(config.get("money.test.name", "Shubham Verma"));
+    }
+
+    /** App name fields reject dots (including N.A / N.A.). Letters and spaces only. */
+    public static String lettersOnlyName(String name) {
+        if (name == null || name.isBlank()) {
+            return "";
+        }
+        String cleaned = name.replaceAll("(?i)\\bN\\.?A\\.?\\b", " ");
+        cleaned = cleaned.replace(".", " ");
+        cleaned = cleaned.replaceAll("[^A-Za-z ]", " ");
+        return cleaned.replaceAll("\\s+", " ").trim();
     }
 
     public static String email(FrameworkConfig config) {

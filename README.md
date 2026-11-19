@@ -1,6 +1,6 @@
 # Airpay Mobile Automation
 
-Java 21 + Maven + Cucumber + TestNG + Appium (UiAutomator2) + Allure.
+Java 21 or newer + Maven + Cucumber + TestNG + Appium (UiAutomator2) + Allure. The local runs use `C:\Program Files\Java\jdk-27.0.1.0.3` when that JDK is installed.
 
 Multi-app **monorepo** — same layout as `airpay_automation_gitlab` (web): shared `utilities`, one Maven module per Android app, central `config/`, product reports under `target/<product>/`.
 
@@ -29,7 +29,7 @@ airpay-mobile-automation/
 
 ## Prerequisites
 
-- JDK 21, Maven 3.9+
+- JDK 21 or newer (JDK 27 at `C:\Program Files\Java\jdk-27.0.1.0.3` is preferred), Maven 3.9+
 - Appium 2+ + `uiautomator2` driver (`appium driver install uiautomator2`)
 - Physical Android device (`adb devices`)
 - APK path in `config/capital.properties`

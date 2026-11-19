@@ -7,10 +7,15 @@ import org.apache.logging.log4j.Logger;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Fills visible text inputs with deterministic dummy values so Apply / Continue
@@ -26,6 +31,15 @@ public final class DummyFormFiller {
         KEYWORD_VALUES.put("mobile", "7906862513");
         KEYWORD_VALUES.put("phone", "7906862513");
         KEYWORD_VALUES.put("email", "test.user@airpay.example");
+        KEYWORD_VALUES.put("name as per pan", "Test User");
+        KEYWORD_VALUES.put("full name", "Test User");
+        KEYWORD_VALUES.put("first name", "Test");
+        KEYWORD_VALUES.put("last name", "User");
+        KEYWORD_VALUES.put("company", "Airpay Test Pvt Ltd");
+        KEYWORD_VALUES.put("employer", "Airpay Test Pvt Ltd");
+        KEYWORD_VALUES.put("organization", "Airpay Test Pvt Ltd");
+        KEYWORD_VALUES.put("business", "Retail Trading");
+        KEYWORD_VALUES.put("name", "Test User");
         KEYWORD_VALUES.put("pan", "ABCDE1234F");
         KEYWORD_VALUES.put("aadhaar", "234567890123");
         KEYWORD_VALUES.put("aadhar", "234567890123");
@@ -45,15 +59,6 @@ public final class DummyFormFiller {
         KEYWORD_VALUES.put("age", "32");
         KEYWORD_VALUES.put("dob", "01/01/1992");
         KEYWORD_VALUES.put("date of birth", "01/01/1992");
-        KEYWORD_VALUES.put("name as per pan", "Test User");
-        KEYWORD_VALUES.put("name", "Test User");
-        KEYWORD_VALUES.put("first name", "Test");
-        KEYWORD_VALUES.put("last name", "User");
-        KEYWORD_VALUES.put("full name", "Test User");
-        KEYWORD_VALUES.put("company", "Airpay Test Pvt Ltd");
-        KEYWORD_VALUES.put("employer", "Airpay Test Pvt Ltd");
-        KEYWORD_VALUES.put("organization", "Airpay Test Pvt Ltd");
-        KEYWORD_VALUES.put("business", "Retail Trading");
         KEYWORD_VALUES.put("gst", "27AABCU9603R1ZM");
         KEYWORD_VALUES.put("ifsc", "HDFC0001234");
         KEYWORD_VALUES.put("account", "50100234567890");
@@ -63,6 +68,9 @@ public final class DummyFormFiller {
     private final AndroidDriver driver;
     private final String defaultText;
     private final String defaultNumber;
+    private final Map<String, String> overrides = new LinkedHashMap<>();
+    /** Prompts already written by this filler. Later passes must not type them again. */
+    private final Set<String> written = new HashSet<>();
 
     public DummyFormFiller(AndroidDriver driver) {
         this(driver, "Test User", "500000");
@@ -72,6 +80,14 @@ public final class DummyFormFiller {
         this.driver = driver;
         this.defaultText = defaultText;
         this.defaultNumber = defaultNumber;
+    }
+
+    /** Case-specific value checked before the shared dummy map. Longer keys should be set first. */
+    public DummyFormFiller override(String keyword, String value) {
+        if (keyword != null && value != null && !value.isBlank()) {
+            overrides.put(keyword.toLowerCase(Locale.ROOT), value);
+        }
+        return this;
     }
 
     /**
@@ -99,34 +115,63 @@ public final class DummyFormFiller {
 
     private int fillOnce() {
         int filled = 0;
+        int alreadyDone = 0;
         List<WebElement> fields = driver.findElements(By.xpath(
                 "//android.widget.EditText | //*[contains(@class,'EditText')]"));
-        for (WebElement field : fields) {
+        for (WebElement field : oneFieldPerRow(fields)) {
             try {
-                if (!field.isDisplayed() || !field.isEnabled()) {
+                String label = semanticLabel(field);
+                String existing = firstAttr(field, "text");
+                if (written.contains(label.toLowerCase(Locale.ROOT)) || sameValue(existing, resolveValue(label))) {
+                    written.add(label.toLowerCase(Locale.ROOT));
+                    alreadyDone++;
                     continue;
                 }
-                String hint = firstAttr(field, "hint", "content-desc", "contentDescription", "text");
-                String value = resolveValue(hint);
-                if (hint == null || hint.isBlank()) {
-                    value = KEYWORD_VALUES.get("mobile");
-                }
+                String value = resolveValue(label);
                 if (!typeInto(field, value)) {
                     continue;
                 }
+                written.add(label.toLowerCase(Locale.ROOT));
                 filled++;
-                LOG.info("Filled field '{}' → '{}'", abbreviate(hint), value);
+                LOG.info("Filled field '{}' → '{}'", abbreviate(label), value);
             } catch (Exception e) {
                 LOG.debug("Skip field fill: {}", e.toString());
             }
         }
-        // Also try focusable text-entry Views used by Flutter
-        if (filled == 0) {
+        // Flutter sometimes exposes the input only as a focusable semantics node.
+        if (filled == 0 && alreadyDone == 0) {
             filled += fillFlutterishFields();
         }
         filled += tickConsentCheckboxes();
         hideKeyboardQuiet();
         return filled;
+    }
+
+    /** Parent semantics and the inner EditText share a row. Type the shorter prompt once. */
+    private List<WebElement> oneFieldPerRow(List<WebElement> fields) {
+        Map<Integer, WebElement> best = new TreeMap<>();
+        Map<Integer, Integer> labelLength = new HashMap<>();
+        for (WebElement field : fields) {
+            try {
+                if (!field.isDisplayed() || !field.isEnabled()) {
+                    continue;
+                }
+                String label = semanticLabel(field);
+                if (!looksLikePrompt(label)) {
+                    continue;
+                }
+                int row = field.getRect().getY() / 70;
+                int length = label.length();
+                Integer current = labelLength.get(row);
+                if (current == null || length < current) {
+                    best.put(row, field);
+                    labelLength.put(row, length);
+                }
+            } catch (Exception ignored) {
+                // stale
+            }
+        }
+        return new ArrayList<>(best.values());
     }
 
     /** Tick visible consent / terms checkboxes so Continue can enable. */
@@ -201,18 +246,25 @@ public final class DummyFormFiller {
                 if (cls.contains("Button") || cls.contains("Image") || cls.contains("CheckBox")) {
                     continue;
                 }
-                String hint = firstAttr(field, "hint", "content-desc", "contentDescription", "text");
-                if (hint == null || hint.isBlank()) {
+                String hint = semanticLabel(field);
+                if (!looksLikePrompt(hint)) {
                     continue;
                 }
                 String lower = hint.toLowerCase(Locale.ROOT);
-                if (lower.contains("back") || lower.contains("skip") || lower.contains("apply")) {
+                if (written.contains(lower) || lower.contains("back") || lower.contains("skip")
+                        || lower.contains("apply")) {
                     continue;
                 }
+                String existing = firstAttr(field, "text");
                 String value = resolveValue(hint);
+                if (sameValue(existing, value)) {
+                    written.add(lower);
+                    continue;
+                }
                 if (!typeInto(field, value)) {
                     continue;
                 }
+                written.add(lower);
                 filled++;
                 LOG.info("Filled flutter-ish '{}' → '{}'", abbreviate(hint), value);
             } catch (Exception ignored) {
@@ -227,16 +279,69 @@ public final class DummyFormFiller {
             return defaultText;
         }
         String lower = hint.toLowerCase(Locale.ROOT);
-        for (Map.Entry<String, String> e : KEYWORD_VALUES.entrySet()) {
-            if (lower.contains(e.getKey())) {
-                return e.getValue();
-            }
+        String overridden = matchKeyword(overrides, lower);
+        if (overridden != null) {
+            return overridden;
+        }
+        String keyword = matchKeyword(KEYWORD_VALUES, lower);
+        if (keyword != null) {
+            return keyword;
         }
         if (lower.matches(".*\\b(no|number|qty|quantity|count|age|year|month|day)\\b.*")
                 || lower.contains("₹") || lower.contains("rs") || lower.contains("amount")) {
             return defaultNumber;
         }
         return hint.toLowerCase(Locale.ROOT).matches(".*\\d.*") ? defaultNumber : defaultText;
+    }
+
+    private static String matchKeyword(Map<String, String> map, String lower) {
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            String key = entry.getKey();
+            if ("name".equals(key) && isOrganizationHint(lower)) {
+                continue;
+            }
+            if (lower.contains(key)) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    private static boolean isOrganizationHint(String lower) {
+        return lower.contains("company") || lower.contains("employer")
+                || lower.contains("business") || lower.contains("organization")
+                || lower.contains("organisation");
+    }
+
+    private static String semanticLabel(WebElement field) {
+        return firstAttr(field, "hint", "content-desc", "contentDescription");
+    }
+
+    /** True only when the box already shows the value we would type. Placeholders are not a match. */
+    private static boolean sameValue(String existing, String value) {
+        if (existing == null || value == null) {
+            return false;
+        }
+        String text = existing.trim();
+        if (text.isEmpty() || value.isBlank()) {
+            return false;
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        if (lower.startsWith("enter ") || lower.contains("required") || lower.startsWith("select ")) {
+            return false;
+        }
+        return text.equalsIgnoreCase(value.trim());
+    }
+
+    private static boolean looksLikePrompt(String label) {
+        if (label == null || label.isBlank()) {
+            return false;
+        }
+        String lower = label.toLowerCase(Locale.ROOT);
+        return lower.contains("enter") || lower.contains("required") || lower.contains("name")
+                || lower.contains("pan") || lower.contains("email") || lower.contains("amount")
+                || lower.contains("income") || lower.contains("salary") || lower.contains("mobile")
+                || lower.contains("phone") || lower.contains("address") || lower.contains("pin");
     }
 
     private boolean typeInto(WebElement field, String value) {

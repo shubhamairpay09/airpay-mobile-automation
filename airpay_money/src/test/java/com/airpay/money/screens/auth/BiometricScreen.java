@@ -42,8 +42,11 @@ public class BiometricScreen extends BaseScreen {
     }
 
     public void dismissIfShown() {
+        if (!sourceContains("Unlock faster with Biometrics", "Enable Biometrics", "Skip for Now", "Skip for now")) {
+            return;
+        }
         for (int i = 0; i < 4; i++) {
-            boolean skipped = tapFirst(Duration.ofSeconds(2),
+            boolean skipped = tapFirst(Duration.ofMillis(800),
                     MobileWaits.xpath("//android.widget.Button[@content-desc='Skip for Now']"),
                     MobileWaits.xpath("//*[@content-desc='Skip for now' or @content-desc='Skip for Now']"));
             if (!skipped && sourceContains("Biometric", "fingerprint", "Face unlock", "Unlock faster")) {
@@ -72,7 +75,7 @@ public class BiometricScreen extends BaseScreen {
 
     /** Confirmation that follows Skip for now. */
     public boolean tapOk() {
-        boolean tapped = tapFirst(Duration.ofSeconds(2),
+        boolean tapped = tapFirst(Duration.ofMillis(600),
                 MobileWaits.xpath("//android.widget.Button[@content-desc='OK' or @text='OK']"),
                 MobileWaits.xpath("//*[@clickable='true' and (@content-desc='OK' or @text='OK')]"));
         if (tapped) {

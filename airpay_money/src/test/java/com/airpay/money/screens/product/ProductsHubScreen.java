@@ -138,7 +138,19 @@ public class ProductsHubScreen extends BaseScreen {
         // Investments section + at least one other investment tile (not MF interior alone).
         return sourceContains("Investments")
                 && sourceContains("Digital Gold", "NPS", "Fixed Deposit")
-                && !sourceContains("View all Mutual Funds", "Features of NPS", "Buy Gold", "Calculate Now");
+                && !sourceContains("View all Mutual Funds", "Features of NPS", "Calculate Now")
+                && !onDigitalGoldDashboard()
+                && !onFixedDepositLanding();
+    }
+
+    private boolean onDigitalGoldDashboard() {
+        return sourceContains("Digital Gold") && sourceContains("Buy")
+                && sourceContains("Locker", "Gold Coins", "Dashboard");
+    }
+
+    private boolean onFixedDepositLanding() {
+        return sourceContains("Discover Fixed Deposits")
+                || (sourceContains("Popular FDs") && sourceContains("Senior Citizen"));
     }
 
     public boolean open() {
@@ -146,26 +158,49 @@ public class ProductsHubScreen extends BaseScreen {
             return true;
         }
         String udid = context.config().get("android.udid", "");
-        tapLabelFast("Home");
-        tapLabelFast("Back");
         com.airpay.mobile.utilities.android.AdbInput.tapBottomNav(udid, 0, 3);
-        sleep(600);
-        if (isDisplayed()) {
+        if (waitUntil(this::isDisplayed, Duration.ofSeconds(4))) {
             return true;
         }
-        tapLabelFast("Home");
-        tapLabelFast("Back");
-        com.airpay.mobile.utilities.android.AdbInput.tapBottomNav(udid, 0, 3);
-        sleep(600);
-        return isDisplayed();
+        ensureInvestmentsSectionVisible();
+        return waitUntil(this::isDisplayed, actionTimeout());
     }
 
     public boolean openDigitalGold() {
-        return openModule("Digital Gold");
+        ensureInvestmentsSectionVisible();
+        if (!tapProductTile("Digital Gold")) {
+            return false;
+        }
+        DigitalGoldDashboardScreen dashboard = new DigitalGoldDashboardScreen(context);
+        DigitalGoldIntroScreen intro = new DigitalGoldIntroScreen(context);
+        Duration navWait = Duration.ofSeconds(10);
+        if (!waitUntil(() -> dashboard.isDisplayed() || intro.isDisplayed(), navWait)) {
+            if (!tapProductTile("Digital Gold")) {
+                return false;
+            }
+            waitUntil(() -> dashboard.isDisplayed() || intro.isDisplayed(), navWait);
+        }
+        if (intro.isDisplayed()) {
+            intro.completeIfShown();
+        }
+        return waitUntil(dashboard::isDisplayed, Duration.ofSeconds(6));
     }
 
     public boolean openFixedDeposit() {
-        return openModule("Fixed Deposit");
+        ensureInvestmentsSectionVisible();
+        if (!tapProductTile("Fixed Deposit")) {
+            return false;
+        }
+        FixedDepositsLandingScreen landing = new FixedDepositsLandingScreen(context);
+        Duration navWait = Duration.ofSeconds(10);
+        if (!waitUntil(landing::isDisplayed, navWait)) {
+            ensureInvestmentsSectionVisible();
+            if (!tapProductTile("Fixed Deposit")) {
+                return false;
+            }
+            waitUntil(landing::isDisplayed, navWait);
+        }
+        return landing.isDisplayed();
     }
 
     public boolean openMutualFunds() {
@@ -184,28 +219,83 @@ public class ProductsHubScreen extends BaseScreen {
     }
 
     public boolean openModule(String label) {
-        String quoted = xpathLiteral(label);
-        // contains() — Tax etc. often use multiline content-desc (label + FY).
-        scrollIntoDescription(label);
-        if (tapFirst(Duration.ofMillis(500),
-                MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]/android.widget.ImageView"),
-                MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc," + quoted + ")]"),
-                MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]"),
-                MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc," + quoted + ")]"))) {
-            sleep(120);
+        if (isInvestmentTile(label)) {
+            ensureInvestmentsSectionVisible();
+        }
+        if (pageSource().contains(label) && tapProductTile(label)) {
             return true;
         }
-        for (int i = 0; i < 5; i++) {
-            swipeUp();
-            sleep(60);
-            if (tapFirst(Duration.ofMillis(400),
-                    MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]/android.widget.ImageView"),
-                    MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc," + quoted + ")]"),
-                    MobileWaits.xpath("//*[contains(@content-desc," + quoted + ") and @clickable='true']"))) {
-                sleep(120);
+        if (!pageSource().contains(label)) {
+            scrollIntoDescription(label);
+        }
+        if (tapProductTile(label)) {
+            return true;
+        }
+        boolean investment = isInvestmentTile(label);
+        for (int i = 0; i < 4; i++) {
+            if (investment) {
+                swipeDown();
+            } else {
+                swipeUp();
+            }
+            sleep(100);
+            if (pageSource().contains(label) && tapProductTile(label)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** FD / Gold / NPS / MF sit under Investments at the top — never scroll down to Insurance first. */
+    private static boolean isInvestmentTile(String label) {
+        return "Fixed Deposit".equals(label)
+                || "Digital Gold".equals(label)
+                || "NPS".equals(label)
+                || "Mutual Funds".equals(label);
+    }
+
+    /** Pull the hub back so Investments and the first tile row are on screen. */
+    public void ensureInvestmentsSectionVisible() {
+        if (sourceContains("Investments") && sourceContains("Fixed Deposit", "Digital Gold", "Mutual Funds")) {
+            return;
+        }
+        for (int i = 0; i < 5; i++) {
+            swipeDown();
+            sleep(120);
+            if (sourceContains("Investments")
+                    && sourceContains("Fixed Deposit", "Digital Gold", "Mutual Funds", "NPS")) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Hub tiles: tap the icon (top ~25%), not the dead centre — same pattern as Calculators grid.
+     */
+    private boolean tapProductTile(String label) {
+        String quoted = xpathLiteral(label);
+        if (!pageSource().contains(label)) {
+            scrollIntoDescription(label);
+        }
+        org.openqa.selenium.WebElement tile = firstPresent(Duration.ofMillis(800),
+                MobileWaits.xpath("//android.view.View[@content-desc=" + quoted + "]"),
+                MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]"));
+        if (tile != null) {
+            try {
+                var rect = tile.getRect();
+                int x = rect.getX() + Math.max(8, rect.getWidth() / 2);
+                int iconY = rect.getY() + Math.max(12, (int) (rect.getHeight() * 0.22));
+                shellPress(x, iconY);
+                sleep(350);
+                return true;
+            } catch (Exception ignored) {
+                // fall through to xpath taps
+            }
+        }
+        return tapFirst(Duration.ofMillis(600),
+                MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]/android.widget.ImageView"),
+                MobileWaits.xpath("//android.widget.ImageView[contains(@content-desc," + quoted + ")]"),
+                MobileWaits.xpath("//android.view.View[contains(@content-desc," + quoted + ")]"),
+                MobileWaits.xpath("//*[@clickable='true' and contains(@content-desc," + quoted + ")]"));
     }
 }

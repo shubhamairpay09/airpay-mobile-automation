@@ -48,6 +48,20 @@ public final class AdbInput {
         return "";
     }
 
+    /** Focused window from {@code dumpsys window}; does not touch UiAutomator2. */
+    public static boolean isForeground(String udid, String appPackage) {
+        String out = AdbCommands.shellOut(udid, 5, "dumpsys", "window");
+        if (out == null) {
+            return false;
+        }
+        for (String line : out.split("\n")) {
+            if ((line.contains("mCurrentFocus") || line.contains("mFocusedApp")) && line.contains(appPackage)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void startActivity(String udid, String appPackage, String activity) {
         AdbCommands.shell(udid, "am", "start", "-n", appPackage + "/" + activity);
     }

@@ -94,6 +94,22 @@ public final class MoneyExcel {
     public static String pin(String fallback) {
         load();
         String value = CELLS.get(id("Login", "DEFAULT", "Pin"));
+        if ("790628".equals(value)) {
+            value = "123698";
+        }
+        if (value != null && !value.isBlank()) {
+            return value;
+        }
+        if (fallback != null && !fallback.isBlank() && fallback.length() == 6) {
+            return fallback;
+        }
+        return "123698";
+    }
+
+    /** Login OTP from the Login sheet. Blank means wait for the user to type OTP on the phone. */
+    public static String otp(String fallback) {
+        load();
+        String value = CELLS.get(id("Login", "DEFAULT", "OTP"));
         if (value != null && !value.isBlank()) {
             return value;
         }
@@ -149,7 +165,7 @@ public final class MoneyExcel {
                 if (row.getCell(2) == null) {
                     row.createCell(2);
                 }
-                row.getCell(2).setCellValue("790628");
+                row.getCell(2).setCellValue("123698");
                 found = true;
                 break;
             }
@@ -158,7 +174,7 @@ public final class MoneyExcel {
             Row row = sheet.createRow(Math.max(sheet.getLastRowNum(), 0) + 1);
             row.createCell(0).setCellValue("DEFAULT");
             row.createCell(1).setCellValue("Pin");
-            row.createCell(2).setCellValue("790628");
+            row.createCell(2).setCellValue("123698");
             row.createCell(3).setCellValue("Used when the app asks for the Airpay Money PIN");
         }
         try (OutputStream out = Files.newOutputStream(path)) {
@@ -249,6 +265,7 @@ public final class MoneyExcel {
         put(book, "FHC", "DEFAULT", "State", "Uttar Pradesh", "");
         put(book, "FHC", "DEFAULT", "Income", "100000", "");
         put(book, "FHC", "DEFAULT", "Expenses", "40000", "");
+        put(book, "FHC", "DEFAULT", "Lifestyle", "10000", "");
         put(book, "FHC", "DEFAULT", "Principal", "500000", "");
         put(book, "FHC", "DEFAULT", "EMI", "10000", "");
         put(book, "FHC", "DEFAULT", "InterestRate", "12", "");
@@ -339,7 +356,9 @@ public final class MoneyExcel {
                 "The sheet listed Allow Consent twice. That case is automated once as NW_TC.", "");
 
         header(book.createSheet("Login"));
-        put(book, "Login", "DEFAULT", "Pin", "790628", "Used when the app asks for the Airpay Money PIN");
+        put(book, "Login", "DEFAULT", "Pin", "123698", "Used when the app asks for the Airpay Money PIN");
+        put(book, "Login", "DEFAULT", "OTP", "",
+                "Leave blank to wait for OTP on the phone. Fill this cell to type OTP during login.");
     }
 
     private static void header(Sheet sheet) {

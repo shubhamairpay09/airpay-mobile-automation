@@ -1,6 +1,9 @@
 /**
- * Jenkins job: Airpay_Vyaapaar (mobile)
+ * Jenkins job: Airpay Vyaapaar (phone)
  * Script Path: jenkins/vyaapaar/Jenkinsfile
+ *
+ * Windows agent with the phone attached. The same toolchain setup as Capital and Money
+ * runs first. config/secrets.properties on the agent needs vyaapaar.test.password.
  */
 def helpers
 
@@ -9,7 +12,7 @@ pipeline {
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '6', daysToKeepStr: '14'))
-        timeout(time: 3, unit: 'HOURS')
+        timeout(time: 4, unit: 'HOURS')
     }
 
     parameters {
@@ -37,41 +40,22 @@ pipeline {
             }
         }
 
-        stage('Clean previous reports') {
-            when { expression { params.CLEAN_PREVIOUS_REPORTS } }
-            steps {
-                script { helpers.cleanReportDirs(env.MODULE) }
-            }
-        }
-
-        stage('CI overrides') {
-            steps {
-                script {
-                    helpers.writeCiOverrides([
-                            envName     : params.ENV,
-                            product     : env.PRODUCT,
-                            androidUdid : params.ANDROID_UDID
-                    ])
-                }
-            }
-        }
-
-        stage('Install utilities') {
-            steps {
-                script { helpers.runCmd('mvn -pl utilities -am install -DskipTests -q') }
-            }
-        }
-
         stage('Run tests') {
             steps {
                 script {
-                    def tags = (params.CUCUMBER_TAGS ?: '').trim()
-                    if (!tags) {
-                        tags = helpers.suiteTags(env.PRODUCT_TAG, params.SUITE, params.EXTRA_TAGS)
-                    }
-                    echo "Cucumber tags: ${tags}"
-                    def cmd = "mvn -pl ${env.MODULE} -am test -Denv=${params.ENV} -Dairpay.product=${env.PRODUCT} \"-Dcucumber.filter.tags=${tags}\""
-                    def code = helpers.runCmdStatus(cmd)
+                    def code = helpers.runMobile([
+                            module        : env.MODULE,
+                            product       : env.PRODUCT,
+                            productTag    : env.PRODUCT_TAG,
+                            test          : 'VyaapaarRunner',
+                            envName       : params.ENV,
+                            suite         : params.SUITE,
+                            udid          : params.ANDROID_UDID,
+                            cucumberTags  : params.CUCUMBER_TAGS,
+                            extraTags     : params.EXTRA_TAGS,
+                            extraMaven    : '-Da11y.login.password=true -Dandroid.keep.session=true',
+                            cleanReports  : params.CLEAN_PREVIOUS_REPORTS
+                    ])
                     if (code != 0) {
                         currentBuild.result = 'UNSTABLE'
                         error "Tests failed (exit ${code})"
@@ -83,6 +67,7 @@ pipeline {
 
     post {
         always {
+            script { if (helpers) { helpers.publishAllure(env.PRODUCT) } }
             archiveArtifacts artifacts: 'target/vyaapaar/**', allowEmptyArchive: true
             junit testResults: 'target/surefire-reports/airpay_vyaapaar/*.xml', allowEmptyResults: true
         }

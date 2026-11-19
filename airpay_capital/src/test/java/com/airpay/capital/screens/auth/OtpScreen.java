@@ -9,6 +9,7 @@ import io.appium.java_client.android.nativekey.AndroidKey;
 import io.appium.java_client.android.nativekey.KeyEvent;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import io.appium.java_client.pagefactory.iOSXCUITFindBy;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import java.time.Duration;
@@ -111,16 +112,72 @@ public class OtpScreen extends BaseScreen {
     }
 
     public void tapVerifyIfPresent() {
-        tapFirst(Duration.ofSeconds(5),
-                MobileWaits.xpath("//android.widget.Button[@content-desc='Verify']"),
-                accessibility("Verify"));
+        dismissKeyboard();
+        By verify = MobileWaits.xpath("//android.widget.Button[@content-desc='Verify']");
+        int[] point = lowestButtonCenter(verify);
+        if (point == null) {
+            throw new IllegalStateException("Verify button was not tappable");
+        }
+        tapAt(point[0], point[1]);
+        sleep(500);
+        if (sourceContains("Verify OTP")) {
+            adbTap(point[0], point[1]);
+        }
+    }
+
+    private void dismissKeyboard() {
+        try {
+            driver.hideKeyboard();
+        } catch (Exception ignored) {
+            // already closed
+        }
+        String udid = context.config().get("android.udid", "");
+        com.airpay.mobile.utilities.android.AdbCommands.shell(udid, "input", "keyevent", "111");
+        sleep(300);
+    }
+
+    private int[] lowestButtonCenter(By by) {
+        int[] best = null;
+        int bestY = -1;
+        for (WebElement el : driver.findElements(by)) {
+            try {
+                var r = el.getRect();
+                if (r.height < 40 || r.width < 40) {
+                    continue;
+                }
+                int y = r.y + r.height / 2;
+                if (y >= bestY) {
+                    bestY = y;
+                    best = new int[]{r.x + r.width / 2, y};
+                }
+            } catch (Exception ignored) {
+                // stale
+            }
+        }
+        return best;
+    }
+
+    public boolean invalidOtpMessageVisible() {
+        return waitUntilSourceContains(Duration.ofSeconds(8),
+                "Invalid OTP", "incorrect OTP", "Incorrect OTP", "OTP is invalid", "invalid otp",
+                "Wrong OTP", "Please enter a valid OTP", "Please enter valid OTP");
+    }
+
+    public boolean expiredOtpMessageVisible() {
+        return waitUntilSourceContains(Duration.ofSeconds(8),
+                "OTP Expired", "OTP expired", "expired OTP", "OTP has expired", "Expired OTP",
+                "This OTP has expired");
     }
 
     /** Taps Edit beside the registered mobile number on the OTP screen. */
     public boolean tapEditMobile() {
-        return tapFirst(Duration.ofSeconds(6),
+        By edit = MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Edit')]");
+        if (tapCenter(edit)) {
+            return true;
+        }
+        return tapFirst(Duration.ofSeconds(4),
                 MobileWaits.xpath("//*[contains(@content-desc,'Edit') and (@clickable='true' or self::android.widget.Button)]"),
-                MobileWaits.xpath("//android.widget.Button[contains(@content-desc,'Edit')]"),
+                edit,
                 accessibility("Edit"))
                 || tapLabel("Edit");
     }
@@ -142,37 +199,21 @@ public class OtpScreen extends BaseScreen {
     }
 
     private boolean tryTapResendReady() {
-        // Prefer controls that are past the "(Ns)" cooldown suffix.
+        By ready = MobileWaits.xpath("//*[@content-desc='Send again OTP' or @text='Send again OTP']");
+        if (tapCenter(ready)) {
+            return true;
+        }
         return tapFirst(Duration.ofSeconds(2),
-                MobileWaits.xpath("//*[@content-desc='Send again OTP' or @text='Send again OTP']"),
-                MobileWaits.xpath("//*[contains(@content-desc,'Send again OTP') and not(contains(@content-desc,'('))]"),
-                MobileWaits.xpath("//*[contains(@content-desc,'Resend') and contains(@content-desc,'OTP')"
-                        + " and not(contains(@content-desc,'('))]"),
+                ready,
+                MobileWaits.xpath("//*[contains(@content-desc,'Resend OTP') and not(contains(@content-desc,'('))]"),
                 accessibility("Send again OTP"),
                 accessibility("Resend OTP"))
-                || tapAny(java.util.List.of("Send again OTP", "Resend OTP", "Resend"));
-    }
-
-    public boolean invalidOtpMessageVisible() {
-        return sourceContains("Invalid OTP", "incorrect OTP", "Incorrect OTP", "OTP is invalid", "invalid otp");
-    }
-
-    public boolean expiredOtpMessageVisible() {
-        return sourceContains("OTP Expired", "OTP expired", "expired OTP", "OTP has expired", "Expired");
+                || tapAny(java.util.List.of("Send again OTP", "Resend OTP"));
     }
 
     public boolean waitUntilGone(Duration timeout) {
         HomeScreen home = new HomeScreen(context);
-        long end = System.currentTimeMillis() + timeout.toMillis();
-        while (System.currentTimeMillis() < end) {
-            if (!isDisplayed() && home.looksLoggedIn()) {
-                return true;
-            }
-            if (home.looksLoggedIn()) {
-                return true;
-            }
-            sleep(250);
-        }
-        return home.looksLoggedIn();
+        return waitUntil(() -> home.looksLoggedIn() || !sourceContains(
+                "Verify OTP", "Enter OTP", "One time password", "Resend OTP"), timeout);
     }
 }

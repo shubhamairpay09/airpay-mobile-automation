@@ -1,6 +1,7 @@
 package com.airpay.money.screens.product;
 
 import com.airpay.money.screens.base.BaseScreen;
+import com.airpay.mobile.utilities.android.AdbCommands;
 import com.airpay.mobile.utilities.context.TestContext;
 import com.airpay.mobile.utilities.waits.MobileWaits;
 import io.appium.java_client.pagefactory.AndroidFindBy;
@@ -100,7 +101,11 @@ public class DigitalGoldBuyScreen extends BaseScreen {
     }
 
     public boolean isDisplayed() {
-        return sourceContains("Buy Gold") && sourceContains("Buy in rupees", "Investment type");
+        boolean form = sourceContains("Buy in rupees", "Investment type", "Buy in grams");
+        if (!form) {
+            return false;
+        }
+        return sourceContains("Buy Gold", "Buy Gold &", "Buy Gold and", "Silver");
     }
 
     public void openSilverTab() {
@@ -195,18 +200,80 @@ public class DigitalGoldBuyScreen extends BaseScreen {
     }
 
     public boolean consentChecked() {
-        WebElement box = firstPresent(Duration.ofSeconds(3),
-                MobileWaits.xpath("//android.widget.CheckBox[contains(@content-desc,'Accept terms')]"),
-                MobileWaits.xpath("//android.widget.CheckBox"));
-        return box != null && "true".equals(box.getAttribute("checked"));
+        WebElement box = consentBox(Duration.ofSeconds(3));
+        return isChecked(box);
     }
 
+    /** Toggles the consent box once and waits until its checked state flips. */
     public void acceptConsent() {
+        hideSoftKeyboard();
         revealBottomActions();
-        tapFirst(Duration.ofSeconds(4),
+        WebElement box = consentBox(Duration.ofSeconds(4));
+        if (box == null) {
+            return;
+        }
+        boolean before = isChecked(box);
+        WebElement label = firstPresent(Duration.ofSeconds(1),
+                MobileWaits.xpath("//android.view.View[starts-with(@content-desc,'By clicking proceed')]"));
+        if (label != null) {
+            var text = label.getRect();
+            // Privacy Policy / Terms links sit mid-text; press the opening words only.
+            shellPress(text.getX() + 24, text.getY() + Math.min(20, text.getHeight() / 4));
+            if (waits.until(() -> consentChecked() != before, Duration.ofMillis(1_500))) {
+                return;
+            }
+        }
+        var rect = box.getRect();
+        shellPress(rect.getX() + rect.getWidth() / 2, rect.getY() + rect.getHeight() / 2);
+        if (waits.until(() -> consentChecked() != before, Duration.ofMillis(1_500))) {
+            return;
+        }
+        WebElement again = consentBox(Duration.ofSeconds(1));
+        if (again != null) {
+            again.click();
+            waits.until(() -> consentChecked() != before, Duration.ofMillis(1_500));
+        }
+    }
+
+    /** Amount is auto-focused on open; its number pad sits in its own window over the consent row. */
+    private void hideSoftKeyboard() {
+        if (!keyboardShown()) {
+            return;
+        }
+        try {
+            driver.hideKeyboard();
+        } catch (Exception ignored) {
+            // Appium skips hiding when it believes no keyboard is up; ESC below closes it.
+        }
+        if (waits.until(() -> !keyboardShown(), Duration.ofSeconds(1))) {
+            return;
+        }
+        AdbCommands.shell(udid(), "input", "keyevent", "111");
+        waits.until(() -> !keyboardShown(), Duration.ofSeconds(2));
+    }
+
+    /** Flutter fields leave {@code mInputShown=false} while the pad is up, so Appium's check misses it. */
+    private boolean keyboardShown() {
+        String ime = AdbCommands.shellOut(udid(), 5, "dumpsys", "input_method");
+        return ime != null && ime.contains("mIsInputViewShown=true");
+    }
+
+    private String udid() {
+        return context.config().get("android.udid", "");
+    }
+
+    private WebElement consentBox(Duration wait) {
+        return firstPresent(wait,
                 MobileWaits.xpath("//android.widget.CheckBox[contains(@content-desc,'Accept terms')]"),
                 MobileWaits.xpath("//android.widget.CheckBox"));
-        sleep(300);
+    }
+
+    private static boolean isChecked(WebElement box) {
+        try {
+            return box != null && "true".equals(box.getAttribute("checked"));
+        } catch (Exception stale) {
+            return false;
+        }
     }
 
     public boolean proceedEnabled() {

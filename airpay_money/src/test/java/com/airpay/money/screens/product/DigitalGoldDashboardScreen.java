@@ -64,14 +64,17 @@ public class DigitalGoldDashboardScreen extends BaseScreen {
 
     public boolean isDisplayed() {
         return sourceContains("Digital Gold") && sourceContains("Buy")
-                && sourceContains("Locker", "Gold Coins");
+                && sourceContains("Locker", "Gold Coins", "Dashboard", "Total Value");
     }
 
     public void tapBuy() {
         tapFirst(Duration.ofSeconds(6),
                 MobileWaits.xpath("//android.widget.Button[@content-desc='Buy']"),
+                MobileWaits.xpath("//*[@content-desc='Buy']"),
                 accessibility("Buy"));
-        sleep(700);
+        sleep(500);
+        waitUntil(() -> sourceContains("Buy in rupees", "Investment type", "Buy Gold", "Buy Gold & Silver"),
+                Duration.ofSeconds(8));
     }
 
     public void tapSell() {

@@ -42,10 +42,11 @@ public class FinSightHomeScreen extends BaseScreen {
     /** Logged-in FinSight home (Hello + health score), not FHC Personal Details or launcher. */
     public boolean isDashboardHome() {
         String src = pageSource().replace("&#10;", "\n");
-        return src.contains("Hello")
-                && src.contains("Your Financial Health Score")
+        return src.contains("Your Financial Health Score")
                 && src.contains("FinSight")
-                && src.contains("Calculators");
+                && src.contains("Calculators")
+                && src.contains("Open settings")
+                && !src.contains("content-desc=\"Back\"");
     }
 
     public boolean isDisplayed() {

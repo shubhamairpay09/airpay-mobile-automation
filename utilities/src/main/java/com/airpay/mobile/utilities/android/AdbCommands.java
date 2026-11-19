@@ -62,6 +62,23 @@ public final class AdbCommands {
         }
     }
 
+    /** UDIDs currently listed as {@code device} by {@code adb devices}. */
+    public static List<String> connectedUdids() {
+        Result result = run(List.of(adbBinary(), "devices"), 15);
+        List<String> udids = new ArrayList<>();
+        for (String line : result.stdout().split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("List of")) {
+                continue;
+            }
+            String[] parts = trimmed.split("\\s+");
+            if (parts.length >= 2 && "device".equalsIgnoreCase(parts[1])) {
+                udids.add(parts[0]);
+            }
+        }
+        return udids;
+    }
+
     public static String adbBinary() {
         for (String env : List.of("ANDROID_HOME", "ANDROID_SDK_ROOT")) {
             String home = System.getenv(env);

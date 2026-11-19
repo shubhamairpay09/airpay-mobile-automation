@@ -93,6 +93,109 @@ public class ProductJourneyFlow {
         openProduct(CapitalExcel.text("Product", currentProduct == null ? "Personal Loan" : currentProduct));
     }
 
+    /** Opens the home-grid card and stops when the feature page or the apply flow is visible. */
+    public void openProductCardFromExcel() {
+        currentProduct = CapitalExcel.text("Product", currentProduct == null ? "Personal Loan" : currentProduct);
+        home.openHome();
+        if (!home.openProductFeaturePage(currentProduct)) {
+            throw new IllegalStateException("Could not open " + currentProduct + " from the Home grid");
+        }
+    }
+
+    public boolean addressVisible() {
+        return applyDetails.addressVisible();
+    }
+
+    public boolean workDetailsVisible() {
+        return salariedIncome.isDisplayed();
+    }
+
+    public boolean productSurfaceVisible() {
+        return home.featurePageVisible() || occupationVisible() || applicationDetailsVisible()
+                || addressVisible() || workDetailsVisible() || journeyInProgress() || offersAreVisible();
+    }
+
+    public boolean applyEntryVisible() {
+        return occupationVisible() || applicationDetailsVisible() || addressVisible()
+                || workDetailsVisible() || journeyInProgress() || offersAreVisible();
+    }
+
+    /** Checks the feature-page terms and taps Apply Now. No-op when the apply flow is already open. */
+    public void acceptTermsAndOpenApplication() {
+        if (applyEntryVisible()) {
+            return;
+        }
+        home.finishFeaturePage();
+        if (!applyEntryVisible()) {
+            throw new IllegalStateException(
+                    "Apply Now did not open occupation or personal details for " + currentProduct);
+        }
+    }
+
+    /** Selects the Excel occupation, then opens personal details. A saved journey is resumed instead. */
+    public void selectOccupationAndOpenDetails() {
+        if (addressVisible() || workDetailsVisible() || applicationDetailsVisible() || offersAreVisible()) {
+            return;
+        }
+        if (journeyInProgress()) {
+            resumeSavedJourney();
+            return;
+        }
+        selectOccupationFromExcel();
+        if (!applicationDetailsVisible() && !offersAreVisible()) {
+            throw new IllegalStateException(
+                    "Personal details were not displayed after occupation was selected for " + currentProduct);
+        }
+    }
+
+    public void enterIdentityFromExcel() {
+        if (offersAreVisible() || addressVisible() || workDetailsVisible() || !applicationDetailsVisible()) {
+            return;
+        }
+        applyDetails.enterIdentityFromExcel();
+    }
+
+    public String missingIdentityValues() {
+        if (offersAreVisible() || addressVisible() || workDetailsVisible()) {
+            return "";
+        }
+        return applyDetails.missingIdentityValues();
+    }
+
+    /** Sets date of birth and gender, then taps Continue once. Fills address when that screen is showing. */
+    public void setDobGenderAndContinueOnce() {
+        if (offersAreVisible()) {
+            return;
+        }
+        if (addressVisible() || workDetailsVisible()) {
+            submitAddressAndWork();
+            return;
+        }
+        if (journeyInProgress()) {
+            return;
+        }
+        if (!applicationDetailsVisible()) {
+            throw new IllegalStateException("Personal details are not displayed for " + currentProduct);
+        }
+        applyDetails.chooseDateOfBirth();
+        applyDetails.chooseGender();
+        if (!applyDetails.tapContinue() && !eligibility.checkEligibilityVisible()) {
+            throw new IllegalStateException("Continue was not tappable on personal details for " + currentProduct);
+        }
+        submitAddressAndWork();
+    }
+
+    /** Address Continue opens Work Details. Fill that form before Check Eligibility. */
+    private void submitAddressAndWork() {
+        applyDetails.fillAddressIfDisplayed();
+        if (salariedIncome.isDisplayed()) {
+            salariedIncome.fillIfDisplayed();
+        }
+        if (eligibility.checkEligibilityVisible()) {
+            eligibility.tapCheckEligibility();
+        }
+    }
+
     public void selectOccupation(Occupation occ) {
         if (!occupation.isDisplayed() && !ProductLandingScreens.forProduct(context, currentProduct).looksLikeApplyFlow()) {
             throw new IllegalStateException("Occupation screen not shown for " + currentProduct);
@@ -103,6 +206,11 @@ public class ProductJourneyFlow {
             occupation.selectSelfEmployed();
         }
         occupation.tapContinue();
+        // Continue on this screen is announced "Go to Loan feature screen" and returns
+        // to the product page. Apply Now there opens the personal-details form.
+        if (!applyDetails.isDisplayed()) {
+            home.finishFeaturePage();
+        }
         applyDetails.waitUntilDisplayed(Duration.ofSeconds(12));
     }
 

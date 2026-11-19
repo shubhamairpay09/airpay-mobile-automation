@@ -18,14 +18,40 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class BaseScreen {
 
     private static final Logger LOG = LogManager.getLogger(BaseScreen.class);
+    private static volatile ExecutorService APPIUM_IO = newAppiumIoExecutor();
+    private static final long MIN_FIND_MS = 2_000;
+    /** A failed recover must not be retried on every page read — that flood stops a new session starting. */
+    private static long recoverBlockedUntil;
+
+    private static ExecutorService newAppiumIoExecutor() {
+        return Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "appium-io");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    /** After UiAutomator2 dies, the worker thread can stay blocked on the old driver — replace the pool. */
+    private static synchronized void resetAppiumIoExecutor() {
+        try {
+            APPIUM_IO.shutdownNow();
+        } catch (Exception ignored) {
+            // stale pool
+        }
+        APPIUM_IO = newAppiumIoExecutor();
+    }
 
     protected final TestContext context;
     protected final AndroidDriver driver;
@@ -61,8 +87,17 @@ public abstract class BaseScreen {
         long end = System.currentTimeMillis() + wait.toMillis();
         long poll = Math.min(80, Math.max(40, wait.toMillis() / 5));
         while (System.currentTimeMillis() < end) {
+            long remain = end - System.currentTimeMillis();
+            if (remain <= 0) {
+                break;
+            }
+            long perFind = Math.min(400, remain);
             for (By by : locators) {
-                for (WebElement el : findElementsTimed(by, 5)) {
+                remain = end - System.currentTimeMillis();
+                if (remain <= 0) {
+                    break;
+                }
+                for (WebElement el : findElementsTimed(by, Math.min(perFind, remain))) {
                     try {
                         if (el.isDisplayed() && el.isEnabled()) {
                             el.click();
@@ -82,8 +117,17 @@ public abstract class BaseScreen {
     protected boolean tapFirstAny(Duration wait, By... locators) {
         long end = System.currentTimeMillis() + wait.toMillis();
         while (System.currentTimeMillis() < end) {
+            long remain = end - System.currentTimeMillis();
+            if (remain <= 0) {
+                break;
+            }
+            long perFind = Math.min(400, remain);
             for (By by : locators) {
-                for (WebElement el : findElementsTimed(by, 3)) {
+                remain = end - System.currentTimeMillis();
+                if (remain <= 0) {
+                    break;
+                }
+                for (WebElement el : findElementsTimed(by, Math.min(perFind, remain))) {
                     try {
                         el.click();
                         return true;
@@ -109,8 +153,17 @@ public abstract class BaseScreen {
         long end = System.currentTimeMillis() + wait.toMillis();
         long poll = Math.min(80, Math.max(40, wait.toMillis() / 5));
         while (System.currentTimeMillis() < end) {
+            long remain = end - System.currentTimeMillis();
+            if (remain <= 0) {
+                break;
+            }
+            long perFind = Math.min(400, remain);
             for (By by : locators) {
-                for (WebElement el : findElementsTimed(by, 5)) {
+                remain = end - System.currentTimeMillis();
+                if (remain <= 0) {
+                    break;
+                }
+                for (WebElement el : findElementsTimed(by, Math.min(perFind, remain))) {
                     try {
                         if (el.isDisplayed()) {
                             return el;
@@ -125,15 +178,20 @@ public abstract class BaseScreen {
         return null;
     }
 
-    private List<WebElement> findElementsTimed(By by, int seconds) {
+    protected List<WebElement> findElementsTimed(By by, long timeoutMs) {
+        Future<List<WebElement>> future = APPIUM_IO.submit(() -> live().findElements(by));
         try {
-            List<WebElement> found = CompletableFuture.supplyAsync(() -> live().findElements(by))
-                    .orTimeout(seconds, TimeUnit.SECONDS)
-                    .join();
+            // A find on a large Flutter tree (Products hub) takes ~1s; a shorter cap reports present nodes as missing.
+            List<WebElement> found = future.get(Math.max(MIN_FIND_MS, timeoutMs), TimeUnit.MILLISECONDS);
             return found != null ? found : List.of();
+        } catch (TimeoutException e) {
+            // Miss budget elapsed — not a UiAutomator crash. Do not recover or warn.
+            return List.of();
         } catch (Exception e) {
-            LOG.warn("findElements hung or failed: {}", e.toString());
-            recoverIfInstrumentationDead(e);
+            future.cancel(true);
+            if (!recoverIfInstrumentationDead(e)) {
+                LOG.debug("findElements failed: {}", e.toString());
+            }
             return List.of();
         }
     }
@@ -146,6 +204,7 @@ public abstract class BaseScreen {
             return false;
         }
         LOG.warn("UiAutomator2 died on findElements — recovering session once");
+        resetAppiumIoExecutor();
         try {
             context.setDriver(com.airpay.mobile.utilities.driver.AppiumManager.recover(context.config()));
         } catch (Exception recoverFailed) {
@@ -168,11 +227,21 @@ public abstract class BaseScreen {
         if (src != null) {
             return src;
         }
+        // A heavy Flutter screen can outlast one read. Recovering here used to quit a live session.
+        src = fetchPageSource(8);
+        if (src != null) {
+            return src;
+        }
+        if (System.currentTimeMillis() < recoverBlockedUntil) {
+            return "";
+        }
         LOG.warn("UiAutomator2 hung or died on getPageSource — recovering session");
+        resetAppiumIoExecutor();
         try {
             context.setDriver(com.airpay.mobile.utilities.driver.AppiumManager.recover(context.config()));
         } catch (Exception recoverFailed) {
             LOG.warn("Session recover failed: {}", recoverFailed.toString());
+            recoverBlockedUntil = System.currentTimeMillis() + 15_000;
             return "";
         }
         src = fetchPageSource(8);
@@ -181,38 +250,33 @@ public abstract class BaseScreen {
 
     /** Bound getPageSource so a dead UiAutomator2 cannot sit on newCommandTimeout (4h). */
     private String fetchPageSource(int seconds) {
+        Future<String> future = APPIUM_IO.submit(() -> live().getPageSource());
         try {
-            return CompletableFuture.supplyAsync(() -> live().getPageSource())
-                    .orTimeout(seconds, TimeUnit.SECONDS)
-                    .join();
+            return future.get(seconds, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            resetAppiumIoExecutor();
+            LOG.warn("getPageSource timed out after {}s", seconds);
+            return null;
         } catch (Exception e) {
-            Throwable cause = e.getCause() != null ? e.getCause() : e;
-            String msg = cause.getMessage() == null ? cause.toString() : cause.getMessage();
-            String lower = msg.toLowerCase();
-            if (lower.contains("timeout")
-                    || lower.contains("instrumentation process is not running")
-                    || lower.contains("cannot be proxied to uiautomator2")
-                    || lower.contains("nosuchsession")
-                    || lower.contains("session is either terminated")) {
-                LOG.warn("getPageSource failed: {}", msg);
-                return null;
-            }
-            throw e instanceof RuntimeException re ? re : new RuntimeException(e);
+            future.cancel(true);
+            resetAppiumIoExecutor();
+            LOG.warn("getPageSource failed: {}", e.toString());
+            return null;
         }
     }
 
-    /** If launcher/search stole focus, bring Money back via adb only (Appium getCurrentPackage hangs this device). */
+    /** If another app stole focus, bring Money forward. Never uses getCurrentPackage (hangs this realme). */
     public void ensureMoneyInForeground() {
         String udid = context.config().get("android.udid", "");
-        String pkg = AdbInput.foregroundPackage(udid);
-        if (pkg.isBlank() || "com.finmapp.fininfinity".equals(pkg)) {
+        String pkg = context.config().get("money.app.package", "com.finmapp.fininfinity");
+        if (AdbInput.isForeground(udid, pkg)) {
             return;
         }
-        LOG.info("Money not in foreground (pkg={}) — am start", pkg);
-        AdbInput.startActivity(udid,
-                context.config().get("money.app.package", "com.finmapp.fininfinity"),
-                context.config().get("money.app.activity", "com.finmapp.fininfinity.MainActivity"));
-        sleep(1500);
+        String activity = context.config().get("money.app.activity", "com.finmapp.fininfinity.MainActivity");
+        LOG.info("Money not on screen — am start {}", pkg);
+        AdbInput.startActivity(udid, pkg, activity);
+        waitUntil(() -> AdbInput.isForeground(udid, pkg), Duration.ofSeconds(3));
     }
 
     /** Short list of on-screen labels, so a failed check names what was actually open. */
@@ -282,49 +346,50 @@ public abstract class BaseScreen {
     }
 
     public void tapHeaderBack() {
-        String src = safeSource();
-        if (src.contains("Open settings") && (src.contains("Hello") || src.contains("Financial Calculators")
-                || src.contains("Your Financial Health Score"))) {
-            return;
-        }
-        if (tapFirstAny(Duration.ofSeconds(2),
-                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
-                MobileWaits.xpath("//*[@content-desc='Back']"),
-                AppiumBy.accessibilityId("Back"))) {
-            sleep(400);
-            return;
-        }
-        WebElement back = headerBackIcon();
-        if (back != null) {
-            pressElement(back);
-        } else {
-            pressHeaderBackChip();
-        }
-        sleep(700);
-    }
-
-    /** Top-left Back chip on 720x1600 (and similar). Hardcoded 79,174 misses this phone. */
-    protected void pressHeaderBackChip() {
-        int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
-                context.config().get("android.udid", ""));
-        int x = Math.max(48, (int) (size[0] * 0.08));
-        int y = Math.max(96, (int) (size[1] * 0.075));
-        shellPress(x, y);
+        tapInAppBack();
     }
 
     /**
-     * Top-left Back only. Do not scan every clickable node — that query crashes UiAutomator2
-     * and then hangs the rest of the suite.
+     * Top-left Back chevron. Live dump on this phone: Button bounds [40,80][112,160].
+     * Never tap it on Home / FinSight / Calculators — that chip is Open settings (profile).
      */
-    private WebElement headerBackIcon() {
-        return firstPresent(Duration.ofSeconds(1),
-                MobileWaits.xpath("//*[contains(@content-desc,'Back')]"),
-                AppiumBy.accessibilityId("Back"));
+    protected boolean pressHeaderBackChip() {
+        String src = safeSource();
+        if (src.isBlank() || isTabHub(src) || headerIsOpenSettings(src) || src.contains("Open settings")) {
+            return false;
+        }
+        if (tapFirst(Duration.ofMillis(500),
+                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
+                MobileWaits.xpath("//*[@content-desc='Back']"))) {
+            return true;
+        }
+        return tapUnlabeledTopLeftBackBounds();
+    }
+
+    /** Flutter 2.1.4 detail pages: unlabeled chevron ~[40,80][112,160] on 720×1600. Never on tab hubs. */
+    protected boolean tapUnlabeledTopLeftBackBounds() {
+        String src = safeSource();
+        if (src.isBlank() || isTabHub(src) || headerIsOpenSettings(src)) {
+            return false;
+        }
+        int[] size = AdbInput.screenSize(context.config().get("android.udid", ""));
+        int x = Math.max(40, (int) (size[0] * 0.105));
+        int y = Math.max(96, 64 + (int) (size[1] * 0.035));
+        shellPress(x, y);
+        sleep(250);
+        return true;
     }
 
     protected void pressElement(WebElement element) {
         var rect = element.getRect();
+        String before = screenFingerprint();
         shellPress(rect.getX() + rect.getWidth() / 2, rect.getY() + rect.getHeight() / 2);
+        waitUntilChanged(before, actionUiWait());
+    }
+
+    protected Duration actionUiWait() {
+        boolean fast = context.config().getBoolean("money.functional.fast", false);
+        return Duration.ofMillis(fast ? 900 : 1_500);
     }
 
     /** A short press. A zero-length click does not reach these Flutter controls. */
@@ -350,25 +415,102 @@ public abstract class BaseScreen {
      * In-app header Back only. Prefer {@link #leaveViaBack()} when the Flutter Back control is dead.
      */
     public boolean tapBack() {
-        if (tapLabelFast("Back")) {
-            sleep(400);
+        return tapInAppBack();
+    }
+
+    /**
+     * Top-left in-app Back chevron. Do not search for a "Back" label — 2.1.4 leaves it
+     * unlabeled. Never tap it on a hub (that chip is Open settings / the profile icon).
+     */
+    protected boolean tapInAppBack() {
+        String src = safeSource();
+        if (src.isBlank() || isTabHub(src) || headerIsOpenSettings(src)) {
+            return false;
+        }
+        return pressHeaderBackChip();
+    }
+
+    /**
+     * Home / FinSight / Calculators / Products hubs. Top-left is Open settings, not Back.
+     * Nested FHC / calculator / profile pages are not hubs even if bottom nav is still in the tree.
+     */
+    protected boolean isTabHub(String src) {
+        if (src == null || src.isBlank()) {
+            return false;
+        }
+        boolean onProfileTree = src.toUpperCase().contains("PROFILE SETTINGS")
+                || src.contains("My Documents")
+                || src.contains("Document Details");
+        if (onProfileTree) {
+            return false;
+        }
+        if (productsHubShown(src)) {
             return true;
         }
-        if (tapFirstAny(Duration.ofSeconds(1),
-                MobileWaits.xpath("//android.widget.Button[@content-desc='Back']"),
-                MobileWaits.xpath("//*[@content-desc='Back']"))) {
-            sleep(400);
+        if (src.contains("EMI Calculator") && src.contains("SIP Calculator")
+                && (src.contains("Hello") || src.contains("Financial Calculators")
+                || src.contains("Budget Calculator"))) {
             return true;
         }
-        WebElement back = headerBackIcon();
-        if (back != null) {
-            pressElement(back);
-            sleep(400);
+        if (src.contains("Your Financial Health Score") && src.contains("FinSight")
+                && src.contains("Calculators") && src.contains("Open settings")) {
             return true;
         }
-        pressHeaderBackChip();
-        sleep(400);
-        return true;
+        if (src.contains("Featured Services") && src.contains("Open settings")) {
+            return true;
+        }
+        return src.contains("Explore Products") && src.contains("Open settings")
+                && !src.contains("content-desc=\"Back\"");
+    }
+
+    /** Any tab hub whose header is the "Hello" greeting with the initials avatar (e.g. "SV"). */
+    protected static boolean productsHubShown(String src) {
+        return src.contains("content-desc=\"FinSight\"")
+                && src.contains("content-desc=\"Calculators\"")
+                && src.contains("Hello")
+                && !src.contains("content-desc=\"Back\"");
+    }
+
+    /** True only on Home / FinSight / Calculators hubs, where top-left is Open settings. */
+    protected boolean headerIsOpenSettings(String src) {
+        if (src == null || src.isBlank()) {
+            return false;
+        }
+        if (src.toUpperCase().contains("PROFILE SETTINGS") || src.contains("My Documents")
+                || src.contains("content-desc=\"Back\"")) {
+            return false;
+        }
+        if (isTabHub(src)) {
+            return true;
+        }
+        return src.contains("Open settings")
+                && (src.contains("Hello") || src.contains("FinSight"))
+                && src.contains("Calculators");
+    }
+
+    /** Nested pages whose top-left control is the in-app Back chevron (often unlabeled). */
+    protected boolean innerScreenWithAppBack(String src) {
+        return src.contains("Personal Details")
+                || src.contains("Income &amp; Expense")
+                || src.contains("Income & Expense")
+                || src.contains("Income and Expense")
+                || src.contains("Insurance Details")
+                || src.contains("Add Loan")
+                || src.contains("Add Investment")
+                || src.contains("Lets do risk profile")
+                || src.contains("Your Risk Profile")
+                || src.contains("Let us know your risk")
+                || src.contains("Summary Details")
+                || src.contains("YOUR FINANCIAL HEALTH SCORE")
+                || src.contains("Your Money Diagnosed")
+                || src.contains("Question ")
+                || src.contains("PROFILE SETTINGS")
+                || src.contains("Profile Settings")
+                || src.contains("My Documents")
+                || src.contains("Document Details")
+                || src.contains("Work Profile")
+                || src.contains("Edit personal details")
+                || src.contains("content-desc=\"Back\"");
     }
 
     /**
@@ -378,21 +520,14 @@ public abstract class BaseScreen {
      * Never brings the app back to foreground after system Back.
      */
     public boolean leaveViaBack() {
-        String before = screenFingerprint();
-        boolean tapped = tapBack();
-        sleep(500);
-        if (tapped && !before.equals(screenFingerprint())) {
-            return true;
-        }
-        if (onRootTabScreen()) {
-            LOG.info("In-app Back did not leave, but already on a root tab — skipping system Back (would leave Money)");
+        if (onRootTabScreen() || headerIsOpenSettings(safeSource())) {
             return false;
         }
-        // One in-app header chip retry. System Back is not used — it backgrounds Money
-        // and looks like the session was dismissed.
-        pressHeaderBackChip();
-        sleep(500);
-        return !before.equals(screenFingerprint());
+        String before = screenFingerprint();
+        if (!tapInAppBack()) {
+            return false;
+        }
+        return waitUntilChanged(before, Duration.ofSeconds(2));
     }
 
     /**
@@ -401,6 +536,12 @@ public abstract class BaseScreen {
      */
     protected boolean onRootTabScreen() {
         String src = safeSource();
+        if (isTabHub(src)) {
+            return true;
+        }
+        if (innerScreenWithAppBack(src)) {
+            return false;
+        }
         // Hub screens. System Back here backgrounds Money and drops the session.
         if (src.contains("EMI Calculator") && src.contains("SIP Calculator")
                 && (src.contains("Hello") || src.contains("Financial Calculators"))) {
@@ -418,7 +559,8 @@ public abstract class BaseScreen {
         return src.contains("Your Financial Health Score")
                 || src.contains("Featured Services")
                 || src.contains("Explore Products")
-                || (src.contains("content-desc=\"Hello\"") && src.contains("Open settings"));
+                || src.contains("Financial Calculators")
+                || (src.contains("Open settings") && src.contains("FinSight"));
     }
 
     protected String currentAppPackage() {
@@ -516,11 +658,49 @@ public abstract class BaseScreen {
         return "concat('" + value.replace("'", "',\"'\",'") + "')";
     }
 
+    protected Duration actionTimeout() {
+        return Duration.ofMillis(context.config().getInt("timeout.action", 20000));
+    }
+
+    protected Duration navigationTimeout() {
+        return Duration.ofMillis(context.config().getInt("timeout.navigation", 60000));
+    }
+
+    protected Duration otpTimeout() {
+        return Duration.ofMillis(context.config().getLong("timeout.otp.wait.ms", 120_000));
+    }
+
+    /** Poll until the condition is true. Prefer this over a fixed Thread.sleep. */
+    public boolean waitUntil(BooleanSupplier condition) {
+        return waits.until(condition, actionTimeout());
+    }
+
+    public boolean waitUntil(BooleanSupplier condition, Duration timeout) {
+        return waits.until(condition, timeout);
+    }
+
+    public boolean waitUntilSourceContains(Duration timeout, String... fragments) {
+        return waits.until(() -> sourceContains(fragments), timeout);
+    }
+
+    public boolean waitUntilSourceGone(Duration timeout, String... fragments) {
+        return waits.until(() -> !sourceContains(fragments), timeout);
+    }
+
+    /** Wait until the screen dump changes after a tap. */
+    protected boolean waitUntilChanged(String before) {
+        return waitUntilChanged(before, actionTimeout());
+    }
+
+    protected boolean waitUntilChanged(String before, Duration timeout) {
+        return waits.until(() -> !before.equals(screenFingerprint()), timeout);
+    }
+
+    /** Tap and poll gaps stay short. Anything longer is cut to 200ms; navigation waits on the screen. */
     protected static void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        if (ms <= 0) {
+            return;
         }
+        MobileWaits.sleep(Math.min(ms, 200));
     }
 }

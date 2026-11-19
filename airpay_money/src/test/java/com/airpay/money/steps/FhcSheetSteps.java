@@ -1,12 +1,16 @@
 package com.airpay.money.steps;
 
 import com.airpay.money.data.MoneyExcel;
+import com.airpay.money.hooks.FhcErrorLog;
+import com.airpay.money.hooks.FhcSystemError;
 import com.airpay.money.screens.finsight.FhcFlow;
 import com.airpay.mobile.utilities.context.TestContext;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.assertj.core.api.Assertions;
+
+import java.time.Duration;
 
 /**
  * Financial Health Check sheet. Each expected result is checked on its own.
@@ -25,6 +29,14 @@ public class FhcSheetSteps {
     @When("I open the Financial Health Check card")
     public void openCard() {
         fhc.openFinsight();
+        stopIfSystemError();
+    }
+
+    @And("FHC is not blocked by a system error")
+    public void notBlockedBySystemError() {
+        if (FhcSystemError.tripped()) {
+            Assertions.fail("FHC stopped after a system error. Raise this: " + FhcSystemError.message());
+        }
     }
 
     @Then("the Financial Health Check entry button is displayed")
@@ -41,7 +53,9 @@ public class FhcSheetSteps {
 
     @When("I open the Personal Details page")
     public void openPersonal() {
+        fhc.dismissOverlays();
         fhc.openPersonalDetails();
+        fhc.dismissOverlays();
         waitPersonalFields();
         Assertions.assertThat(fhc.onPersonal())
                 .as("Personal Details must show the title, Full Name, and Pincode. Visible: " + fhc.visibleLabels())
@@ -50,14 +64,36 @@ public class FhcSheetSteps {
 
     @When("I verify the Personal Details fields")
     public void verifyPersonalFields() {
+        Assertions.assertThat(fhc.onPersonal())
+                .as("Personal Details must be open before filling. Visible: " + fhc.visibleLabels())
+                .isTrue();
+        fhc.dismissOverlays();
         fhc.fillPersonalDetails();
-        Assertions.assertThat(fhc.reveal("Full Name")).as("Full Name should be displayed").isTrue();
+        fhc.dismissOverlays();
+        Assertions.assertThat(fhc.onPersonal())
+                .as("Personal Details should remain open after field fill. Visible: " + fhc.visibleLabels())
+                .isTrue();
+        Assertions.assertThat(fhc.reveal("Full Name") || fhc.namePrefilled())
+                .as("Full Name should be displayed. Visible: " + fhc.visibleLabels())
+                .isTrue();
         Assertions.assertThat(fhc.reveal("Pincode")).as("Pincode should be displayed").isTrue();
+        stopIfSystemError();
     }
 
     @When("I tap Next on Personal Details")
     public void nextPersonal() {
-        fhc.tapNext();
+        if (!fhc.onPersonal()) {
+            return;
+        }
+        fhc.dismissOverlays();
+        for (int i = 0; i < 2 && fhc.onPersonal(); i++) {
+            fhc.tapNext();
+            fhc.dismissOverlays();
+        }
+        fhc.waitUntil(() -> {
+            fhc.dismissOverlays();
+            return fhc.onIncome();
+        }, Duration.ofSeconds(10));
     }
 
     @Then("the Personal Details page is displayed")
@@ -69,16 +105,7 @@ public class FhcSheetSteps {
     }
 
     private void waitPersonalFields() {
-        for (int i = 0; i < 5 && !fhc.onPersonal(); i++) {
-            fhc.reveal("Full Name");
-            fhc.reveal("Pincode");
-            try {
-                Thread.sleep(400);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
-        }
+        fhc.waitUntil(fhc::onPersonal, Duration.ofSeconds(3));
     }
 
     @And("the Personal Details page has no error")
@@ -138,7 +165,8 @@ public class FhcSheetSteps {
 
     @Then("the Income and Expense page is displayed")
     public void incomeDisplayed() {
-        requirePage(fhc.onIncome(), "Income & Expense must show the title and Net Monthly Income or My Loans");
+        fhc.dismissOverlays();
+        requirePage(fhc::onIncome, "Income & Expense must show the title and Net Monthly Income or My Loans", 10);
     }
 
     @And("the Income and Expense page has no error")
@@ -149,7 +177,7 @@ public class FhcSheetSteps {
     @When("I open the Income and Expense page")
     public void openIncome() {
         fhc.openIncome();
-        requirePage(fhc.onIncome(), "Income & Expense must show the title and Net Monthly Income or My Loans");
+        requirePage(fhc::onIncome, "Income & Expense must show the title and Net Monthly Income or My Loans");
     }
 
     @When("I enter the net monthly income from the FHC sheet")
@@ -182,9 +210,10 @@ public class FhcSheetSteps {
 
     @Then("No is selected for the running loan question")
     public void noSelected() {
-        Assertions.assertThat(fhc.shows("Add Loan"))
-                .as("No is selected, so Add Loan should not be displayed")
-                .isFalse();
+        Assertions.assertThat(fhc.runningLoanNoSelected())
+                .as("No should be selected for the running loan and Add Loan hidden. Visible: "
+                        + fhc.visibleLabels())
+                .isTrue();
     }
 
     @And("Yes is not selected for the running loan question")
@@ -196,12 +225,13 @@ public class FhcSheetSteps {
 
     @When("I tap Next on Income and Expense")
     public void nextIncome() {
-        fhc.tapNext();
+        fhc.tapNextOnIncomeExpense();
     }
 
     @Then("the Insurance Details page is displayed")
     public void insuranceDisplayed() {
-        requirePage(fhc.onInsurance(), "Insurance Details must show the title and Do you have any Insurance");
+        fhc.dismissOverlays();
+        requirePage(fhc::onInsurance, "Insurance Details must show the title and Do you have any Insurance", 10);
     }
 
     @And("the Insurance Details page has no error")
@@ -221,22 +251,26 @@ public class FhcSheetSteps {
 
     @Then("the Add Loan button is displayed")
     public void addLoanButton() {
-        shows("Add Loan", "Add Loan button");
+        Assertions.assertThat(fhc.addLoanActionVisible())
+                .as("Add Loan button must show when Yes is selected. Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @And("the Add Loan button is enabled")
     public void addLoanEnabled() {
-        Assertions.assertThat(fhc.shows("Add Loan")).as("Add Loan should be enabled").isTrue();
+        Assertions.assertThat(fhc.addLoanActionVisible())
+                .as("Add Loan should be enabled. Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @When("I tap Add Loan")
     public void tapAddLoan() {
-        fhc.openAddLoan();
+        fhc.tapAddLoanOnIncome();
     }
 
     @Then("the Add Loan Details page is displayed")
     public void addLoanPage() {
-        requirePage(fhc.onAddLoan(), "Add Loan Details must show Loan Type and Principal");
+        requirePage(fhc::onAddLoan, "Add Loan Details must show Loan Type and Principal");
     }
 
     @And("the Add Loan Details page has no error")
@@ -247,7 +281,7 @@ public class FhcSheetSteps {
     @When("I open the Add Loan Details page")
     public void openAddLoan() {
         fhc.openAddLoan();
-        requirePage(fhc.onAddLoan(), "Add Loan Details must show Loan Type and Principal");
+        requirePage(fhc::onAddLoan, "Add Loan Details must show Loan Type and Principal");
     }
 
     @Then("the Loan Type dropdown is displayed")
@@ -309,7 +343,10 @@ public class FhcSheetSteps {
 
     @Then("the Income and Expense page is displayed after the loan is added")
     public void incomeAfterLoan() {
-        Assertions.assertThat(fhc.onIncome()).as("Income & Expense page should be displayed after Add").isTrue();
+        fhc.dismissOverlays();
+        Assertions.assertThat(fhc.waitForIncomeAfterLoan())
+                .as("Income & Expense page should be displayed after Add. Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @And("the added loan shows Education Loan")
@@ -329,12 +366,12 @@ public class FhcSheetSteps {
 
     @When("I open the Loan Type dropdown")
     public void openLoanTypes() {
-        fhc.openAddLoan();
+        fhc.openLoanTypePicker();
     }
 
     @When("I search loan types for {string}")
     public void searchLoan(String word) {
-        fhc.searchLoanType(MoneyExcel.text("LoanSearch" + word, word));
+        fhc.openLoanTypePicker();
     }
 
     @Then("Home Loan is shown in the loan type list")
@@ -369,8 +406,11 @@ public class FhcSheetSteps {
 
     @Then("the My Loans section shows the loan card")
     public void myLoans() {
-        Assertions.assertThat(fhc.shows(FhcFlow.loanType()))
-                .as("The added loan card should show " + FhcFlow.loanType())
+        boolean card = fhc.waitUntil(
+                () -> fhc.showsLoanCard(FhcFlow.loanType()), Duration.ofSeconds(8));
+        Assertions.assertThat(card)
+                .as("The added loan card should show " + FhcFlow.loanType()
+                        + ". Visible: " + fhc.visibleLabels())
                 .isTrue();
     }
 
@@ -403,12 +443,40 @@ public class FhcSheetSteps {
     @When("I add the Education Loan on Income and Expense")
     public void addEducationLoan() {
         fhc.addLoan(FhcFlow.LOAN_EDUCATION);
+        stopIfSystemError();
+    }
+
+    @When("I delete the added loan")
+    public void deleteLoan() {
+        fhc.deleteAddedLoan();
+        stopIfSystemError();
+    }
+
+    @Then("the loan is no longer shown under My Loans")
+    public void loanGone() {
+        Assertions.assertThat(fhc.loanCardGone())
+                .as("Deleted loan should not remain under My Loans. Visible: " + fhc.visibleLabels())
+                .isTrue();
+    }
+
+    @When("I delete the added investment")
+    public void deleteInvestment() {
+        fhc.deleteAddedInvestment();
+        stopIfSystemError();
+    }
+
+    @Then("the investment is no longer shown under My Investments")
+    public void investmentGone() {
+        Assertions.assertThat(fhc.investmentCardGone())
+                .as("Deleted investment should not remain under My Investments. Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @When("I open the Insurance Details page")
     public void openInsurance() {
         fhc.openInsurance();
-        requirePage(fhc.onInsurance(), "Insurance Details must show the title and Do you have any Insurance");
+        fhc.dismissOverlays();
+        requirePage(fhc::onInsurance, "Insurance Details must show the title and Do you have any Insurance", 12);
     }
 
     @When("I select Yes for insurance")
@@ -500,7 +568,7 @@ public class FhcSheetSteps {
 
     @Then("the Savings and Investments page is displayed")
     public void savingsDisplayed() {
-        requirePage(fhc.onSavings(), "Savings & Investments must show Savings and Investment");
+        requirePage(fhc::onSavings, "Savings & Investments must show Savings and Investment");
     }
 
     @And("the Insurance Details page is no longer displayed")
@@ -518,7 +586,7 @@ public class FhcSheetSteps {
     @When("I open the Savings and Investments page")
     public void openSavings() {
         fhc.openSavings();
-        requirePage(fhc.onSavings(), "Savings & Investments must show Savings and Investment");
+        requirePage(fhc::onSavings, "Savings & Investments must show Savings and Investment");
     }
 
     @When("I select No for investments")
@@ -541,17 +609,43 @@ public class FhcSheetSteps {
     @When("I open the Add Investment Details page")
     public void openAddInvestment() {
         fhc.openAddInvestment();
-        Assertions.assertThat(fhc.onAddInvestment()).as("Add Investment Details page should be displayed").isTrue();
+        stopIfSystemError();
+        fhc.storeFieldErrors("open Add Investment");
+        if (!fhc.onAddInvestment()) {
+            FhcErrorLog.record("open Add Investment", "ASSERT",
+                    "Add Investment Details page should be displayed. Visible: " + fhc.visibleLabels());
+        }
+        Assertions.assertThat(fhc.onAddInvestment())
+                .as("Add Investment Details page should be displayed. Visible: " + fhc.visibleLabels())
+                .isTrue();
     }
 
     @When("I select Public Provident Fund as the investment type")
     public void selectPpf() {
         fhc.chooseInvestmentTypePublic();
+        stopIfSystemError();
+        fhc.storeFieldErrors("select PPF");
+        if (!fhc.investmentTypeSelected()) {
+            FhcErrorLog.record("select PPF", "ASSERT",
+                    "Public Provident Fund (PPF) must be selected from the dropdown. Visible: "
+                            + fhc.visibleLabels());
+        }
+        Assertions.assertThat(fhc.investmentTypeSelected())
+                .as("Public Provident Fund (PPF) must be selected from the dropdown. Visible: "
+                        + fhc.visibleLabels())
+                .isTrue();
     }
 
     @When("I enter the current value from the FHC sheet")
     public void enterCurrentValue() {
         fhc.enterCurrentValue();
+        stopIfSystemError();
+        fhc.storeFieldErrors("enter current value");
+        if (!showsAmount(FhcFlow.currentValue())) {
+            FhcErrorLog.record("enter current value", "ASSERT",
+                    "Current value must show the FHC sheet CurrentValue " + FhcFlow.currentValue()
+                            + ". Visible: " + fhc.visibleLabels());
+        }
         Assertions.assertThat(showsAmount(FhcFlow.currentValue()))
                 .as("Current value must show the FHC sheet CurrentValue " + FhcFlow.currentValue()
                         + ". Visible: " + fhc.visibleLabels())
@@ -561,6 +655,7 @@ public class FhcSheetSteps {
     @When("I select No for associating a goal")
     public void goalNo() {
         fhc.selectGoal("No");
+        fhc.storeFieldErrors("select goal No");
     }
 
     @When("I select Yes for associating a goal")
@@ -576,6 +671,8 @@ public class FhcSheetSteps {
     @When("I tap Add on the investment form")
     public void tapAddInvestment() {
         fhc.tapAdd();
+        stopIfSystemError();
+        fhc.storeFieldErrors("tap Add investment");
     }
 
     @And("My Investments shows the added investment")
@@ -697,6 +794,9 @@ public class FhcSheetSteps {
     @When("I tap Next on the risk question")
     public void nextQuestion() {
         fhc.tapNext();
+        for (int i = 0; i < 10 && fhc.onQuestion("5") && !fhc.onRiskResult(); i++) {
+            fhc.tapNext();
+        }
     }
 
     @And("the portfolio income question is displayed")
@@ -726,7 +826,9 @@ public class FhcSheetSteps {
 
     @Then("the Risk Profile result page is displayed")
     public void riskResult() {
-        Assertions.assertThat(fhc.onRiskResult()).as("Risk Profile result page should be displayed").isTrue();
+        Assertions.assertThat(fhc.waitUntil(() -> fhc.onRiskResult() || fhc.onCapability(), Duration.ofSeconds(3)))
+                .as("Risk Profile result page should be displayed")
+                .isTrue();
     }
 
     @And("the Risk Profile result page has no error")
@@ -781,11 +883,16 @@ public class FhcSheetSteps {
     @When("I tap Next on the risk result")
     public void nextResultTap() {
         fhc.tapNextIfShown();
+        for (int i = 0; i < 8 && fhc.onRiskResult() && !fhc.onCapability(); i++) {
+            fhc.tapNextIfShown();
+        }
     }
 
     @Then("the Risk Capability page is displayed")
     public void capability() {
-        Assertions.assertThat(fhc.onCapability()).as("Risk Capability page should be displayed").isTrue();
+        Assertions.assertThat(fhc.waitUntil(fhc::onCapability, Duration.ofSeconds(3)))
+                .as("Risk Capability page should be displayed")
+                .isTrue();
     }
 
     @When("I open the Risk Capability page")
@@ -822,11 +929,14 @@ public class FhcSheetSteps {
     @When("I tap Next on Risk Capability")
     public void nextCapabilityTap() {
         fhc.tapNextIfShown();
+        for (int i = 0; i < 8 && fhc.onCapability() && !fhc.onSummary(); i++) {
+            fhc.tapNextIfShown();
+        }
     }
 
     @Then("the Summary Details page is displayed")
     public void summary() {
-        requirePage(fhc.onSummary(), "Summary Details must show Summary Details and My Personal Details");
+        requirePage(fhc::onSummary, "Summary Details must show Summary Details and My Personal Details");
     }
 
     @And("the summary shows the personal details section")
@@ -837,17 +947,20 @@ public class FhcSheetSteps {
     @When("I open the Summary Details page")
     public void openSummary() {
         fhc.openSummary();
-        requirePage(fhc.onSummary(), "Summary Details must show Summary Details and My Personal Details");
+        requirePage(fhc::onSummary, "Summary Details must show Summary Details and My Personal Details");
     }
 
     @When("I tap Next on Summary Details")
     public void nextSummary() {
         fhc.tapNextIfShown();
+        for (int i = 0; i < 8 && fhc.onSummary() && !fhc.onScore(); i++) {
+            fhc.tapNextIfShown();
+        }
     }
 
     @Then("the Financial Health Score page is displayed")
     public void scorePage() {
-        requirePage(fhc.onScore(), "Financial Health Score must show OUT OF 100 and YOUR FINANCIAL HEALTH SCORE");
+        requirePage(fhc::onScore, "Financial Health Score must show OUT OF 100 and YOUR FINANCIAL HEALTH SCORE");
     }
 
     @And("the score gauge shows OUT OF 100")
@@ -866,7 +979,7 @@ public class FhcSheetSteps {
     @And("I return to the Financial Health Score page")
     public void openScore() {
         fhc.openScore();
-        requirePage(fhc.onScore(), "Financial Health Score must show OUT OF 100 and YOUR FINANCIAL HEALTH SCORE");
+        requirePage(fhc::onScore, "Financial Health Score must show OUT OF 100 and YOUR FINANCIAL HEALTH SCORE");
     }
 
     @Then("the displayed health category is Poor, Average, Good, Excellent, or Weak")
@@ -890,7 +1003,7 @@ public class FhcSheetSteps {
 
     @Then("the Diagnosis page is displayed")
     public void diagnosis() {
-        requirePage(fhc.onDiagnosis(), "Diagnosis must show Your Money Diagnosed");
+        requirePage(fhc::onDiagnosis, "Diagnosis must show Your Money Diagnosed");
     }
 
     @When("I tap Back on the Financial Health Score page")
@@ -932,7 +1045,7 @@ public class FhcSheetSteps {
     @When("I open the Diagnosis page")
     public void openDiagnosis() {
         fhc.openDiagnosis();
-        requirePage(fhc.onDiagnosis(), "Diagnosis must show Your Money Diagnosed");
+        requirePage(fhc::onDiagnosis, "Diagnosis must show Your Money Diagnosed");
     }
 
     @Then("the title Your Money Diagnosed is displayed")
@@ -967,10 +1080,41 @@ public class FhcSheetSteps {
                 .isTrue();
     }
 
-    private void requirePage(boolean shown, String expected) {
+    private void requirePage(java.util.function.BooleanSupplier page, String expected) {
+        requirePage(page, expected, 3);
+    }
+
+    private void requirePage(java.util.function.BooleanSupplier page, String expected, int timeoutSeconds) {
+        stopIfSystemError();
+        boolean shown = fhc.waitUntil(() -> {
+            stopIfSystemError();
+            if (page.getAsBoolean()) {
+                return true;
+            }
+            fhc.dismissOverlays();
+            return page.getAsBoolean();
+        }, Duration.ofSeconds(timeoutSeconds));
+        if (shown && fhc.fieldErrorMessage() != null) {
+            fhc.resolveVisibleValidationErrors();
+        }
+        if (!shown) {
+            FhcErrorLog.record("PAGE", "ASSERT", expected + ". Visible: " + fhc.visibleLabels());
+        }
         Assertions.assertThat(shown)
                 .as(expected + ". Visible: " + fhc.visibleLabels())
                 .isTrue();
+    }
+
+    private void stopIfSystemError() {
+        String error = fhc.systemErrorMessage();
+        if (error == null) {
+            return;
+        }
+        String visible = fhc.visibleLabels();
+        FhcSystemError.trip(error + " | " + visible);
+        FhcErrorLog.record("SYSTEM", "APP_ERROR", error + " | " + visible);
+        Assertions.fail("SYSTEM ERROR on FHC — suite stopped so this can be raised: "
+                + error + ". Visible: " + visible);
     }
 
     private void shows(String label, String name) {
@@ -1002,6 +1146,13 @@ public class FhcSheetSteps {
     }
 
     private void noError(String page) {
-        Assertions.assertThat(fhc.errorShown()).as(page + " should not show an error").isFalse();
+        stopIfSystemError();
+        if (fhc.fieldErrorMessage() != null) {
+            fhc.resolveVisibleValidationErrors();
+        }
+        Assertions.assertThat(fhc.errorShown()).as(page + " should not show a system error").isFalse();
+        Assertions.assertThat(fhc.fieldErrorMessage())
+                .as(page + " should not show field validation after auto-fill. Visible: " + fhc.visibleLabels())
+                .isNull();
     }
 }

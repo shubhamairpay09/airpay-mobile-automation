@@ -23,6 +23,16 @@ call "%~dp0prepare-device.bat" %PRODUCT% %PREFERRED_UDID%
 if errorlevel 1 exit /b 1
 set "UDID="
 for /f "usebackq tokens=1,* delims==" %%A in ("target\%PRODUCT%\prepare.env") do set "%%A=%%B"
+if defined ANDROID_HOME (
+  set "ANDROID_SDK_ROOT=%ANDROID_HOME%"
+  set "PATH=%ANDROID_HOME%\platform-tools;%PATH%"
+)
+if defined JAVA_HOME set "PATH=%JAVA_HOME%\bin;%PATH%"
+if defined M2_HOME set "PATH=%M2_HOME%\bin;%PATH%"
+echo Java:    %JAVA_HOME%
+echo Maven:   %M2_HOME%
+echo Android: %ANDROID_HOME%
+echo Appium:  %APPIUM_CMD%
 echo Using UDID=!UDID!
 
 if defined CLASSWORLDS_JAR (

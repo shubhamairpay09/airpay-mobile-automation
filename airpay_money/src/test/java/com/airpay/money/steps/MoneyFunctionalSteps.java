@@ -97,11 +97,9 @@ public class MoneyFunctionalSteps {
                 .isTrue();
         if (otpScreen.isDisplayed()) {
             String otp = MoneyTestData.otp(context.config());
-            Assertions.assertThat(otp)
-                    .as("money.test.otp in config/money.properties must be set when the welcome screen is shown")
-                    .isNotBlank();
-            otpScreen.enterOtp(otp);
-            otpScreen.waitUntilGone(Duration.ofSeconds(60));
+            Assertions.assertThat(otpScreen.completeFromExcelOrUser(otp))
+                    .as("OTP must be typed from the Login Excel sheet, or entered on the phone")
+                    .isTrue();
         }
         new BiometricScreen(context).dismissIfShown();
         unlockPinAndSkipBiometric();
@@ -131,13 +129,9 @@ public class MoneyFunctionalSteps {
             if (!web && !terms) {
                 return;
             }
+            String before = home.pageSource();
             home.pressSystemBack();
-            try {
-                Thread.sleep(700);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
+            home.waitUntil(() -> !before.equals(home.pageSource()), Duration.ofSeconds(2));
         }
     }
 
@@ -148,12 +142,8 @@ public class MoneyFunctionalSteps {
             biometric.dismissIfShown();
             return;
         }
-        new PinUnlockScreen(context).enterPin(MoneyExcel.pin("880272"));
-        try {
-            Thread.sleep(1200);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        new PinUnlockScreen(context).enterPin(MoneyExcel.pin("123698"));
+        home.waitUntil(() -> !home.sourceContains("Enter your Airpay Money PIN"), Duration.ofSeconds(3));
         biometric.dismissIfShown();
     }
 
@@ -186,11 +176,7 @@ public class MoneyFunctionalSteps {
     }
 
     private static void sleepQuiet(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        // The next page read is the wait. A fixed sleep only stacks on the dump.
     }
 
     @When("I tap login with mobile on the airpay money welcome screen")

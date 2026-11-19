@@ -16,30 +16,17 @@ if "%PRODUCT%"=="" (
 set "ROOT=%~dp0..\.."
 cd /d "%ROOT%"
 
-rem SDK must be visible to the Appium process, not only to this bat.
-if defined ANDROID_HOME for /f "delims=" %%A in ("%ANDROID_HOME%") do set "ANDROID_HOME=%%~A"
-if defined ANDROID_SDK_ROOT for /f "delims=" %%A in ("%ANDROID_SDK_ROOT%") do set "ANDROID_SDK_ROOT=%%~A"
-if not defined ANDROID_HOME if defined ANDROID_SDK_ROOT set "ANDROID_HOME=%ANDROID_SDK_ROOT%"
-if not defined ANDROID_HOME if exist "%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe" set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
-if not defined ANDROID_HOME if exist "D:\Android_Studio\Sdk\platform-tools\adb.exe" set "ANDROID_HOME=D:\Android_Studio\Sdk"
-if not defined ANDROID_HOME if exist "C:\Android\Sdk\platform-tools\adb.exe" set "ANDROID_HOME=C:\Android\Sdk"
-if not defined ANDROID_HOME (
-  echo ANDROID_HOME is not set, and no SDK was found under %%LOCALAPPDATA%%\Android\Sdk
-  echo Set ANDROID_HOME to the Android Studio SDK folder ^(no quotes^), open a NEW CMD, then rerun.
-  exit /b 1
-)
-if not exist "%ANDROID_HOME%\platform-tools\adb.exe" (
+echo.
+echo === Toolchain for %PRODUCT% ===
+call "%~dp0ensure-android-appium.bat"
+if errorlevel 1 exit /b 1
+
+set "ADB=%ANDROID_HOME%\platform-tools\adb.exe"
+if not exist "%ADB%" (
   echo ANDROID_HOME=%ANDROID_HOME% does not contain platform-tools\adb.exe
   exit /b 1
 )
-set "ANDROID_SDK_ROOT=%ANDROID_HOME%"
-set "ADB=%ANDROID_HOME%\platform-tools\adb.exe"
-set "PATH=%ANDROID_HOME%\platform-tools;%PATH%"
 echo SDK: %ANDROID_HOME%
-set "APPIUM_CMD="
-if exist "%APPDATA%\npm\appium.cmd" set "APPIUM_CMD=%APPDATA%\npm\appium.cmd"
-if not defined APPIUM_CMD if exist "%LOCALAPPDATA%\npm\appium.cmd" set "APPIUM_CMD=%LOCALAPPDATA%\npm\appium.cmd"
-if not defined APPIUM_CMD set "APPIUM_CMD=appium"
 
 set "APP_PACKAGE="
 for /f "usebackq tokens=1,* delims==" %%A in (`findstr /b /c:"%PRODUCT%.app.package=" "config\%PRODUCT%.properties"`) do (
@@ -58,33 +45,24 @@ set "ENVFILE=target\%PRODUCT%\prepare.env"
 echo.
 echo === Device setup for %PRODUCT% ===
 
-rem Always restart Appium so the server process sees ANDROID_HOME.
-rem An already-open Appium window keeps the OLD environment and fails with
-rem "Neither ANDROID_HOME nor ANDROID_SDK_ROOT environment variable was exported".
-rem Set KEEP_APPIUM=Yes only when that server was started after the SDK vars were set.
-if /i "%KEEP_APPIUM%"=="Yes" (
-  call :appiumUp
-  if errorlevel 1 (
-    echo KEEP_APPIUM=Yes but nothing is listening on http://127.0.0.1:4723
-    exit /b 1
-  )
-  echo Keeping the Appium that is already running.
-  goto :appiumReady
-)
-call :appiumUp
-if not errorlevel 1 (
-  echo Restarting Appium so it picks up ANDROID_HOME.
+rem Start Appium only when nothing is answering on port 4723.
+rem Set RESTART_APPIUM=Yes when an old server was started before ANDROID_HOME existed.
+if /i "%RESTART_APPIUM%"=="Yes" (
+  echo RESTART_APPIUM=Yes. Stopping whatever is listening on port 4723.
   powershell -NoProfile -Command "$ErrorActionPreference='SilentlyContinue'; Get-NetTCPConnection -LocalPort 4723 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"
   timeout /t 2 /nobreak >nul
 )
-where appium >nul 2>&1
-if errorlevel 1 if not exist "%APPDATA%\npm\appium.cmd" if not exist "%LOCALAPPDATA%\npm\appium.cmd" (
-  echo Appium was not found. Install it with: npm install -g appium
-  echo Then: appium driver install uiautomator2
-  exit /b 1
+call :appiumUp
+if not errorlevel 1 goto :appiumReady
+if not exist "%APPIUM_CMD%" (
+  where "%APPIUM_CMD%" >nul 2>&1
+  if errorlevel 1 (
+    echo Appium command was not found after setup: %APPIUM_CMD%
+    exit /b 1
+  )
 )
 echo Starting Appium with ANDROID_HOME=%ANDROID_HOME%
-rem Extra quotes so a repo path with spaces (for example "Airpay automation") is not split.
+rem Extra quotes so a repo path with spaces is not split. The window stays open so the log is visible.
 start "Airpay Appium" cmd /k ""%~dp0start-appium.cmd""
 set /a TRIES=0
 :waitAppium
@@ -105,8 +83,10 @@ echo Appium is running at http://127.0.0.1:4723
 "%ADB%" devices -l > "%INFO%.devices"
 set "FIRST="
 set "PICK="
+set "UNAUTH="
 set /a COUNT=0
 for /f "skip=1 tokens=1,2" %%A in ('"%ADB%" devices') do (
+  if /i "%%B"=="unauthorized" set "UNAUTH=%%A"
   if /i "%%B"=="device" (
     set /a COUNT+=1
     if not defined FIRST set "FIRST=%%A"
@@ -114,7 +94,12 @@ for /f "skip=1 tokens=1,2" %%A in ('"%ADB%" devices') do (
   )
 )
 if !COUNT! EQU 0 (
-  echo No phone is connected. Plug in the phone, unlock it, and allow USB debugging.
+  if defined UNAUTH (
+    echo Phone !UNAUTH! is connected, but USB debugging is not allowed.
+    echo Unlock the phone and tap Allow on the USB debugging prompt, then run again.
+  ) else (
+    echo No phone is connected. Plug in the phone, unlock it, and allow USB debugging.
+  )
   echo Saved device list: %CD%\%INFO%
   call :writeInfo missing
   exit /b 1
@@ -144,6 +129,9 @@ if "!PKGPATH!"=="" (
 call :writeInfo ready
 > "!ENVFILE!" echo UDID=!PICK!
 >> "!ENVFILE!" echo APP_PACKAGE=!APP_PACKAGE!
+>> "!ENVFILE!" echo ANDROID_HOME=!ANDROID_HOME!
+>> "!ENVFILE!" echo ANDROID_SDK_ROOT=!ANDROID_SDK_ROOT!
+>> "!ENVFILE!" echo APPIUM_CMD=!APPIUM_CMD!
 
 echo Phone:    !PICK!  !MODEL!  Android !ANDROID_VER!
 echo App:      !APP_PACKAGE!

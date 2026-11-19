@@ -11,6 +11,9 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public final class AppiumManager {
 
@@ -37,7 +40,7 @@ public final class AppiumManager {
         if (open != null && open.alive()) {
             if (!open.instrumentationHealthy()) {
                 LOG.warn("UiAutomator2 instrumentation dead — closing session and starting a new one");
-                restartUiAutomatorServer(config.get("android.udid", ""));
+                restartUiAutomatorServer(resolveConnectedUdid(config.get("android.udid", "")));
                 open.quit();
                 open = null;
                 open = new AppiumManager(config);
@@ -71,13 +74,36 @@ public final class AppiumManager {
         }
     }
 
+    /**
+     * Use the configured UDID when that phone is plugged in. Otherwise the first
+     * {@code adb devices} entry — so a stale config UDID cannot fail session create.
+     */
+    static String resolveConnectedUdid(String configured) {
+        String wanted = configured == null ? "" : configured.trim();
+        java.util.List<String> connected = AdbCommands.connectedUdids();
+        if (!wanted.isBlank() && connected.contains(wanted)) {
+            return wanted;
+        }
+        if (!connected.isEmpty()) {
+            String pick = connected.get(0);
+            if (!wanted.isBlank()) {
+                LOG.warn("android.udid={} is not connected. Using {} instead. Connected: {}",
+                        wanted, pick, connected);
+            } else {
+                LOG.info("android.udid is blank — using first connected device {}", pick);
+            }
+            return pick;
+        }
+        return wanted;
+    }
+
     public AppiumManager(FrameworkConfig config) {
         this.createdNow = true;
         String product = config.product();
         String apk = config.get(product + ".app.apk.path", "");
         this.appPackage = config.require(product + ".app.package");
         this.appActivity = config.require(product + ".app.activity");
-        this.udid = config.get("android.udid", "");
+        this.udid = resolveConnectedUdid(config.get("android.udid", ""));
         this.keepSession = config.getBoolean("android.keep.session", true);
         String server = config.get("appium.server.url", "http://127.0.0.1:4723");
 
@@ -140,35 +166,38 @@ public final class AppiumManager {
     }
 
     private boolean alreadyInApp() {
-        try {
-            return appPackage.equals(driver.getCurrentPackage());
-        } catch (Exception e) {
-            return false;
-        }
+        return dumpShowsApp();
     }
 
     private static String safeCurrentPackage(AppiumManager mgr) {
-        try {
-            return mgr.driver.getCurrentPackage();
-        } catch (Exception e) {
-            return "(unknown)";
-        }
+        return mgr.dumpShowsApp() ? mgr.appPackage : "(other)";
     }
 
     private boolean alive() {
         try {
-            return driver != null && driver.getSessionId() != null && driver.currentActivity() != null;
+            return driver != null && driver.getSessionId() != null;
         } catch (Exception e) {
             return false;
         }
     }
 
+    /** A page-source fetch on a heavy screen takes over 2s and was misread as "app left". */
+    private boolean dumpShowsApp() {
+        return com.airpay.mobile.utilities.android.AdbInput.isForeground(udid, appPackage);
+    }
+
     /** Appium session id can outlive a crashed UiAutomator2 instrumentation process. */
     private boolean instrumentationHealthy() {
+        Future<String> dump = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "uia2-health");
+            t.setDaemon(true);
+            return t;
+        }).submit(driver::getPageSource);
         try {
-            driver.getPageSource();
+            dump.get(4, TimeUnit.SECONDS);
             return true;
         } catch (Exception e) {
+            dump.cancel(true);
             return !instrumentationDead(e);
         }
     }
@@ -191,18 +220,14 @@ public final class AppiumManager {
 
     /** Samsung often leaves UiAutomator2 on the launcher; force Capital into foreground. */
     private void bringAppToForeground(String udid, String appPackage, String appActivity) {
-        try {
-            if (appPackage.equals(driver.getCurrentPackage())) {
-                LOG.info("App already in foreground — leaving the current screen in place");
-                return;
-            }
-        } catch (Exception ignored) {
-            // Fall through and bring the app forward.
+        if (dumpShowsApp()) {
+            LOG.info("App already on screen — leaving the current screen in place");
+            return;
         }
         LOG.info("Resuming the existing app session | keepSession={}", keepSession);
         AdbCommands.shell(udid, "am", "start", "-n", appPackage + "/" + appActivity);
         try {
-            Thread.sleep(1500);
+            Thread.sleep(800);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -220,7 +245,7 @@ public final class AppiumManager {
     /** Close a dead UiAutomator session and open a new one without clearing app data. */
     public static synchronized AndroidDriver recover(FrameworkConfig config) {
         LOG.warn("Recovering Appium session (UiAutomator2 restart, app stays installed)");
-        restartUiAutomatorServer(config.get("android.udid", ""));
+        restartUiAutomatorServer(resolveConnectedUdid(config.get("android.udid", "")));
         if (open != null) {
             open.quit();
             open = null;

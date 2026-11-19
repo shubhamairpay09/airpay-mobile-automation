@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- JDK 21, Maven 3.9+
+- JDK 21 or newer, Maven 3.9+. The bats use `C:\Program Files\Java\jdk-27.0.1.0.3` when that folder is present.
 - Appium 2+ with UiAutomator2: `appium driver install uiautomator2`
 - Android device: USB debugging, `adb devices` shows `device`
 - APK path set in `config/capital.properties`

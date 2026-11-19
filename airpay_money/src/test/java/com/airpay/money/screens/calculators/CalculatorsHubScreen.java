@@ -1,6 +1,7 @@
 package com.airpay.money.screens.calculators;
 
 import com.airpay.money.data.MoneyExcel;
+import com.airpay.money.hooks.FunctionalModuleReset;
 import com.airpay.money.screens.auth.BiometricScreen;
 import com.airpay.money.screens.auth.PinUnlockScreen;
 import com.airpay.mobile.utilities.waits.MobileWaits;
@@ -47,22 +48,41 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
     }
 
     public String catalogSource() {
+        boolean fast = context.config().getBoolean("money.functional.fast", false);
         StringBuilder seen = new StringBuilder(pageSource());
-        for (int i = 0; i < 5; i++) {
-            swipeUp();
-            sleep(300);
+        int swipes = fast ? 1 : 2;
+        for (int i = 0; i < swipes; i++) {
+            swipeHub(true);
+            sleep(fast ? 150 : 250);
             seen.append('\n').append(pageSource());
+        }
+        for (int i = 0; i < (fast ? 1 : 2); i++) {
+            swipeHub(false);
         }
         return seen.toString();
     }
 
-    /** Hello, the Financial Calculators header, and the EMI Calculator tile occupy separate areas. */
+    /**
+     * Hero title or subtitle (2.1.4 often drops the literal "Financial Calculators" node).
+     */
+    public boolean heroTitleDisplayed() {
+        String src = pageSource();
+        return src.contains("Financial Calculators")
+                || src.contains("Empower your money decisions with our suite of calculators");
+    }
+
+    /** Hello, hero block, and the EMI Calculator tile occupy separate areas. */
     public boolean headerGreetingAndOptionSeparated() {
-        org.openqa.selenium.WebElement hello = firstPresent(java.time.Duration.ofSeconds(3),
+        org.openqa.selenium.WebElement hello = firstPresent(java.time.Duration.ofMillis(800),
                 com.airpay.mobile.utilities.waits.MobileWaits.xpath("//*[@content-desc='Hello']"));
-        org.openqa.selenium.WebElement header = firstPresent(java.time.Duration.ofSeconds(3),
+        org.openqa.selenium.WebElement header = firstPresent(java.time.Duration.ofMillis(800),
                 com.airpay.mobile.utilities.waits.MobileWaits.xpath("//*[@content-desc='Financial Calculators']"));
-        org.openqa.selenium.WebElement option = firstPresent(java.time.Duration.ofSeconds(3),
+        if (header == null) {
+            header = firstPresent(java.time.Duration.ofMillis(800),
+                    com.airpay.mobile.utilities.waits.MobileWaits.xpath(
+                            "//*[@content-desc='Empower your money decisions with our suite of calculators']"));
+        }
+        org.openqa.selenium.WebElement option = firstPresent(java.time.Duration.ofMillis(800),
                 com.airpay.mobile.utilities.waits.MobileWaits.xpath("//*[@content-desc='EMI Calculator']"));
         if (hello == null || header == null || option == null) {
             return false;
@@ -88,7 +108,7 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
         biometric.dismissIfShown();
         PinUnlockScreen pin = new PinUnlockScreen(context);
         if (pin.waitUntilDisplayed(Duration.ofSeconds(3)) || sourceContains("Enter your Airpay Money PIN")) {
-            pin.enterPin(MoneyExcel.pin("880272"));
+            pin.enterPin(MoneyExcel.pin("123698"));
             sleep(1200);
         }
         biometric.dismissIfShown();
@@ -116,28 +136,48 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
             swipeHub(false);
         }
         sleep(200);
-        for (int attempt = 0; attempt < 8; attempt++) {
+        boolean fast = context.config().getBoolean("money.functional.fast", false);
+        int maxAttempts = fast ? 3 : 6;
+        long afterTap = fast ? 220L : 450L;
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            if (openedCalculator(detail, expectedPageTitle)) {
+                return true;
+            }
             if (tileInTree(label) && tapNamedTile(label)) {
-                sleep(500);
+                sleep(afterTap);
                 if (openedCalculator(detail, expectedPageTitle)) {
                     return true;
                 }
-                if (!stillOnHubGrid()) {
-                    new CalculatorScreen(context).tapAppBack();
-                    sleep(400);
-                }
             }
             swipeHub(true);
-            sleep(250);
+            sleep(fast ? 120 : 220);
         }
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < (fast ? 2 : 3); i++) {
             swipeHub(false);
         }
-        sleep(200);
+        sleep(150);
         if (tapNamedTile(label)) {
-            sleep(500);
+            sleep(afterTap);
         }
         return openedCalculator(detail, expectedPageTitle);
+    }
+
+    /** One Back tap (or chevron) then Calculators tab — bounded wait, no long retry loop. */
+    public boolean backToHubFromCalculator() {
+        if (stillOnHubGrid()) {
+            return true;
+        }
+        CalculatorScreen detail = new CalculatorScreen(context);
+        detail.leaveToHub();
+        if (waitUntil(this::stillOnHubGrid, Duration.ofMillis(600))) {
+            return true;
+        }
+        detail.leaveToHub();
+        if (waitUntil(this::stillOnHubGrid, Duration.ofMillis(600))) {
+            return true;
+        }
+        tapCalculatorsNav();
+        return waitUntil(this::stillOnHubGrid, Duration.ofMillis(1500));
     }
 
     /** Leave leftover product/calculator pages, then open the Calculators tab. */
@@ -146,37 +186,42 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
         if (isDisplayed()) {
             return true;
         }
-        for (int i = 0; i < 6 && !isDisplayed(); i++) {
-            String src = pageSource();
-            if (stillOnHubGrid()) {
+        boolean fast = context.config().getBoolean("money.functional.fast", false);
+        int maxLoops = fast ? 3 : 6;
+        for (int i = 0; i < maxLoops && !isDisplayed(); i++) {
+            tapCalculatorsNav();
+            if (waitUntil(this::isDisplayed, Duration.ofSeconds(fast ? 2 : 3))) {
                 return true;
             }
-            boolean rootTab = src.contains("Calculators")
-                    && (src.contains("FinSight") || src.contains("Products") || src.contains("Home"));
-            boolean inProfile = src.toUpperCase().contains("PROFILE SETTINGS")
-                    || src.contains("Personal Details") || src.contains("My Documents");
-            if (rootTab && !inProfile) {
-                // Top-left on Home / FinSight / Calculators is Open settings — never Back.
+            String src = pageSource();
+            if (stillOnHubGrid() || isTabHub(src)) {
+                if (stillOnHubGrid()) {
+                    return true;
+                }
                 tapCalculatorsNav();
-                sleep(500);
+                waitUntil(this::isDisplayed, Duration.ofSeconds(3));
                 continue;
             }
-            if (inProfile || src.contains("Privacy Policy")) {
-                new CalculatorScreen(context).tapAppBack();
-                sleep(400);
+            if (FunctionalModuleReset.onProfileTree(src)) {
+                FunctionalModuleReset.escapeAccidentalProfile(context);
+                tapCalculatorsNav();
+                waitUntil(this::isDisplayed, Duration.ofSeconds(3));
                 continue;
             }
-            if (!src.contains("Financial Calculators")) {
-                new CalculatorScreen(context).tapAppBack();
+            if (src.contains("Privacy Policy")) {
+                pressSystemBack();
                 sleep(400);
+                tapCalculatorsNav();
+                waitUntil(this::isDisplayed, Duration.ofSeconds(3));
+                continue;
             }
+            tapInAppBack();
             tapCalculatorsNav();
-            sleep(400);
+            waitUntil(this::isDisplayed, Duration.ofSeconds(3));
             unlockIfNeeded();
         }
         tapCalculatorsNav();
-        sleep(700);
-        return isDisplayed();
+        return waitUntil(this::isDisplayed, Duration.ofSeconds(5));
     }
 
     private void tapCalculatorsNav() {
@@ -326,11 +371,11 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
         return x >= 8 && x <= size[0] - 8 && y >= 80 && y <= size[1] - 160;
     }
 
-    /** Hub list: swipe at the left gutter so a tile centre is not dragged. */
+    /** Hub list: swipe at screen centre so the top-left Profile chip is never hit. */
     private void swipeHub(boolean up) {
         int[] size = com.airpay.mobile.utilities.android.AdbInput.screenSize(
                 context.config().get("android.udid", ""));
-        int x = Math.max(24, (int) (size[0] * 0.08));
+        int x = size[0] / 2;
         int startY = (int) (size[1] * (up ? 0.72 : 0.34));
         int endY = (int) (size[1] * (up ? 0.40 : 0.70));
         adbSwipe(x, startY, x, endY, 280);
@@ -392,7 +437,7 @@ public class CalculatorsHubScreen extends com.airpay.money.screens.base.BaseScre
      * Foreground restore is allowed only for cases that explicitly need it (e.g. OTP).
      */
     public void ensureForeground() {
-        // intentionally empty — never am start / activateApp between calculator steps
+        ensureMoneyInForeground();
     }
 
     public static final String TAB_CALCULATORS = "//android.widget.Button[@content-desc='Calculators']";

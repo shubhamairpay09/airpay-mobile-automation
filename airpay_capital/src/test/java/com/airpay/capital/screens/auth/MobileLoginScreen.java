@@ -7,6 +7,7 @@ import com.airpay.mobile.utilities.waits.MobileWaits;
 import io.appium.java_client.AppiumBy;
 import io.appium.java_client.pagefactory.AndroidFindBy;
 import io.appium.java_client.pagefactory.iOSXCUITFindBy;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 
 import java.time.Duration;
@@ -69,7 +70,11 @@ public class MobileLoginScreen extends BaseScreen {
     }
 
     public void tapSendOtp() {
-        if (!tapFirst(Duration.ofSeconds(10),
+        By send = MobileWaits.xpath("//*[contains(@content-desc,'Send OTP') or contains(@text,'Send OTP')]");
+        if (tapCenter(send)) {
+            return;
+        }
+        if (!tapFirst(Duration.ofSeconds(8),
                 MobileWaits.xpath("//*[contains(@content-desc,'Send OTP')]"),
                 MobileWaits.xpath("//*[contains(@text,'Send OTP')]"),
                 accessibility(ScreenMessages.SEND_OTP))) {
